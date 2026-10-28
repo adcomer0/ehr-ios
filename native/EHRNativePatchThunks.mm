@@ -96,6 +96,7 @@ const void *installedOriginal(const EHRNativePatchSiteV1 &site) {
 }
 struct Prepared {const EHRNativePatchSiteV1 *site;EHRManagedPatchSignatureV1 signature;std::vector<EHRManagedPatchParameterV1> parameters;std::vector<const void *> classes;};
 std::map<uint64_t,const EHRNativePatchSiteV1 *> compiled;
+std::atomic<EHRSourcePatchFailureV1> sourceFailure{nullptr};
 std::map<uint64_t,std::shared_ptr<const Prepared>> prepared;
 using Active=std::vector<uint64_t>;std::vector<std::unique_ptr<Active>> generations;std::atomic<const Active *> active{nullptr};
 bool typeName(API &a,const void *type,const char *expected) {
@@ -163,6 +164,13 @@ EHRRuntimeStatus EHRNativePatchRegisterCompiled(const EHRNativePatchSiteV1 *cons
     try {std::map<uint64_t,const EHRNativePatchSiteV1 *> next;for(size_t i=0;i<count;++i){auto *s=sites[i];if(!s||!s->target_id||!s->handler||!s->framework_uuid||!s->result||s->parameter_count>MaxParameters||(s->parameter_count&&!s->parameters)||!next.emplace(s->target_id,s).second)return EHR_RUNTIME_BAD_ARGUMENT;}compiled.swap(next);return EHR_RUNTIME_OK;}catch(...){return EHR_RUNTIME_LIMIT;}
 }
 void EHRNativePatchMakeTargetsTable(EHRManagedPatchTargetsV1 *table){if(table)*table={1,sizeof(*table),validate,activate,deactivate};}
+EHRRuntimeStatus EHRNativePatchBindFailureDiagnostics(EHRSourcePatchFailureV1 callback) {
+    if(!NSThread.isMainThread)return EHR_RUNTIME_WRONG_THREAD;
+    if(!callback)return EHR_RUNTIME_BAD_ARGUMENT;
+    auto previous=sourceFailure.load(std::memory_order_acquire);
+    if(previous&&previous!=callback)return EHR_RUNTIME_BAD_ARGUMENT;
+    sourceFailure.store(callback,std::memory_order_release);return EHR_RUNTIME_OK;
+}
 uintptr_t EHRNativePatchOriginal(const EHRNativePatchSiteV1 &site){const void *value=installedOriginal(site);if(!value)abort();return reinterpret_cast<uintptr_t>(value);}
 bool EHRNativePatchShouldDispatch(const EHRNativePatchSiteV1 &site){
     if(!NSThread.isMainThread){ehr_diagnostics::state().checked(EHRDiagnosticTick(),site.target_id,site.method_rva,false,false);return false;}
@@ -219,6 +227,11 @@ EHRNativePatchOutcomeV1 EHRNativePatchInvokePrepared(const EHRNativePatchSiteV1 
     // and every NativeAOT frame return. Copybacks happen even on that path.
     struct ExceptionRoot {uint64_t token;~ExceptionRoot(){if(token)ehr_runtime_object_release(token);}} exceptionRoot{error};
     outcome.exception=error;auto transfer=[&](){exceptionRoot.token=0;return outcome;};
+    // Optional diagnostics cannot alter the saved outcome or escape past owned
+    // output/exception roots, even if a faulty observer throws natively.
+    if(outcome.status){@try{try{if(auto copy=sourceFailure.load(std::memory_order_acquire)){
+        uint32_t words[12]{};if(copy(site.target_id,words,12)==0)EHRDiagnosticSourceFailure(site.target_id,outcome.status,words,12);
+    }}catch(...) {}}@catch(__unused NSException *failure){}}
     if(!outcome.dispatcher_entered){outcome.exception=0;return outcome;}
     if(outcome.proof.abi_version!=2||outcome.proof.byte_size!=32||outcome.proof.target_found!=1||outcome.proof.dispatcher_entered!=1){trace.scope.at(16);outcome.status=EHR_RUNTIME_TYPE_MISMATCH;return transfer();}
     alignas(8) uint8_t returnedBytes[MaxValue]{};void *returnedObject=nullptr;

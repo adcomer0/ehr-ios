@@ -29,6 +29,13 @@ int main(){size_t checks=0;using namespace ehr_diagnostics;State state;
  State concurrent;std::atomic<bool> running{true};std::thread worker([&]{while(running.load()){auto s=concurrent.snapshot();if(s.event_count>EventLimit||s.route_count>RouteLimit)std::abort();}});
  for(size_t i=0;i<5000;++i){concurrent.begin(i,1,4096);concurrent.end(i,1,4096,0,1|64);concurrent.iterator(i,true,7,1,0);concurrent.iterator(i,false,7,1,0);}running.store(false);worker.join();
  one=concurrent.snapshot();CHECK(one.routes[0].started==5000&&one.routes[0].completed==5000);CHECK(one.routes[0].failed==0);CHECK(one.event_count==EventLimit);CHECK(one.sequence==20000);
+ // Source protocol validation rejects malformed/future words without records.
+ uint32_t words[12]={1,12,1,0,42,0,7,89,0,1,6,1};context={42,4096,33,15,0};
+ CHECK(EHRDiagnosticSourceFailure(42,6,words,12));auto detail=ehr_diagnostics::state().snapshot();CHECK(detail.detail_total==1&&detail.details[0].callback==89&&detail.details[0].stage==7&&detail.details[0].iterator==33);
+ CHECK(!EHRDiagnosticSourceFailure(43,6,words,12));CHECK(!EHRDiagnosticSourceFailure(42,7,words,12));CHECK(!EHRDiagnosticSourceFailure(42,6,nullptr,12));CHECK(!EHRDiagnosticSourceFailure(42,6,words,11));
+ for(size_t field: {size_t(0),size_t(1),size_t(6),size_t(7),size_t(8),size_t(9),size_t(11)}){auto saved=words[field];words[field]=UINT32_MAX;CHECK(!EHRDiagnosticSourceFailure(42,6,words,12));words[field]=saved;}
+ words[9]=0;CHECK(!EHRDiagnosticSourceFailure(42,6,words,12));words[9]=1;words[2]=0;CHECK(!EHRDiagnosticSourceFailure(42,6,words,12));words[2]=1;
+ CHECK(ehr_diagnostics::state().snapshot().detail_total==1);
  // Reentrant scopes restore the caller's route/iterator context exactly.
  context={99,100,77,6,1};
  {EHRDiagnosticRouteScope outer(42,4096);outer.at(13,2);CHECK(context.target==42&&context.iterator==77&&context.phase==13);

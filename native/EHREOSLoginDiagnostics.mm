@@ -4,6 +4,7 @@
 #include "EHRRuntimeGateway.h"
 #include "EHRRuntimeMetadataPrivate.h"
 #include "EHRRuntimeDiagnostics.h"
+#include "EHRAuthRetryScope.hpp"
 #include <atomic>
 
 namespace {
@@ -32,7 +33,9 @@ EHRRuntimeStatus method(EHRRuntimeToken klass, const char *name,
     uint64_t observed = 0;
     return ehr_runtime_validate_native_method(*token, expectedRVA, &observed);
 }
-void observe(uint32_t phase, void *info) noexcept {
+struct Observation { bool known=false; int32_t result=0; };
+Observation observe(uint32_t phase, void *info) noexcept {
+    Observation observation;
     // Never inspect/copy this mixed-reference struct, ClientData, IDs, credentials
     // or strings. Only call its exact pinned public ResultCode getter.
     @try {
@@ -43,11 +46,14 @@ void observe(uint32_t phase, void *info) noexcept {
             const auto read = getter.load(std::memory_order_acquire);
             const auto metadata = getterMetadata.load(std::memory_order_acquire);
             if (!info) status = EHR_RUNTIME_BAD_ARGUMENT;
-            else if (status == EHR_RUNTIME_OK && read && metadata) result = read(info, metadata);
+            else if (status == EHR_RUNTIME_OK && read && metadata) {
+                result = read(info, metadata); observation = {true,result};
+            }
             else if (status == EHR_RUNTIME_OK) status = EHR_RUNTIME_NOT_READY;
             EHRRuntimeDiagnosticsRecordEOSLogin(phase, result, status, count);
         } catch (...) { /* Optional observer failure must not change login. */ }
     } @catch (__unused NSException *exception) { /* Original still runs. */ }
+    return observation;
 }
 }
 
@@ -83,12 +89,14 @@ extern "C" int32_t EHREOSLoginDiagnosticsPrepare(void) {
 extern "C" __attribute__((visibility("default")))
 void ehr_native_eos_platform_login_observer(void *self, void *info, const void *methodInfo) {
     auto original = reinterpret_cast<Callback>(EHRNativeHooksImageBaseForDiagnostics() + EHREOSPlatformLoginTrampolineRVA);
-    observe(1, info);
+    const auto observed=observe(1, info);
+    ehr_auth_retry::Scope scope(self,NSThread.isMainThread,observed.known,observed.result);
     original(self, info, methodInfo);
 }
 extern "C" __attribute__((visibility("default")))
 void ehr_native_eos_silent_login_observer(void *self, void *info, const void *methodInfo) {
     auto original = reinterpret_cast<Callback>(EHRNativeHooksImageBaseForDiagnostics() + EHREOSPlatformSilentLoginTrampolineRVA);
     observe(2, info);
+    ehr_auth_retry::Scope scope(nullptr,false,false,0);
     original(self, info, methodInfo);
 }

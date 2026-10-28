@@ -42,6 +42,9 @@ struct EHRNativePatchOutcomeV1 {
 // Compile-time immutable site registration, on main before binding TargetsV1.
 // No site is activated by registration, preparation or Validate.
 EHRRuntimeStatus EHRNativePatchRegisterCompiled(const EHRNativePatchSiteV1 *const *,size_t);
+using EHRSourcePatchFailureV1=int32_t(*)(uint64_t,uint32_t *,size_t);
+// Pure numeric own-image callback; no existing managed table ABI changes.
+EHRRuntimeStatus EHRNativePatchBindFailureDiagnostics(EHRSourcePatchFailureV1);
 EHRRuntimeStatus EHRNativeGeneratedRegisterCompiled(); // supplied by generated .inc
 void EHRNativePatchMakeTargetsTable(EHRManagedPatchTargetsV1 *);
 uintptr_t EHRNativePatchOriginal(const EHRNativePatchSiteV1 &);

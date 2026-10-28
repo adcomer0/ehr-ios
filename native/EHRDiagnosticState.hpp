@@ -8,8 +8,8 @@
 // Only compile-time route IDs/RVAs, source component IDs and numeric outcomes
 // belong here. No pointers, GC tokens, arguments, error text or user data.
 namespace ehr_diagnostics {
-constexpr size_t RouteLimit=384, EventLimit=128, FailureLimit=32, GuardLimit=32;
-enum Kind:uint32_t {RouteBegin=1,RouteEnd=2,Startup=3,ComponentBegin=4,ComponentEnd=5,Auth=6,IteratorBegin=7,IteratorEnd=8,RouteCheck=9,LimitGuard=10};
+constexpr size_t RouteLimit=384, EventLimit=128, FailureLimit=32, GuardLimit=32, DetailLimit=32;
+enum Kind:uint32_t {RouteBegin=1,RouteEnd=2,Startup=3,ComponentBegin=4,ComponentEnd=5,Auth=6,IteratorBegin=7,IteratorEnd=8,RouteCheck=9,LimitGuard=10,FailureDetailEvent=11};
 // Numeric categories identify the existing guard; zero limit means no numeric
 // bound is known (allocation failure or a managed callback returning LIMIT).
 enum GuardCategory:uint32_t {RootCapacity=1,WeakRootCapacity=2,PinRootCapacity=3,TokenExhaustion=4,WeakPromotionCapacity=5,
@@ -18,6 +18,10 @@ enum GuardCategory:uint32_t {RootCapacity=1,WeakRootCapacity=2,PinRootCapacity=3
  IteratorAllocation=20,ThunkCopyBytes=21,ThunkAllocation=22,CallbackReturnedLimit=23,NativeIteratorException=24};
 struct Context {uint64_t target=0,rva=0,iterator=0;uint32_t phase=0,argument=0;};
 inline thread_local Context context{};
+// kind1: owned source enums/ordinals; kind2: native exception's fixed class
+// enum and immutable public metadata identity. No messages or exception roots.
+struct FailureDetail {uint64_t sequence=0,tick=0,target=0,rva=0,iterator=0,source_sequence=0,owner_hash=0,method_hash=0;
+ uint32_t kind=0,stage=0,callback=0,argument=0,exception_kind=0,method_token=0,original_entered=0;int32_t status=0;};
 struct Event {uint64_t sequence=0,tick=0,id=0,rva=0;uint32_t kind=0,detail=0,flags=0;int32_t status=0;};
 struct Route {uint64_t id=0,rva=0,started=0,completed=0,failed=0,unentered=0,last_begin_sequence=0,last_end_sequence=0,last_begin_tick=0,last_end_tick=0,checks=0,active_checks=0,wrong_thread_checks=0;int32_t last_status=0;uint32_t last_flags=0,last_phase=0,last_argument=0;};
 struct Guard {uint64_t sequence=0,tick=0,target=0,rva=0,iterator=0,count=0,limit=0;uint32_t category=0,phase=0,argument=0;uint64_t gateway_tick=0,roots=0,weak_roots=0,deferred=0,enqueued=0,dequeued=0,released=0,iterator_tick=0,iterator_entries=0,iterator_active=0,iterator_terminal=0;};
@@ -26,7 +30,7 @@ struct Iterators {uint64_t tick=0,entries=0,active=0,terminal=0,current=0,weak=0
 struct Application {uint32_t stage=0,flags=0,state=0,load_attempts=0,options_loaded=0,options=0,active=0,candidates=0,post_load=0;int32_t status=0;};
 struct AuthState {uint32_t domain=0;int32_t code=0,install_status=1;uint64_t count=0,requests=0,successes=0,errors=0,overlaps=0;};
 struct EOSLogin {int32_t result=0,status=1;uint64_t count=0;};
-struct Snapshot {uint64_t sequence=0,unknown_routes=0,failure_total=0,guard_total=0;size_t route_count=0,event_count=0,failure_count=0,guard_count=0;Application application{};AuthState auth{};Gateway gateway{};Iterators iterators{};std::array<EOSLogin,2> eos{};std::array<Route,RouteLimit> routes{};std::array<Event,EventLimit> events{};std::array<Event,FailureLimit> failures{};std::array<Guard,GuardLimit> guards{};};
+struct Snapshot {uint64_t sequence=0,unknown_routes=0,failure_total=0,guard_total=0,detail_total=0;size_t route_count=0,event_count=0,failure_count=0,guard_count=0,detail_count=0;Application application{};AuthState auth{};Gateway gateway{};Iterators iterators{};std::array<EOSLogin,2> eos{};std::array<Route,RouteLimit> routes{};std::array<Event,EventLimit> events{};std::array<Event,FailureLimit> failures{};std::array<Guard,GuardLimit> guards{};std::array<FailureDetail,DetailLimit> details{};};
 class State {
  std::mutex mutex_;Snapshot data_{};
  void event(uint32_t kind,uint64_t tick,uint64_t id,uint64_t rva,uint32_t detail,int32_t status,uint32_t flags) {
@@ -67,6 +71,11 @@ public:
  }
  void gateway(Gateway value) noexcept {std::lock_guard<std::mutex> lock(mutex_);value.samples=data_.gateway.samples+1;value.observed_root_high_water=std::max(value.roots,data_.gateway.observed_root_high_water);data_.gateway=value;}
  void iterators(Iterators value) noexcept {std::lock_guard<std::mutex> lock(mutex_);data_.iterators=value;}
+ void failureDetail(uint64_t tick,FailureDetail value,Context origin) noexcept {
+  std::lock_guard<std::mutex> guard(mutex_);value.tick=tick;value.target=origin.target;value.rva=origin.rva;value.iterator=origin.iterator;
+  event(FailureDetailEvent,tick,value.target,value.rva,value.kind,value.status,0);value.sequence=data_.sequence;
+  data_.details[data_.detail_total++%DetailLimit]=value;if(data_.detail_count<DetailLimit)++data_.detail_count;
+ }
  void component(uint64_t tick,bool begin,uint32_t type,uint32_t message,int32_t status) noexcept {
   std::lock_guard<std::mutex> guard(mutex_);event(begin?ComponentBegin:ComponentEnd,tick,type,0,message,status,0);
  }

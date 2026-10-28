@@ -1,6 +1,9 @@
 #import "EHRFullSourceRuntime.h"
 #include "EHRRuntimeDiagnostics.h"
 #include "EHRAppleAuthDiagnostics.h"
+#if EHR_HAS_AUTH_RETRY_GUARD
+#include "EHRAuthRetryGuard.h"
+#endif
 #if EHR_HAS_EOS_LOGIN_DIAGNOSTICS
 #include "EHREOSLoginDiagnostics.h"
 #endif
@@ -103,6 +106,10 @@ NSDictionary *EHRFullSourceCopyRuntimeStatus(void) {
             @"activeBindings":@(app.active_bindings),@"loadAttempts":@(app.load_attempts),@"dynamicCodeFlags":@(app.dynamic_code_flags),
             @"optionsLoaded":@(app.options_is_loaded_observed),@"optionCount":@(app.option_count),@"postLoadTasksComplete":@(app.options_post_load_completed)};}}
     result[@"numericDiagnostics"]=EHRRuntimeDiagnosticsCopyStatus();
+#if EHR_HAS_AUTH_RETRY_GUARD
+    // Own counters only. Do not prepare/activate a guard or read an account.
+    result[@"authRetryGuard"]=EHRAuthRetryGuardCopyStatus();
+#endif
     result[@"eosLoginObserverStatus"]=@(s.eosObserverStatus);
     if(s.status){
         auto copy=reinterpret_cast<int32_t(*)(uint8_t *,size_t,size_t *)>(fullExport("ehr_source_application_copy_error_v1"));
@@ -126,11 +133,16 @@ NSDictionary *EHRFullSourceBindRuntime(void) {
 #if EHR_HAS_EOS_LOGIN_DIAGNOSTICS
     s.eosObserverStatus=EHREOSLoginDiagnosticsPrepare();
 #endif
+#if EHR_HAS_AUTH_RETRY_GUARD
+    // Signed opt-in controls only the retry UX guard; no auth is started here.
+    EHRAuthRetryGuardStart([NSBundle.mainBundle.infoDictionary[@"EHRAuthRetryGuardActivationRequested"] boolValue]?1:0);
+#endif
     s.attempted=true;s.stage=@"full_source_module";diagnosticStage(2);
     try {
         if(!locateOwnImage()){s.status=EHR_RUNTIME_NOT_FOUND;throw std::runtime_error("full source image missing");}
         // This export distinguishes the full assembly from the small proof image.
         required<int32_t(*)(void)>("ehr_source_application_load_v1");
+        check(EHRNativePatchBindFailureDiagnostics(required<EHRSourcePatchFailureV1>("ehr_source_patch_failure_v1")));
         s.stage=@"facade_tables";diagnosticStage(3);EHRManagedFacadeTables f{};EHRManagedFacadeMakeTables(&f);
         check(bindTable("ehr_generated_bind_gateway",f.gateway));check(bindTable("ehr_generated_bind_extensions",f.extensions));
         check(bindTable("ehr_generated_bind_reflection",f.reflection));check(bindTable("ehr_generated_bind_lifetime",f.lifetime));

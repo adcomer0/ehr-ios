@@ -116,6 +116,12 @@ def validate_mac_proof(candidate, summary_path, runtime, *, team_id, bundle_id):
     version_proof = proof.get("applicationVersion", {})
     if info.get("EHREOSLoginDiagnosticsEnabled"):
         require(status.get("eosLoginObserverStatus") == 0, "eos_login_observer_not_ready")
+    if info.get("EHRAuthRetryGuardActivationRequested"):
+        guard = status.get("authRetryGuard", {})
+        require(info.get("EHRAuthRetryGuardCompiled") is True and isinstance(guard, dict)
+                and guard.get("startupRequested") is True and guard.get("preparedStatus") == 0
+                and guard.get("startupPrepareStatus") == 0 and guard.get("startupEnableStatus") == 0
+                and guard.get("enabled") is True, "auth_retry_guard_startup_not_ready")
     require(version_proof.get("success") is True and version_proof.get("status") == 0
             and version_proof.get("value") == info.get("EHRReferenceGameVersion")
             == info.get("CFBundleShortVersionString") == version_proof.get("expected")

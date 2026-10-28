@@ -127,6 +127,25 @@ class InstallerGuards(unittest.TestCase):
                 self.run_fixture(runner)
             self.assertEqual(runner.calls,[])
 
+    def test_requested_auth_guard_requires_actual_prepared_enabled_startup_before_device_access(self):
+        path=self.app/'Info.plist';info=plistlib.loads(path.read_bytes())
+        info['EHRAuthRetryGuardActivationRequested']=True;info['EHRAuthRetryGuardCompiled']=True
+        path.write_bytes(plistlib.dumps(info));original=json.loads(self.proof.read_text())
+        ready={'startupRequested':True,'preparedStatus':0,'startupPrepareStatus':0,'startupEnableStatus':0,'enabled':True}
+        cases=[None,{},dict(ready,startupRequested=False),dict(ready,preparedStatus=1),
+               dict(ready,startupPrepareStatus=5),dict(ready,startupEnableStatus=7),dict(ready,enabled=False)]
+        for guard in cases:
+            proof=json.loads(json.dumps(original))
+            if guard is not None:proof['status']['authRetryGuard']=guard
+            self.proof.write_text(json.dumps(proof));runner=OwnDeviceRunner()
+            with self.subTest(guard=guard),self.assertRaisesRegex(M.Rejected,'auth_retry_guard_startup_not_ready'):
+                self.run_fixture(runner)
+            self.assertEqual(runner.calls,[])
+        proof=json.loads(json.dumps(original));proof['status']['authRetryGuard']=ready
+        self.proof.write_text(json.dumps(proof));runner=OwnDeviceRunner(disconnected=True)
+        summary=self.run_fixture(runner,preflight_only=True)
+        self.assertIn('unreachable',summary['status']);self.assertEqual([c[0]for c in runner.calls],['device-inventory'])
+
     def test_failed_or_non_full_startup_and_wrong_paid_team_are_rejected(self):
         before=self.proof.read_text();proof=json.loads(before)
         proof['status']['application']['optionsLoaded']=0;self.proof.write_text(json.dumps(proof))

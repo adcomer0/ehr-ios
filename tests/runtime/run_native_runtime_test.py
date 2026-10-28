@@ -167,6 +167,22 @@ def prepare_project(source_root, test_source, output, team, bundle_id):
         shutil.copy2(source_root / relative, target)
     shutil.copytree(source_root / "app/Assets.xcassets", project / "app/Assets.xcassets")
     (project / "NativeRuntimeTests.mm").write_text(test_source.read_text().replace("__EHR_TEST_APP_BUNDLE_ID__", bundle_id))
+    if '#include "AuthRetryMetadataProof.inc"' in test_source.read_text():
+        shutil.copy2(source_root / "tests/AuthRetryMetadataProof.inc", project / "AuthRetryMetadataProof.inc")
+    if '#include "IteratorRetirementProof.inc"' in test_source.read_text():
+        shutil.copy2(source_root / "tests/runtime/IteratorRetirementProof.inc", project / "IteratorRetirementProof.inc")
+        # The production callback header includes its public gateway sibling.
+        # Give the test target the actual native directory without duplicating
+        # that header under a second path (which would defeat pragma once).
+        project_settings = pbx.read_text()
+        marker = 'CLANG_CXX_LANGUAGE_STANDARD = "c++17";'
+        if project_settings.count(marker) != 2:
+            raise ValueError("Runtime project is missing its two shared C++ settings")
+        pbx.write_text(project_settings.replace(marker, 'HEADER_SEARCH_PATHS = "$(SRCROOT)/native"; ' + marker))
+        for relative in ("native/include/EHRManagedIteratorProductionV1.h", "native/include/EHRManagedIteratorV1.h"):
+            target = project / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source_root / relative, target)
     return project
 
 
@@ -333,6 +349,8 @@ def main():
             continue
         friendly = ("EHRNativeXCTestSnapshot.json" if value.get("schema") == "ehr.live-runtime.v1"
                     else "EHRFullSourceFailureCleanupProof.json" if value.get("schema") == "ehr.full-source-failure-cleanup-proof.v1"
+                    else "EHRAuthRetryMetadataProof.json" if value.get("schema") == "ehr.auth-retry-metadata-proof.v1"
+                    else "EHRIteratorRetirementProof.json" if value.get("schema") == "ehr.actual-iterator-retirement-proof.v1"
                     else "EHRSourceAudioProof.json" if value.get("schema") == "ehr.full-source-audio-proof.v1"
                     else "EHRSourceAudioLoaderProof.json" if value.get("schema") == "ehr.full-source-audio-loader-proof.v1"
                     else "EHRSourceActionOwnershipProof.json" if value.get("schema") == "ehr.full-source-action-ownership-proof.v1"

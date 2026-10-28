@@ -26,6 +26,7 @@ from iterator_hook_inputs import ITERATOR_METHODS, OWNER as ITERATOR_OWNER, merg
 from platform_capabilities import platform_signin_capabilities
 from full_hook_inputs import merge_full_inputs
 from eos_login_hook_inputs import merge_eos_login_inputs, binding_header as eos_binding_header
+from auth_retry_hook_inputs import merge_auth_retry_inputs, binding_header as auth_retry_binding_header
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -59,6 +60,12 @@ def build(args):
     source = args.game_app.resolve()
     output = args.output.resolve()
     full=bool(args.full_native_catalog)
+    guard_map=getattr(args,"auth_retry_guard_map",None)
+    guard_requested=bool(getattr(args,"enable_auth_retry_guard",False))
+    if guard_requested and not guard_map:
+        raise ValueError("--enable-auth-retry-guard requires --auth-retry-guard-map")
+    if guard_map and not args.eos_login_map:
+        raise ValueError("Auth retry guard metadata candidate requires --eos-login-map; activation is default disabled")
     if full != bool(args.full_native_target_map) or full != bool(args.full_thunk_inputs):
         raise ValueError("Full source requires its native catalog, pinned target map and compiled thunk inputs together")
     if full and not (args.managed_dylib and args.iterator_hook_map and args.static_class_hooks):
@@ -131,6 +138,10 @@ def build(args):
     info.pop("UISupportedDevices", None)
     info["EHRFullSourceAutoLoad"]=bool(full and args.full_source_autoload)
     info["EHREOSLoginDiagnosticsEnabled"]=bool(args.eos_login_map)
+    info["EHRAuthRetryGuardCompiled"]=bool(guard_map)
+    # Initial native state; only the explicit request may enable after Prepare.
+    info["EHRAuthRetryGuardEnabled"]=False
+    info["EHRAuthRetryGuardActivationRequested"]=guard_requested
     if full:
         info["EHRSourceVersion"]="8.0.3"
         info["EHRSourceCommit"]="ce23f0d050f617a59507e5bb0fbfff751d4b5134"
@@ -193,6 +204,13 @@ def build(args):
         map_path.write_text(json.dumps(hook_map, indent=2)+"\n")
         contracts_path.write_text(json.dumps(contracts, indent=2)+"\n")
         selected_hooks.extend(eos_hooks)
+    if guard_map:
+        hook_map, contracts, guard_hooks = merge_auth_retry_inputs(hook_map,
+            json.loads(guard_map.read_text()), json.loads(contracts_path.read_text()))
+        map_path, contracts_path = output / "auth-retry-hook-map.local.json", output / "auth-retry-hook-contracts.local.json"
+        map_path.write_text(json.dumps(hook_map, indent=2)+"\n")
+        contracts_path.write_text(json.dumps(contracts, indent=2)+"\n")
+        selected_hooks.extend(guard_hooks)
     metadata_file = source / "Data/Managed/Metadata/global-metadata.dat"
     metadata_pin = hook_map["input_pins"]["metadata"]
     if metadata_file.stat().st_size != metadata_pin["size"] or hashlib.sha256(metadata_file.read_bytes()).hexdigest() != metadata_pin["sha256"]:
@@ -218,6 +236,8 @@ def build(args):
     hook_manifest = json.loads(hook_manifest_path.read_text())
     if args.eos_login_map:
         (output/"EHREOSLoginBinding.generated.h").write_text(eos_binding_header(hook_manifest))
+    if guard_map:
+        (output/"EHRAuthRetryBinding.generated.h").write_text(auth_retry_binding_header(hook_manifest))
     hooks = {h["method"]: h for h in hook_manifest["hooks"]}
     # Existing native original-call adapters retain their exact version/murder
     # trampoline names while the full profile replaces those three entry sites.
@@ -282,6 +302,7 @@ def build(args):
                       "-framework", "NativeSourceReuse"] if managed_framework else ["-DEHR_HAS_MANAGED_RULES=0"])
     managed_flags += ["-DEHR_HAS_FULL_SOURCE="+("1" if full else "0")]
     managed_flags += ["-DEHR_HAS_EOS_LOGIN_DIAGNOSTICS="+("1" if args.eos_login_map else "0")]
+    managed_flags += ["-DEHR_HAS_AUTH_RETRY_GUARD="+("1" if guard_map else "0")]
     iterator_sources = ([str(ROOT / "native/EHRManagedIteratorAdapter.mm"), str(ROOT / "native/EHRManagedIteratorProduction.mm"), str(ROOT / "native/EHRManagedIteratorProbe.mm"),
                          str(ROOT / "native/EHRManagedIteratorSchedulingProbe.mm")]
                         if args.iterator_hook_map else [])
@@ -317,6 +338,7 @@ def build(args):
             str(ROOT/"native/EHRExportSharing.mm"),str(ROOT/"native/EHRRuntimeDiagnostics.mm"),
             str(ROOT/"native/EHRAppleAuthDiagnostics.mm")]
         if args.eos_login_map:native_sources.append(str(ROOT/"native/EHREOSLoginDiagnostics.mm"))
+        if guard_map:native_sources.append(str(ROOT/"native/EHRAuthRetryGuard.mm"))
     run(*compiler, "-dynamiclib", "-DEHR_LIVE_BRIDGE_AUTOSTART=0",*managed_flags,
         "-Wl,-install_name,@rpath/EHRNativeHooks.dylib",*frameworks_flags,*native_sources,"-o",str(helper))
     run(*compiler, "-I", str(ROOT / "native/launcher"), *frameworks_flags,
@@ -357,12 +379,18 @@ def build(args):
         if p.is_file() and p.suffix in (".h", ".hpp", ".inc", ".mm", ".cpp")}
     manifest["generated_binding_headers_sha256"] = {
         p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in
-        (header, association_header, *([output/"EHREOSLoginBinding.generated.h"] if args.eos_login_map else []))}
+        (header, association_header, *([output/"EHREOSLoginBinding.generated.h"] if args.eos_login_map else []),
+         *([output/"EHRAuthRetryBinding.generated.h"] if guard_map else []))}
     manifest["managed_source_reuse"] = bool(managed_framework)
     manifest["iterator_carrier_hooks"] = bool(args.iterator_hook_map)
     manifest["own_platform_sign_in_capabilities"] = bool(args.platform_sign_in)
     manifest["publisher_backend_authentication_verified"] = False
     manifest["eos_login_diagnostics"] = bool(args.eos_login_map)
+    manifest["auth_retry_guard_compiled"] = bool(guard_map)
+    # Build-time initial state, not an assertion of runtime activation.
+    manifest["auth_retry_guard_enabled"] = False
+    manifest["auth_retry_guard_activation_requested"] = guard_requested
+    if guard_map:manifest["auth_retry_guard_map_sha256"] = hashlib.sha256(guard_map.read_bytes()).hexdigest()
     if args.eos_login_map:manifest["eos_login_map_sha256"] = hashlib.sha256(args.eos_login_map.read_bytes()).hexdigest()
     manifest["full_source_profile"] = full
     manifest["source_target_handlers_compiled"] = len(full_catalog["candidates"]) if full else 0
@@ -405,6 +433,8 @@ if __name__ == "__main__":
     p.add_argument("--full-thunk-inputs",type=Path,help="Reviewed generated typed thunks/types/contracts; installed-site evidence is regenerated after patching")
     p.add_argument("--full-source-autoload",action="store_true",help="Start full source at an exact Unity startup entry; requires the full source profile")
     p.add_argument("--eos-login-map",type=Path,help="Exact reviewed two-callback/getter map for passive numeric login diagnostics")
+    p.add_argument("--auth-retry-guard-map",type=Path,help="Compile/install reviewed guard entry default-disabled for explicit metadata-only preparation tests; requires --eos-login-map")
+    p.add_argument("--enable-auth-retry-guard",action="store_true",help="Opt-in development build: request startup activation only after successful metadata preparation; requires --auth-retry-guard-map")
     p.add_argument("--iterator-hook-map", type=Path, help="Optional exact pinned ArrayList iterator map; requires reviewed compiled carrier bridge")
     a = p.parse_args()
     if a.build < 2:

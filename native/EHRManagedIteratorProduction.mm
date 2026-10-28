@@ -15,6 +15,9 @@
 #endif
 
 namespace ehr_production_iterators {
+constexpr uint64_t firstRegistration=UINT64_C(0x50524f4400000001);
+constexpr uint64_t pastLastRegistration=UINT64_C(0x50524f4500000000);
+constexpr bool registrationAvailable(uint64_t next){return next>=firstRegistration&&next<pastLastRegistration;}
 struct Entry {
     uint64_t registration=0,source=0;
     EHRRuntimeToken weak=0,current=0,owner=0,coroutine=0;
@@ -27,7 +30,7 @@ struct State {
     std::mutex mutex;
     std::map<uint64_t,std::shared_ptr<Entry>> entries;
     std::unordered_map<void *,std::shared_ptr<Entry>> identities;
-    uint64_t next=UINT64_C(0x50524f4400000001),cursor=0;
+    uint64_t next=firstRegistration,cursor=0;
     uint64_t created=0,swept=0,closed=0,callbackFailures=0,temporaryPins=0;
     std::atomic<uint64_t> rejectedThreads{0};
     NSTimer *timer=nil;
@@ -56,6 +59,9 @@ constexpr bool hooksPresent(){
 bool main(){if(NSThread.isMainThread)return true;++state().rejectedThreads;return false;}
 std::shared_ptr<Entry> byId(uint64_t id){auto&s=state();std::lock_guard<std::mutex>g(s.mutex);auto i=s.entries.find(id);return i==s.entries.end()?nullptr:i->second;}
 std::shared_ptr<Entry> byIdentity(void *identity){auto&s=state();std::lock_guard<std::mutex>g(s.mutex);auto i=s.identities.find(identity);return i==s.identities.end()?nullptr:i->second;}
+bool issued(uint64_t id){auto&s=state();std::lock_guard<std::mutex>g(s.mutex);return registrationAvailable(id)&&id<s.next;}
+bool terminalIdentity(const void *identity){auto&s=state();std::lock_guard<std::mutex>g(s.mutex);return EHRRuntimeIteratorIsTerminal(identity);}
+bool ownedIdentity(void *identity){auto&s=state();std::lock_guard<std::mutex>g(s.mutex);return s.identities.count(identity)||EHRRuntimeIteratorIsTerminal(identity);}
 struct Root {
     EHRRuntimeToken token=0;
     Root()=default;Root(const Root&)=delete;Root&operator=(const Root&)=delete;
@@ -73,13 +79,37 @@ void releaseCurrent(Entry&e){e.hasCurrent=false;e.currentIdentity=nullptr;releas
 int32_t cancelSource(Entry&e){if(e.sourceClosed)return EHR_RUNTIME_OK;e.sourceClosed=true;++state().closed;
     int32_t status=EHR_RUNTIME_MANAGED_EXCEPTION;{EHRDiagnosticIteratorScope trace(e.registration,3);@try{try{status=e.callbacks.cancel(e.source);}catch(...){status=EHR_RUNTIME_MANAGED_EXCEPTION;}}@catch(__unused NSException*error){status=EHR_RUNTIME_MANAGED_EXCEPTION;}trace.status=status;}
     if(status!=EHR_RUNTIME_OK)++state().callbackFailures;return status;}
-int32_t terminal(Entry&e){e.terminal=true;e.cancelRequested=false;releaseCurrent(e);return cancelSource(e);}
-void erase(const std::shared_ptr<Entry>&entry){auto&s=state();{
-    std::lock_guard<std::mutex>g(s.mutex);auto i=s.entries.find(entry->registration);if(i==s.entries.end()||i->second!=entry)return;
+bool unlinkLocked(const std::shared_ptr<Entry>&entry){auto&s=state();
+    auto i=s.entries.find(entry->registration);if(i==s.entries.end()||i->second!=entry)return false;
     s.entries.erase(i);auto identity=s.identities.find(entry->identity);if(identity!=s.identities.end()&&identity->second==entry)s.identities.erase(identity);
-    }
+    return true;
+}
+void releaseRegistration(Entry&e){release(e.weak);release(e.owner);release(e.coroutine);++state().swept;}
+bool unlink(const std::shared_ptr<Entry>&entry){auto&s=state();{
+    std::lock_guard<std::mutex>g(s.mutex);if(!unlinkLocked(entry))return false;}
+    releaseRegistration(*entry);return true;
+}
+// The only per-terminal identity is inside its actual native carrier. Publish it
+// through the runtime barrier BEFORE releasing the registry route/weak handle.
+// Failed publication preserves the old bounded tombstone instead of falling
+// through into the underlying ArrayList implementation.
+bool retire(Entry&e){auto entry=byId(e.registration);if(!entry||entry.get()!=&e||e.executing)return false;
+    Lease pin;auto status=pin.pin(e);
+    if(status==EHR_RUNTIME_OK){bool removed=false;{
+        auto&s=state();std::lock_guard<std::mutex>lock(s.mutex);
+        // Only a reference field API runs under this lock: no callback, invoke,
+        // root release or allocation. Worker lookup+payload inspection uses the
+        // same mutex, including a lookup delayed from before registration.
+        status=EHRRuntimeIteratorMarkTerminal(pin.root.token);
+        if(status==EHR_RUNTIME_OK)removed=unlinkLocked(entry);}
+        if(removed){releaseRegistration(e);return true;}}
+    if(status!=EHR_RUNTIME_OK&&status!=EHR_RUNTIME_INVALID_TOKEN){++state().callbackFailures;return false;}
+    return unlink(entry);
+}
+int32_t terminal(Entry&e){e.terminal=true;e.cancelRequested=false;releaseCurrent(e);const auto result=cancelSource(e);retire(e);return result;}
+void erase(const std::shared_ptr<Entry>&entry){
     // Remove the route BEFORE callbacks: a recycled address cannot see old state.
-    terminal(*entry);release(entry->weak);release(entry->owner);release(entry->coroutine);++s.swept;
+    if(!unlink(entry))return;entry->terminal=true;entry->cancelRequested=false;releaseCurrent(*entry);cancelSource(*entry);
 }
 EHRRuntimeStatus validate(EHRRuntimeToken carrier){
     EHRRuntimeToken expected=0,actual=0;auto status=ehr_runtime_find_class("mscorlib.dll","System.Collections","ArrayList+ArrayListEnumeratorSimple",&expected);
@@ -111,25 +141,30 @@ int32_t registerCarrier(EHRRuntimeToken carrier,uint64_t source,const EHRManaged
     if(!hooksPresent())return EHR_RUNTIME_UNSUPPORTED;
     auto status=validate(carrier);if(status!=EHR_RUNTIME_OK)return status;
     Root pin;void *identity=nullptr;status=EHRRuntimeIteratorPin(carrier,&pin.token,&identity);if(status!=EHR_RUNTIME_OK)return status;
-    if(EHRManagedIteratorOwnsIdentity(identity))return EHR_RUNTIME_BAD_ARGUMENT;
+    if(EHRManagedIteratorOwnsIdentity(identity)||terminalIdentity(identity))return EHR_RUNTIME_BAD_ARGUMENT;
     if(auto previous=byIdentity(identity)){int32_t alive=0;status=ehr_runtime_object_weak_alive(previous->weak,&alive);if(status!=EHR_RUNTIME_OK)return status;if(alive)return EHR_RUNTIME_BAD_ARGUMENT;erase(previous);}
-    auto&s=state();{std::lock_guard<std::mutex>g(s.mutex);if(s.entries.size()>=256||s.next==UINT64_MAX){EHRDiagnosticLimit(s.entries.size()>=256?ehr_diagnostics::IteratorCapacity:ehr_diagnostics::IteratorTokenExhaustion,s.entries.size()>=256?s.entries.size():s.next,s.entries.size()>=256?256:UINT64_MAX);return EHR_RUNTIME_LIMIT;}}
+    auto&s=state();{std::lock_guard<std::mutex>g(s.mutex);if(s.entries.size()>=256||!registrationAvailable(s.next)){EHRDiagnosticLimit(s.entries.size()>=256?ehr_diagnostics::IteratorCapacity:ehr_diagnostics::IteratorTokenExhaustion,s.entries.size()>=256?s.entries.size():s.next,s.entries.size()>=256?256:pastLastRegistration-1);return EHR_RUNTIME_LIMIT;}}
+    status=EHRRuntimeIteratorTerminalPrepare(pin.token);if(status!=EHR_RUNTIME_OK)return status;
     auto entry=std::make_shared<Entry>();Root weak;status=ehr_runtime_object_weak(pin.token,&weak.token);if(status!=EHR_RUNTIME_OK)return status;if(!ensureTimer())return EHR_RUNTIME_NOT_READY;
-    entry->source=source;entry->identity=identity;entry->callbacks=*callbacks;entry->weak=weak.take();entry->registration=s.next++;
+    entry->source=source;entry->identity=identity;entry->callbacks=*callbacks;entry->weak=weak.take();
     try{std::lock_guard<std::mutex>g(s.mutex);if(s.identities.count(identity)){release(entry->weak);return EHR_RUNTIME_BAD_ARGUMENT;}
-        s.entries.emplace(entry->registration,entry);try{if(!s.identities.emplace(identity,entry).second){s.entries.erase(entry->registration);release(entry->weak);return EHR_RUNTIME_BAD_ARGUMENT;}}catch(...){s.entries.erase(entry->registration);throw;}}
+        entry->registration=s.next;if(!s.entries.emplace(entry->registration,entry).second){release(entry->weak);return EHR_RUNTIME_BAD_ARGUMENT;}
+        try{if(!s.identities.emplace(identity,entry).second){s.entries.erase(entry->registration);release(entry->weak);return EHR_RUNTIME_BAD_ARGUMENT;}}catch(...){s.entries.erase(entry->registration);throw;}
+        // Commit only after both indexes succeed. The issued range has no gaps,
+        // including allocation/validation failures, and needs no history map.
+        ++s.next;}
     catch(...){release(entry->weak);EHRDiagnosticLimit(ehr_diagnostics::IteratorAllocation,0,0);return EHR_RUNTIME_LIMIT;}
     ++s.created;*registration=entry->registration;publishDiagnostics();return EHR_RUNTIME_OK;
 }
-int32_t acquire(uint64_t id,EHRRuntimeToken *owned){if(!owned)return EHR_RUNTIME_BAD_ARGUMENT;*owned=0;if(!main())return EHR_RUNTIME_WRONG_THREAD;auto e=byId(id);if(!e)return EHR_RUNTIME_INVALID_TOKEN;
+int32_t acquire(uint64_t id,EHRRuntimeToken *owned){if(!owned)return EHR_RUNTIME_BAD_ARGUMENT;*owned=0;if(!main())return EHR_RUNTIME_WRONG_THREAD;auto e=byId(id);if(!e)return issued(id)?EHR_RUNTIME_UNSUPPORTED:EHR_RUNTIME_INVALID_TOKEN;
     if(state().failureSealed)return EHR_RUNTIME_NOT_READY;
-    Lease pin;auto status=pin.pin(*e);if(status!=EHR_RUNTIME_OK){if(status==EHR_RUNTIME_INVALID_TOKEN&&!e->executing)erase(e);return status;}
+    Lease pin;auto status=pin.pin(*e);if(status!=EHR_RUNTIME_OK){if(status==EHR_RUNTIME_INVALID_TOKEN&&!e->executing){erase(e);return EHR_RUNTIME_UNSUPPORTED;}return status;}
     if(e->terminal)return EHR_RUNTIME_UNSUPPORTED;*owned=pin.root.take();return EHR_RUNTIME_OK;
 }
-int32_t close(uint64_t id){if(!main())return EHR_RUNTIME_WRONG_THREAD;auto e=byId(id);if(!e)return EHR_RUNTIME_INVALID_TOKEN;if(e->executing){e->cancelRequested=true;return EHR_RUNTIME_OK;}return terminal(*e);}
+int32_t close(uint64_t id){if(!main())return EHR_RUNTIME_WRONG_THREAD;auto e=byId(id);if(!e)return issued(id)?EHR_RUNTIME_OK:EHR_RUNTIME_INVALID_TOKEN;if(e->executing){e->cancelRequested=true;return EHR_RUNTIME_OK;}return terminal(*e);}
 int32_t associate(uint64_t id,EHRRuntimeToken owner,EHRRuntimeToken coroutine){if(!main())return EHR_RUNTIME_WRONG_THREAD;if(!owner||!coroutine)return EHR_RUNTIME_BAD_ARGUMENT;
     if(state().failureSealed)return EHR_RUNTIME_NOT_READY;
-    auto e=byId(id);if(!e)return EHR_RUNTIME_INVALID_TOKEN;if(e->terminal)return EHR_RUNTIME_UNSUPPORTED;
+    auto e=byId(id);if(!e)return issued(id)?EHR_RUNTIME_UNSUPPORTED:EHR_RUNTIME_INVALID_TOKEN;if(e->terminal)return EHR_RUNTIME_UNSUPPORTED;
     Lease carrier;auto status=carrier.pin(*e);if(status!=EHR_RUNTIME_OK)return status;status=validateAssociation(owner,coroutine);if(status!=EHR_RUNTIME_OK)return status;
     if(e->owner||e->coroutine){int32_t sameOwner=0,sameCoroutine=0;status=ehr_runtime_object_same(e->owner,owner,&sameOwner);if(status==EHR_RUNTIME_OK)status=ehr_runtime_object_same(e->coroutine,coroutine,&sameCoroutine);return status!=EHR_RUNTIME_OK?status:sameOwner&&sameCoroutine?EHR_RUNTIME_OK:EHR_RUNTIME_BAD_ARGUMENT;}
     Root ownerWeak,coroutineWeak;status=ehr_runtime_object_weak(owner,&ownerWeak.token);if(status==EHR_RUNTIME_OK)status=ehr_runtime_object_weak(coroutine,&coroutineWeak.token);
@@ -146,7 +181,7 @@ int32_t closeMatching(uint32_t kind,EHRRuntimeToken object,uint32_t *closed){if(
 }
 int32_t sweep(uint32_t maximum,uint32_t *scanned,uint32_t *pruned){if(!scanned||!pruned||scanned==pruned)return EHR_RUNTIME_BAD_ARGUMENT;*scanned=*pruned=0;if(!main())return EHR_RUNTIME_WRONG_THREAD;if(!maximum||maximum>256)return EHR_RUNTIME_BAD_ARGUMENT;
     auto&s=state();std::vector<std::shared_ptr<Entry>>batch;{std::lock_guard<std::mutex>g(s.mutex);if(s.entries.empty())return EHR_RUNTIME_OK;auto i=s.entries.upper_bound(s.cursor);if(i==s.entries.end())i=s.entries.begin();const auto count=std::min<size_t>(maximum,s.entries.size());for(size_t n=0;n<count;++n){batch.push_back(i->second);if(++i==s.entries.end())i=s.entries.begin();}s.cursor=batch.back()->registration;}
-    int32_t first=0;for(auto&e:batch){++*scanned;if(e->executing)continue;int32_t alive=0;auto status=ehr_runtime_object_weak_alive(e->weak,&alive);if(status!=EHR_RUNTIME_OK){if(!first)first=status;continue;}if(!alive){erase(e);++*pruned;}}
+    int32_t first=0;for(auto&e:batch){++*scanned;if(e->executing)continue;int32_t alive=0;auto status=ehr_runtime_object_weak_alive(e->weak,&alive);if(status!=EHR_RUNTIME_OK){if(!first)first=status;continue;}if(!alive){erase(e);++*pruned;}else if(e->terminal&&retire(*e))++*pruned;}
     return first;
 }
 int32_t copyStatus(EHRProductionIteratorStatusV1 *output,size_t bytes){if(!output||bytes!=sizeof(*output))return EHR_RUNTIME_BAD_ARGUMENT;*output={};if(!main())return EHR_RUNTIME_WRONG_THREAD;
@@ -222,10 +257,10 @@ extern "C" void EHRManagedIteratorProductionMakeTable(EHRManagedIteratorProducti
     []()->int32_t{return NSThread.isMainThread?1:0;},
     [](EHRProductionIteratorStatusV1*s,size_t b)->int32_t{return contained([&]{return copyStatus(s,b);});}};}
 extern "C" EHRRuntimeStatus EHRManagedIteratorProductionFailClosed(EHRProductionIteratorFailureV1 *output,size_t bytes){return static_cast<EHRRuntimeStatus>(ehr_production_iterators::contained([&]{return ehr_production_iterators::failureCloseAll(output,bytes);}));}
-bool EHRProductionIteratorOwnsIdentity(void *identity){return ehr_production_iterators::byIdentity(identity)!=nullptr;}
+bool EHRProductionIteratorOwnsIdentity(void *identity){return ehr_production_iterators::ownedIdentity(identity);}
 bool EHRProductionIteratorMoveNext(void *identity,bool *result){using namespace ehr_production_iterators;if(!result)abort();*result=false;
-    if(!NSThread.isMainThread){if(!byIdentity(identity))return false;++state().rejectedThreads;return true;}
-    Lease pin;auto e=routed(identity,pin);if(!e)return false;if(e->executing){e->cancelRequested=true;EHRRuntimeIteratorRaise(EHR_RUNTIME_BAD_ARGUMENT);}if(e->terminal)return true;
+    if(!NSThread.isMainThread){if(!ownedIdentity(identity))return false;++state().rejectedThreads;return true;}
+    Lease pin;auto e=routed(identity,pin);if(!e)return terminalIdentity(identity);if(e->executing){e->cancelRequested=true;EHRRuntimeIteratorRaise(EHR_RUNTIME_BAD_ARGUMENT);}if(e->terminal)return true;
     releaseCurrent(*e);int32_t next=0,status=EHR_RUNTIME_MANAGED_EXCEPTION;EHRRuntimeToken current=0;
     {EHRDiagnosticIteratorScope trace(e->registration,1);Executing guard(*e);@try{try{status=e->callbacks.step(e->source,&next,&current);}catch(...){status=EHR_RUNTIME_MANAGED_EXCEPTION;}}@catch(__unused NSException*error){status=EHR_RUNTIME_MANAGED_EXCEPTION;}trace.status=status;if(status!=EHR_RUNTIME_OK)publishDiagnostics();if(status==EHR_RUNTIME_LIMIT)EHRDiagnosticLimit(ehr_diagnostics::CallbackReturnedLimit,0,0);}
     if(e->failureRetire){release(current);failureFinish(*e,false);return true;}
@@ -237,13 +272,13 @@ bool EHRProductionIteratorMoveNext(void *identity,bool *result){using namespace 
     e->current=current;e->hasCurrent=true;*result=true;return true;
 }
 bool EHRProductionIteratorCurrent(void *identity,void **result){using namespace ehr_production_iterators;if(!result)abort();*result=nullptr;
-    if(!NSThread.isMainThread){if(!byIdentity(identity))return false;++state().rejectedThreads;return true;}
-    Lease pin;auto e=routed(identity,pin);if(!e)return false;if(e->executing){e->cancelRequested=true;EHRRuntimeIteratorRaise(EHR_RUNTIME_BAD_ARGUMENT);}if(!e->hasCurrent)EHRRuntimeIteratorRaise(EHR_RUNTIME_BAD_ARGUMENT);
+    if(!NSThread.isMainThread){if(!ownedIdentity(identity))return false;++state().rejectedThreads;return true;}
+    Lease pin;auto e=routed(identity,pin);if(!e){if(terminalIdentity(identity))EHRRuntimeIteratorRaise(EHR_RUNTIME_BAD_ARGUMENT);return false;}if(e->executing){e->cancelRequested=true;EHRRuntimeIteratorRaise(EHR_RUNTIME_BAD_ARGUMENT);}if(!e->hasCurrent)EHRRuntimeIteratorRaise(EHR_RUNTIME_BAD_ARGUMENT);
     if(EHRRuntimeIteratorBorrow(e->current,result)!=EHR_RUNTIME_OK)EHRRuntimeIteratorRaise(EHR_RUNTIME_INVALID_TOKEN);return true;
 }
 bool EHRProductionIteratorReset(void *identity){using namespace ehr_production_iterators;
-    if(!NSThread.isMainThread){if(!byIdentity(identity))return false;++state().rejectedThreads;return true;}
-    Lease pin;auto e=routed(identity,pin);if(!e)return false;if(e->executing){e->cancelRequested=true;EHRRuntimeIteratorRaise(EHR_RUNTIME_BAD_ARGUMENT);}if(e->terminal)EHRRuntimeIteratorRaise(EHR_RUNTIME_UNSUPPORTED);
+    if(!NSThread.isMainThread){if(!ownedIdentity(identity))return false;++state().rejectedThreads;return true;}
+    Lease pin;auto e=routed(identity,pin);if(!e){if(terminalIdentity(identity))EHRRuntimeIteratorRaise(EHR_RUNTIME_UNSUPPORTED);return false;}if(e->executing){e->cancelRequested=true;EHRRuntimeIteratorRaise(EHR_RUNTIME_BAD_ARGUMENT);}if(e->terminal)EHRRuntimeIteratorRaise(EHR_RUNTIME_UNSUPPORTED);
     int32_t status=EHR_RUNTIME_MANAGED_EXCEPTION;{EHRDiagnosticIteratorScope trace(e->registration,2);Executing guard(*e);@try{try{status=e->callbacks.reset(e->source);}catch(...){status=EHR_RUNTIME_MANAGED_EXCEPTION;}}@catch(__unused NSException*error){status=EHR_RUNTIME_MANAGED_EXCEPTION;}trace.status=status;}
     if(e->failureRetire){failureFinish(*e,true);return true;}
     if(e->cancelRequested){terminal(*e);EHRRuntimeIteratorRaise(EHR_RUNTIME_BAD_ARGUMENT);}if(status!=0)EHRRuntimeIteratorRaise(status==EHR_RUNTIME_UNSUPPORTED?EHR_RUNTIME_UNSUPPORTED:EHR_RUNTIME_BAD_ARGUMENT);releaseCurrent(*e);return true;

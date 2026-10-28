@@ -35,9 +35,13 @@ cycles and close its active child explicitly when resumed/cancelled.
 
 Normal completion, explicit close and failure each call the source Cancel callback
 once. That callback must remove its managed registration before Dispose, including
-when Dispose throws. Native terminal tombstones remain until the carrier is
-collected: MoveNext=false, Current invalid, Reset unsupported. A terminal Acquire
-returns7; a collected/missing registration returns9. No native source callback is
+when Dispose throws. Completed native carriers now retain a private terminal
+marker in their existing field while their registry slots/weak handles retire:
+MoveNext=false, Current invalid, Reset unsupported. The existing bound remains256.
+See [terminal retirement](ITERATOR_RETIREMENT.md) for exact runtime layout/barrier
+checks, safe publication-failure fallback and owned churn tests. A closed or
+collected issued registration returns7 from Acquire; an unissued ID returns9.
+No native source callback is
 run after it has been marked closed. Active Reset uses the original source callback.
 
 A 0.25-second main-thread timer automatically sweeps16 entries per tick, rotating

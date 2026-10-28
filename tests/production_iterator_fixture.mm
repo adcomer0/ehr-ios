@@ -17,7 +17,7 @@
 #include <unordered_set>
 
 namespace fixture {
-struct Object{uint64_t klass=0;bool alive=true;};
+struct Object{uint64_t klass=0;bool alive=true;bool terminal=false;};
 struct Handle{Object *object;bool weak;};
 std::unordered_map<uint64_t,Handle> handles;
 uint64_t nextToken=1,pins=0;unsigned checks=0,runtimeCalls=0;
@@ -27,6 +27,9 @@ std::unordered_map<uint64_t,unsigned>steps,cancels,resets,otherSteps,otherCancel
 Object yielded{Value};Object *selfYield=nullptr,*cycleA=nullptr,*cycleB=nullptr;EHRManagedIteratorProductionV1 host{};uint64_t closeDuringStep=0;
 EHRProductionIteratorFailureV1 duringFailure{};Object *failingStopHandle=nullptr;
 bool failureReset=false,throwStop=false;
+bool failMarker=false,failWeak=false;size_t markerWrites=0;
+bool exercisePublication=false;std::atomic<bool>publicationTried{false},publicationFinished{false};
+std::thread publicationWorker;bool publicationHandled=false;
 std::unordered_map<Object*,unsigned>engineStops;
 void require(bool value){++checks;if(!value){fprintf(stderr,"check %u failed\n",checks);abort();}}
 void touch(){require(NSThread.isMainThread);++runtimeCalls;}
@@ -53,7 +56,7 @@ int32_t cancelOther(uint64_t source){++otherCancels[source];return 0;}
 const EHRManagedIteratorCallbacksV1 callbacks{1,sizeof(callbacks),step,reset,cancel};
 const EHRManagedIteratorCallbacksV1 callbacksOther{1,sizeof(callbacksOther),stepOther,reset,cancelOther};
 uint64_t add(Object&object,uint64_t source,uint64_t *owned=nullptr,const EHRManagedIteratorCallbacksV1 *cb=&callbacks){auto token=root(object);uint64_t id=0;require(host.register_carrier(token,source,cb,&id)==0&&id);if(owned)*owned=token;else release(token);return id;}
-void finish(Object&object,uint64_t owned){release(owned);collect(object);uint32_t scanned=0,pruned=0;require(host.sweep(256,&scanned,&pruned)==0&&pruned>=1);}
+void finish(Object&object,uint64_t owned){release(owned);collect(object);uint32_t scanned=0,pruned=0;require(host.sweep(256,&scanned,&pruned)==0);}
 }
 #if !defined(EHR_COMBINED_ADAPTER)
 bool EHRManagedIteratorOwnsIdentity(void *identity){return fixture::legacyIdentity==identity;}
@@ -66,11 +69,16 @@ extern "C" EHRRuntimeStatus ehr_runtime_invoke(uint64_t method,uint64_t receiver
 extern "C" EHRRuntimeStatus ehr_runtime_validate_native_method(uint64_t method,uint64_t rva,uint64_t *observed){fixture::touch();*observed=rva;return (method==2001&&rva==0x367ade0)||(method==2002&&rva==0x367afe4)||(method==2003&&rva==0x367b0dc)?EHR_RUNTIME_OK:EHR_RUNTIME_TYPE_MISMATCH;}
 extern "C" EHRRuntimeStatus ehr_runtime_object_class(uint64_t token,uint64_t *output){fixture::touch();*output=0;auto i=fixture::handles.find(token);if(i==fixture::handles.end()||!i->second.object->alive)return EHR_RUNTIME_INVALID_TOKEN;*output=i->second.object->klass;return EHR_RUNTIME_OK;}
 extern "C" EHRRuntimeStatus ehr_runtime_object_release(uint64_t token){fixture::touch();return fixture::handles.erase(token)?EHR_RUNTIME_OK:EHR_RUNTIME_INVALID_TOKEN;}
-extern "C" EHRRuntimeStatus ehr_runtime_object_weak(uint64_t token,uint64_t *output){fixture::touch();*output=0;auto i=fixture::handles.find(token);if(i==fixture::handles.end()||!i->second.object->alive)return EHR_RUNTIME_INVALID_TOKEN;*output=fixture::root(*i->second.object,true);return EHR_RUNTIME_OK;}
+extern "C" EHRRuntimeStatus ehr_runtime_object_weak(uint64_t token,uint64_t *output){fixture::touch();*output=0;if(fixture::failWeak)return EHR_RUNTIME_LIMIT;auto i=fixture::handles.find(token);if(i==fixture::handles.end()||!i->second.object->alive)return EHR_RUNTIME_INVALID_TOKEN;*output=fixture::root(*i->second.object,true);return EHR_RUNTIME_OK;}
 extern "C" EHRRuntimeStatus ehr_runtime_object_weak_alive(uint64_t token,int32_t *output){fixture::touch();*output=0;auto i=fixture::handles.find(token);if(i==fixture::handles.end()||!i->second.weak)return EHR_RUNTIME_INVALID_TOKEN;*output=i->second.object->alive;return EHR_RUNTIME_OK;}
 extern "C" EHRRuntimeStatus ehr_runtime_object_same(uint64_t left,uint64_t right,int32_t *output){fixture::touch();*output=0;auto a=fixture::handles.find(left),b=fixture::handles.find(right);if(a==fixture::handles.end()||b==fixture::handles.end()||!a->second.object->alive||!b->second.object->alive)return EHR_RUNTIME_INVALID_TOKEN;*output=a->second.object==b->second.object;return EHR_RUNTIME_OK;}
 EHRRuntimeStatus EHRRuntimeIteratorPin(uint64_t token,uint64_t *owned,void **identity){fixture::touch();*owned=0;*identity=nullptr;auto i=fixture::handles.find(token);if(i==fixture::handles.end()||!i->second.object->alive)return EHR_RUNTIME_INVALID_TOKEN;*identity=i->second.object;*owned=fixture::root(*i->second.object);++fixture::pins;return EHR_RUNTIME_OK;}
 EHRRuntimeStatus EHRRuntimeIteratorBorrow(uint64_t token,void **object){fixture::touch();*object=nullptr;if(!token)return EHR_RUNTIME_OK;auto i=fixture::handles.find(token);if(i==fixture::handles.end()||!i->second.object->alive)return EHR_RUNTIME_INVALID_TOKEN;if(i->second.weak)return EHR_RUNTIME_UNSUPPORTED;*object=i->second.object;return EHR_RUNTIME_OK;}
+EHRRuntimeStatus EHRRuntimeIteratorTerminalPrepare(uint64_t token){fixture::touch();auto i=fixture::handles.find(token);return i!=fixture::handles.end()&&i->second.object->klass==fixture::Enumerator?EHR_RUNTIME_OK:EHR_RUNTIME_TYPE_MISMATCH;}
+EHRRuntimeStatus EHRRuntimeIteratorMarkTerminal(uint64_t token){fixture::touch();if(fixture::failMarker)return EHR_RUNTIME_TYPE_MISMATCH;auto i=fixture::handles.find(token);if(i==fixture::handles.end()||!i->second.object->alive)return EHR_RUNTIME_INVALID_TOKEN;fixture::require(i->second.object->klass==fixture::Enumerator&&!i->second.weak);
+ if(fixture::exercisePublication){auto*object=i->second.object;fixture::publicationWorker=std::thread([object]{auto&mutex=ehr_production_iterators::state().mutex;if(mutex.try_lock())abort();fixture::publicationTried.store(true);bool moved=true;fixture::publicationHandled=EHRProductionIteratorMoveNext(object,&moved)&&!moved;fixture::publicationFinished.store(true);});while(!fixture::publicationTried.load())std::this_thread::yield();fixture::require(!fixture::publicationFinished.load());}
+ i->second.object->terminal=true;++fixture::markerWrites;return EHR_RUNTIME_OK;}
+bool EHRRuntimeIteratorIsTerminal(const void *identity) noexcept {const auto*object=static_cast<const fixture::Object*>(identity);return object&&object->klass==fixture::Enumerator&&object->terminal;}
 void EHRRuntimeIteratorRaise(EHRRuntimeStatus status){throw status;}
 
 int main(){@autoreleasepool{using namespace fixture;EHRManagedIteratorProductionMakeTable(&host);require(host.byte_size==72&&sizeof(EHRProductionIteratorStatusV1)==104&&host.is_main()==1);
@@ -96,7 +104,8 @@ int main(){@autoreleasepool{using namespace fixture;EHRManagedIteratorProduction
  require(EHRProductionIteratorCurrent(&carrier,&current)&&current==&yielded);void *again=nullptr;require(EHRProductionIteratorCurrent(&carrier,&again)&&again==current);require(status().current_roots==1&&strong(yielded)==1);
  require(raised([&]{EHRProductionIteratorReset(&carrier);})==7&&status().current_roots==1);
  require(EHRProductionIteratorMoveNext(&carrier,&next)&&!next&&cancels[1]==1);require(EHRProductionIteratorMoveNext(&carrier,&next)&&!next&&steps[1]==3&&cancels[1]==1);
- auto terminalStatus=status();require(terminalStatus.active_sources==0&&terminalStatus.terminal_tombstones==1&&terminalStatus.current_roots==0&&strong(yielded)==0);
+ auto terminalStatus=status();require(terminalStatus.entries==0&&terminalStatus.active_sources==0&&terminalStatus.terminal_tombstones==0&&terminalStatus.carrier_weak_roots==0&&terminalStatus.current_roots==0&&strong(yielded)==0);
+ require(host.register_carrier(owned,2,&callbacks,&duplicate)==4&&duplicate==0&&EHRProductionIteratorOwnsIdentity(&carrier));
  require(host.acquire(id,&acquired)==7&&acquired==0);require(host.close(id)==0&&cancels[1]==1);require(raised([&]{EHRProductionIteratorCurrent(&carrier,&current);})==4);require(raised([&]{EHRProductionIteratorReset(&carrier);})==7);finish(carrier,owned);require(status().entries==0);
  Object second{Enumerator};id=add(second,1,&owned,&callbacksOther);require(EHRProductionIteratorMoveNext(&second,&next)&&!next&&otherSteps[1]==1&&otherCancels[1]==1&&steps[1]==3);finish(second,owned);
  Object assoc{Enumerator},owner{DerivedMono},handle{Coroutine},otherOwner{DerivedMono},otherHandle{Coroutine};id=add(assoc,100,&owned);auto ownerToken=root(owner),handleToken=root(handle),foreignToken=root(foreign),otherOwnerToken=root(otherOwner),otherHandleToken=root(otherHandle);
@@ -121,7 +130,7 @@ int main(){@autoreleasepool{using namespace fixture;EHRManagedIteratorProduction
  legacyIdentity=nullptr;
 #endif
  release(legacyRoot);
- Object abandoned{Enumerator};id=add(abandoned,101);require(strong(abandoned)==0);collect(abandoned);uint32_t scanned=0,pruned=0;require(host.sweep(1,&scanned,&pruned)==0&&scanned==1&&pruned==1&&cancels[101]==1&&status().entries==0);require(host.acquire(id,&acquired)==9&&acquired==0);
+ Object abandoned{Enumerator};id=add(abandoned,101);require(strong(abandoned)==0);collect(abandoned);uint32_t scanned=0,pruned=0;require(host.sweep(1,&scanned,&pruned)==0&&scanned==1&&pruned==1&&cancels[101]==1&&status().entries==0);require(host.acquire(id,&acquired)==7&&acquired==0&&host.close(id)==0);
  Object recycled{Enumerator};id=add(recycled,102);collect(recycled);recycled.alive=true; // public weak handles must remember the OLD identity generation; mark old handles collected explicitly.
  for(auto&pair:handles)if(pair.second.object==&recycled)pair.second.object=&abandoned;
  require(!EHRProductionIteratorMoveNext(&recycled,&next)&&cancels[102]==1&&!EHRProductionIteratorOwnsIdentity(&recycled));
@@ -137,6 +146,49 @@ int main(){@autoreleasepool{using namespace fixture;EHRManagedIteratorProduction
   require(guard.category==ehr_diagnostics::CallbackReturnedLimit&&guard.iterator==id&&guard.count==0&&guard.limit==0&&guard.iterator_entries==1&&guard.iterator_active==1);}
  finish(limitedStep,owned);
  Object workerCarrier{Enumerator};id=add(workerCarrier,103,&owned);auto calls=runtimeCalls;int wrong=0;std::thread worker([&]{uint64_t result=7;wrong=host.acquire(id,&result);require(result==0);bool resultNext=true;require(EHRProductionIteratorMoveNext(&workerCarrier,&resultNext)&&!resultNext);require(!EHRProductionIteratorMoveNext(&ordinary,&resultNext));require(host.is_main()==0);});worker.join();require(wrong==2&&runtimeCalls==calls&&steps[103]==0);require(host.close(id)==0);finish(workerCarrier,owned);
+ // Retained terminal identities no longer consume registry/weak-handle slots.
+ // Keep all 1024 real fixture receivers alive while one source stays active.
+ Object longLived{Enumerator};uint64_t longRoot=0;auto longId=add(longLived,800,&longRoot);
+ std::array<Object,1024>retained{};std::array<uint64_t,1024>retainedRoots{},retainedIds{};
+ for(size_t n=0;n<retained.size();++n){retained[n].klass=Enumerator;retainedIds[n]=add(retained[n],10000+n,&retainedRoots[n],&callbacksOther);
+  require(EHRProductionIteratorMoveNext(&retained[n],&next)&&!next&&otherCancels[10000+n]==1);
+  const auto snapshot=status();require(snapshot.entries==1&&snapshot.active_sources==1&&snapshot.terminal_tombstones==0&&snapshot.carrier_weak_roots==1&&snapshot.current_roots==0);}
+ for(size_t n=0;n<retained.size();++n){const auto before=runtimeCalls;
+  require(EHRProductionIteratorMoveNext(&retained[n],&next)&&!next&&runtimeCalls==before);
+  require(raised([&]{EHRProductionIteratorCurrent(&retained[n],&current);})==4);
+  require(raised([&]{EHRProductionIteratorReset(&retained[n]);})==7);
+  require(host.acquire(retainedIds[n],&acquired)==7&&acquired==0&&host.close(retainedIds[n])==0&&otherCancels[10000+n]==1);
+  require(host.register_carrier(retainedRoots[n],900,&callbacks,&duplicate)==4&&duplicate==0);}
+ calls=runtimeCalls;std::thread terminalWorker([&]{for(auto&object:retained){bool moved=true;void*value=reinterpret_cast<void*>(1);require(EHRProductionIteratorMoveNext(&object,&moved)&&!moved);require(EHRProductionIteratorCurrent(&object,&value)&&!value);require(EHRProductionIteratorReset(&object));}require(!EHRProductionIteratorMoveNext(&ordinary,&next));});terminalWorker.join();require(runtimeCalls==calls);
+ for(size_t n=0;n<retained.size();++n){release(retainedRoots[n]);collect(retained[n]);}
+ require(host.sweep(256,&scanned,&pruned)==0&&pruned==0&&status().entries==1);require(host.close(longId)==0);finish(longLived,longRoot);
+ // Registration failures do not publish IDs. Thus the compact issued range
+ // cannot misclassify a failed or future registration as a closed source.
+ auto&registry=ehr_production_iterators::state();const auto unissued=registry.next;
+ require(ehr_production_iterators::registrationAvailable(ehr_production_iterators::firstRegistration)&&ehr_production_iterators::registrationAvailable(ehr_production_iterators::pastLastRegistration-1)&&!ehr_production_iterators::registrationAvailable(ehr_production_iterators::pastLastRegistration)&&!ehr_production_iterators::registrationAvailable(UINT64_MAX)&&!ehr_production_iterators::registrationAvailable(0));
+ Object failedAdd{Enumerator};auto failedRoot=root(failedAdd);failWeak=true;id=42;
+ require(host.register_carrier(failedRoot,700,&callbacks,&id)==8&&id==0&&registry.next==unissued);failWeak=false;
+ require(host.acquire(unissued,&acquired)==9&&acquired==0&&host.close(unissued)==9);
+ require(host.acquire(ehr_production_iterators::firstRegistration-1,&acquired)==9&&host.close(UINT64_MAX)==9);
+ registry.next=ehr_production_iterators::pastLastRegistration;require(host.register_carrier(failedRoot,700,&callbacks,&id)==8&&id==0&&registry.next==ehr_production_iterators::pastLastRegistration);registry.next=unissued;
+ id=add(failedAdd,701,&owned);require(id==unissued);release(failedRoot);require(host.close(id)==0);finish(failedAdd,owned);
+ Object collectedAtAcquire{Enumerator};id=add(collectedAtAcquire,703);collect(collectedAtAcquire);
+ require(host.acquire(id,&acquired)==7&&acquired==0&&cancels[703]==1&&host.close(id)==0&&status().entries==0);
+ // Registry publication is one critical section: a concurrent worker can see
+ // either the active map or the final marker, never an original-fallthrough gap.
+ Object concurrentTerminal{Enumerator};id=add(concurrentTerminal,704,&owned);calls=runtimeCalls;exercisePublication=true;
+ require(host.close(id)==0);exercisePublication=false;publicationWorker.join();require(publicationFinished&&publicationHandled&&cancels[704]==1);
+ require(runtimeCalls>calls&&status().entries==0);finish(concurrentTerminal,owned);
+ // Reusing that fixture address represents a newly allocated native object,
+ // whose payload is freshly initialized and must pass through to the original.
+ concurrentTerminal=Object{Enumerator};require(!EHRProductionIteratorMoveNext(&concurrentTerminal,&next)&&!EHRProductionIteratorOwnsIdentity(&concurrentTerminal));
+ // A barrier failure keeps a routed tombstone; sweep retries rather than
+ // returning an owned terminal receiver to the unrelated original method.
+ Object publicationFailure{Enumerator};id=add(publicationFailure,702,&owned);failMarker=true;
+ require(host.close(id)==0&&cancels[702]==1&&status().terminal_tombstones==1&&status().entries==1);
+ require(EHRProductionIteratorMoveNext(&publicationFailure,&next)&&!next&&host.acquire(id,&acquired)==7);
+ require(raised([&]{EHRProductionIteratorCurrent(&publicationFailure,&current);})==4&&raised([&]{EHRProductionIteratorReset(&publicationFailure);})==7);
+ failMarker=false;require(host.sweep(256,&scanned,&pruned)==0&&pruned==1&&status().entries==0&&cancels[702]==1);finish(publicationFailure,owned);
  Object fairA{Enumerator},fairB{Enumerator},fairC{Enumerator};add(fairA,104);add(fairB,105);add(fairC,106);collect(fairA);collect(fairB);collect(fairC);for(int i=0;i<3;++i)require(host.sweep(1,&scanned,&pruned)==0&&scanned==1&&pruned==1);require(status().entries==0);
  auto end=status();require(end.active_sources==0&&end.current_roots==0&&end.carrier_weak_roots==0&&end.association_weak_roots==0&&end.temporary_pins==0&&handles.empty());
  // Failure shutdown is permanent, contained, reentrant-safe and exact-handle only.
@@ -154,9 +206,9 @@ int main(){@autoreleasepool{using namespace fixture;EHRManagedIteratorProduction
  if(failureReset)require(EHRProductionIteratorReset(&shutdownD));else require(EHRProductionIteratorMoveNext(&shutdownD,&next)&&!next);
  require(cancels[401]==1&&cancels[402]==1&&cancels[403]==1&&cancels[404]==1&&strong(yielded)==0);
  require(engineStops[&shutdownHandleA]==1&&engineStops[&shutdownHandleC]==1&&engineStops[&unrelatedNativeHandle]==0&&engineStops[&completedHandle]==0&&cancels[406]==1);
- require(EHRManagedIteratorProductionFailClosed(&failure,sizeof(failure))==6&&failure.sealed==1&&failure.entries==5&&failure.deferred==0&&failure.active_sources==0&&failure.current_roots==0&&failure.association_weak_roots==0&&failure.carrier_weak_roots==5&&failure.engine_stop_attempts==2&&failure.engine_stop_failures==1&&failure.cancel_failures==1);
+ require(EHRManagedIteratorProductionFailClosed(&failure,sizeof(failure))==6&&failure.sealed==1&&failure.entries==0&&failure.deferred==0&&failure.active_sources==0&&failure.current_roots==0&&failure.association_weak_roots==0&&failure.carrier_weak_roots==0&&failure.engine_stop_attempts==2&&failure.engine_stop_failures==1&&failure.cancel_failures==1);
  require(EHRManagedIteratorProductionFailClosed(&failure,sizeof(failure))==6&&cancels[404]==1&&engineStops[&shutdownHandleA]==1);
- uint64_t noRegistration=1,noAcquired=1;require(host.register_carrier(shutdownRootA,999,&callbacks,&noRegistration)==1&&noRegistration==0);require(host.acquire(shutdownIdA,&noAcquired)==1&&noAcquired==0);
+ uint64_t noRegistration=1,noAcquired=1;require(host.register_carrier(shutdownRootA,999,&callbacks,&noRegistration)==1&&noRegistration==0);require(host.acquire(shutdownIdA,&noAcquired)==7&&noAcquired==0);
  require(EHRProductionIteratorMoveNext(&shutdownA,&next)&&!next&&steps[401]==1);require(!EHRProductionIteratorMoveNext(&ordinary,&next));
  finish(shutdownA,shutdownRootA);finish(shutdownB,shutdownRootB);finish(shutdownC,shutdownRootC);finish(shutdownD,shutdownRootD);finish(completedCarrier,completedRoot);
  release(shutdownOwnerRoot);release(shutdownHandleARoot);release(shutdownHandleCRoot);release(unrelatedRoot);release(completedHandleRoot);failingStopHandle=nullptr;

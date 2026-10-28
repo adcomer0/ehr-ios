@@ -8,15 +8,17 @@ int main(){@autoreleasepool {
  EHRRuntimeDiagnosticsRecordEOSLogin(1,42,0,1);EHRRuntimeDiagnosticsRecordEOSLogin(2,999,3,2);
  ehr_diagnostics::Gateway gateway;gateway.tick=5;gateway.loaded=1;gateway.roots=65536;gateway.root_limit=65536;gateway.deferred=123;gateway.deferred_limit=65536;gateway.enqueued=456;gateway.dequeued=333;gateway.released=300;ehr_diagnostics::state().gateway(gateway);
  ehr_diagnostics::Iterators iterators;iterators.entries=256;iterators.active=200;iterators.terminal=56;ehr_diagnostics::state().iterators(iterators);
+ uint32_t sourceWords[12]={1,12,5,0,42,0,7,89,0,1,6,1};ehr_diagnostics::context={42,4096,33,15,0};if(!EHRDiagnosticSourceFailure(42,6,sourceWords,12))return 9;
+ ehr_diagnostics::FailureDetail native;native.kind=2;native.method_token=0x60000ab;native.owner_hash=123;native.method_hash=456;native.exception_kind=1;native.status=6;ehr_diagnostics::state().failureDetail(8,native,ehr_diagnostics::context);
  NSDictionary *value=EHRRuntimeDiagnosticsCopyStatus();NSError *error=nil;
  NSData *bytes=[NSJSONSerialization dataWithJSONObject:value options:0 error:&error];
  if(!bytes||error||bytes.length>512*1024)return 1;
  NSDictionary *copy=[NSJSONSerialization JSONObjectWithData:bytes options:0 error:&error];
- NSSet *expected=[NSSet setWithArray:@[@"schema",@"sequence",@"routeLimit",@"eventLimit",@"unknownRoutes",@"routes",@"events",@"failureTotal",@"failures",@"application",@"appleAuth",@"eosLogin",@"guardLimit",@"guardTotal",@"guards",@"gateway",@"productionIterators",@"writeStatus",@"writtenSequence"]];
+ NSSet *expected=[NSSet setWithArray:@[@"schema",@"sequence",@"routeLimit",@"eventLimit",@"unknownRoutes",@"routes",@"events",@"failureTotal",@"failures",@"application",@"appleAuth",@"eosLogin",@"guardLimit",@"guardTotal",@"guards",@"gateway",@"productionIterators",@"failureDetailLimit",@"failureDetailTotal",@"failureDetails",@"writeStatus",@"writtenSequence"]];
  if(error||![expected isEqualToSet:[NSSet setWithArray:copy.allKeys]])return 2;
  NSDictionary *route=[copy[@"routes"] firstObject];
  if([route[@"targetId"] unsignedLongLongValue]!=42||[route[@"started"] intValue]!=1||[route[@"completed"] intValue]!=1||[route[@"failed"] intValue]!=1||[route[@"lastStatus"] intValue]!=5||[route[@"lastFlags"] intValue]!=0||[route[@"lastPhase"] intValue]!=13||[route[@"lastArgument"] intValue]!=2)return 3;
- if([copy[@"events"] count]!=8||[copy[@"appleAuth"][@"code"] intValue]!=1001||[copy[@"writeStatus"] intValue]!=1||[copy[@"writtenSequence"] intValue]!=0)return 4;
+ if([copy[@"events"] count]!=10||[copy[@"appleAuth"][@"code"] intValue]!=1001||[copy[@"writeStatus"] intValue]!=1||[copy[@"writtenSequence"] intValue]!=0)return 4;
  NSDictionary *auth=copy[@"appleAuth"];
  if([auth[@"requestCallbacks"] intValue]!=5||[auth[@"successCallbacks"] intValue]!=1||[auth[@"errorCallbacks"] intValue]!=2||[auth[@"overlapObservations"] intValue]!=3||[auth[@"installStatus"] intValue]!=0)return 5;
  NSDictionary *normal=copy[@"eosLogin"][@"normal"],*silent=copy[@"eosLogin"][@"silent"];
@@ -24,6 +26,9 @@ int main(){@autoreleasepool {
  NSDictionary *guard=[copy[@"guards"] firstObject];
  if([copy[@"guardTotal"] intValue]!=1||[guard[@"targetId"] intValue]!=42||[guard[@"registrationId"] intValue]!=33||[guard[@"count"] intValue]!=65536||[guard[@"limit"] intValue]!=65536||[guard[@"phase"] intValue]!=13||[guard[@"argument"] intValue]!=2)return 7;
  if([copy[@"gateway"][@"rootCount"] intValue]!=65536||[copy[@"gateway"][@"deferredCount"] intValue]!=123||[copy[@"gateway"][@"deferredReleased"] intValue]!=300||[copy[@"productionIterators"][@"terminalTombstones"] intValue]!=56)return 8;
+ if([copy[@"failureDetailTotal"] intValue]!=2||[copy[@"failureDetails"] count]!=2)return 10;
+ NSDictionary *source=copy[@"failureDetails"][0],*caught=copy[@"failureDetails"][1];
+ if([source[@"kind"] intValue]!=1||[source[@"callbackIndexPlusOne"] intValue]!=89||[source[@"stage"] intValue]!=7||[source[@"sourceSequence"] intValue]!=5||[caught[@"metadataMethodToken"] intValue]!=0x60000ab)return 11;
  // The fixture never starts the writer and never opens an app/game container.
  puts("{\"pass\":true,\"numericSerialization\":true,\"writerStarted\":false,\"gameCalls\":0}");return 0;
 }}

@@ -6,7 +6,7 @@ This repository combines original compatibility/runtime/tooling code with select
 
 Upstream: https://github.com/Gurge44/EndlessHostRoles, v8.0.3, commit `ce23f0d050f617a59507e5bb0fbfff751d4b5134`.
 
-`source-app/manifest.json` identifies every compiled C# input by relative path and SHA256. It represents development build 47. Compared with pinned upstream, the selected source contains original EHR files, adaptations for iOS/AOT/static dispatch and original generated/handwritten port support. Modified areas include static registration/dispatch, platform/input/audio/UI adaptation, explicit lifetime handling and account-protection exclusions. The source snapshot and adaptation tools make these changes reviewable; they do not claim to be an unmodified upstream EHR release.
+`source-app/manifest.json` identifies every compiled C# input by relative path and SHA256. It represents development build 48. Compared with pinned upstream, the selected source contains original EHR files, adaptations for iOS/AOT/static dispatch and original generated/handwritten port support. Modified areas include static registration/dispatch, platform/input/audio/UI adaptation, explicit lifetime handling and account-protection exclusions. The source snapshot and adaptation tools make these changes reviewable; they do not claim to be an unmodified upstream EHR release.
 
 Generated game API facades contain type/member declarations, enums and original gateway wrappers for interoperability. They do not contain decompiled game method implementations. Game binaries, decrypted launchers, raw metadata dumps and game assets are not included. Among Us and related marks belong to Innersloth; no affiliation or endorsement is claimed.
 

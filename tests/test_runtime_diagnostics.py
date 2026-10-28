@@ -44,6 +44,14 @@ class RuntimeDiagnostics(unittest.TestCase):
    self.assertEqual(result.returncode,0,result.stderr)
    proof=json.loads(subprocess.run([str(output)],capture_output=True,text=True,check=True,timeout=15).stdout)
    self.assertTrue(proof['pass']);self.assertFalse(proof['gameLoaded']);self.assertEqual(proof['realGcCalls'],0)
+ def test_native_exception_public_metadata_without_game(self):
+  with tempfile.TemporaryDirectory(prefix='ehr-exception-diag-') as temp:
+   output=pathlib.Path(temp)/'fixture'
+   command=['xcrun','clang++','-std=c++17','-Wall','-Wextra','-Werror','-fobjc-arc','-fobjc-arc-exceptions','-I',str(ROOT/'native'),'-I',str(ROOT/'native/include'),str(ROOT/'tests/native_exception_diagnostics_fixture.mm'),'-framework','Foundation','-Wl,-undefined,dynamic_lookup','-o',str(output)]
+   compiled=subprocess.run(command,capture_output=True,text=True,timeout=60)
+   self.assertEqual(compiled.returncode,0,compiled.stderr)
+   proof=json.loads(subprocess.run([str(output)],capture_output=True,text=True,check=True,timeout=15).stdout)
+   self.assertTrue(proof['pass']);self.assertFalse(proof['gameLoaded']);self.assertEqual(proof['realGcCalls'],0)
  def test_bounded_ring_threads_and_call_balance(self):self.run_fixture('runtime_diagnostics_fixture.cpp')
  def test_actual_numeric_json_schema_without_filesystem(self):self.run_fixture('runtime_diagnostics_json_fixture.mm',True)
 if __name__=='__main__':unittest.main()

@@ -18,6 +18,9 @@
 #ifndef EHR_EXERCISE_TOUCH_SHORTCUTS
 #define EHR_EXERCISE_TOUCH_SHORTCUTS 0
 #endif
+#ifndef EHR_EXERCISE_ITERATOR_RETIREMENT
+#define EHR_EXERCISE_ITERATOR_RETIREMENT 0
+#endif
 
 namespace {
 void *helperExport(const char *name) {
@@ -57,6 +60,9 @@ NSDictionary *status() {
     return nil;
 }
 }
+#if EHR_EXERCISE_ITERATOR_RETIREMENT
+#include "IteratorRetirementProof.inc"
+#endif
 @interface NativeRuntimeTests:XCTestCase
 @end
 @implementation NativeRuntimeTests
@@ -90,6 +96,10 @@ NSDictionary *status() {
     XCTAssertGreaterThan([diagnostics[@"writtenSequence"] unsignedLongLongValue],0ULL);
     XCTAssertGreaterThan([diagnostics[@"routes"] count],0u);
     XCTAssertEqualObjects(diagnostics[@"guardLimit"],@32);
+    XCTAssertEqualObjects(diagnostics[@"failureDetailLimit"],@32);
+    XCTAssertNotNil(diagnostics[@"failureDetailTotal"]);
+    XCTAssertTrue([diagnostics[@"failureDetails"] isKindOfClass:NSArray.class]);
+    XCTAssertLessThanOrEqual([diagnostics[@"failureDetails"] count],32u);
     XCTAssertEqualObjects(diagnostics[@"gateway"][@"loaded"],@1);
     XCTAssertEqualObjects(diagnostics[@"gateway"][@"rootLimit"],@65536);
     XCTAssertGreaterThan([diagnostics[@"gateway"][@"samples"] unsignedLongLongValue],0ULL);
@@ -103,6 +113,16 @@ NSDictionary *status() {
     XCTAssertEqualObjects(diagnostics[@"appleAuth"][@"installStatus"],@0);
     if([NSBundle.mainBundle.infoDictionary[@"EHREOSLoginDiagnosticsEnabled"] boolValue])
         XCTAssertEqualObjects(last[@"eosLoginObserverStatus"],@0);
+    if([NSBundle.mainBundle.infoDictionary[@"EHRAuthRetryGuardActivationRequested"] boolValue]){
+        NSDictionary *guard=last[@"authRetryGuard"];
+        XCTAssertTrue([guard[@"startupRequested"] boolValue]);
+        XCTAssertEqualObjects(guard[@"preparedStatus"],@0);
+        XCTAssertEqualObjects(guard[@"startupPrepareStatus"],@0);
+        XCTAssertEqualObjects(guard[@"startupEnableStatus"],@0);
+        XCTAssertTrue([guard[@"enabled"] boolValue]);
+        XCTAssertEqualObjects(guard[@"failureHandlerEntries"],@0);
+        XCTAssertEqualObjects(guard[@"failureHandlerCompleted"],@0);
+    }
     XCTAssertEqual([last[@"status"] intValue],0,@"%@",last);
     XCTAssertEqual([app[@"state"] unsignedIntValue],3u,@"%@",last);
     XCTAssertEqual([app[@"loadAttempts"] unsignedIntValue],1u);
@@ -113,6 +133,16 @@ NSDictionary *status() {
     XCTAssertTrue([app[@"optionsLoaded"] boolValue],@"%@",last);
     XCTAssertGreaterThan([app[@"optionCount"] unsignedIntValue],0u);
     XCTAssertTrue([app[@"postLoadTasksComplete"] boolValue],@"%@",last);
+#if EHR_EXERCISE_ITERATOR_RETIREMENT
+    // Own native ArrayList carriers only; warm the fixed marker before later
+    // ownership baselines. No Unity scheduling, account or network action.
+    NSDictionary *retirement=EHRRuntimeIteratorRetirementProof();
+    NSData *retirementData=[NSJSONSerialization dataWithJSONObject:retirement options:NSJSONWritingPrettyPrinted error:nil];
+    NSLog(@"EHR_ITERATOR_RETIREMENT_PROOF %@",[[NSString alloc] initWithData:retirementData encoding:NSUTF8StringEncoding]);
+    XCTAttachment *retirementAttachment=[XCTAttachment attachmentWithData:retirementData uniformTypeIdentifier:@"public.json"];
+    retirementAttachment.name=@"EHRIteratorRetirementProof.json";retirementAttachment.lifetime=XCTAttachmentLifetimeKeepAlways;[self addAttachment:retirementAttachment];
+    XCTAssertTrue([retirement[@"success"] boolValue],@"%@",retirement);
+#endif
 #if EHR_EXERCISE_TOUCH_SHORTCUTS
     void *touchModule=nullptr,*touchHelper=nullptr;
     for(uint32_t i=0;i<_dyld_image_count();++i){const char *path=_dyld_get_image_name(i);if(!path)continue;

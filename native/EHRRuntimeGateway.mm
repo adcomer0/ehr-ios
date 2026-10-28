@@ -112,6 +112,44 @@ struct State {
     size_t deferredHighWater=0;
 };
 State &state() { static State value; return value; }
+// Called only while the caught exception has a live owned root. Inspect
+// immutable public metadata, never its message, stack, fields or account data.
+uint64_t diagnosticNameHash(const char *space,const char *name) noexcept {
+    if(!name)return 0;
+    const size_t a=space?strnlen(space,513):0,b=strnlen(name,513);
+    if(a>512||!b||b>512)return 0;
+    uint64_t value=UINT64_C(14695981039346656037);
+    auto append=[&](const char *text,size_t length){for(size_t i=0;i<length;++i){value^=uint8_t(text[i]);value*=UINT64_C(1099511628211);}};
+    if(a){append(space,a);value^=uint8_t('.');value*=UINT64_C(1099511628211);}append(name,b);return value;
+}
+uint32_t diagnosticExceptionKind(API &api,Object *exception) {
+    if(!api.object_get_class||!api.class_get_name||!api.class_get_namespace)return 0;
+    RuntimeClass *klass=api.object_get_class(exception);
+    for(size_t depth=0;klass&&depth<8;++depth){
+        const char *space=api.class_get_namespace(klass),*name=api.class_get_name(klass);
+        if(!space||!name)return 0;
+        if(!strcmp(space,"UnityEngine")&&!strcmp(name,"MissingReferenceException"))return 2;
+        if(!strcmp(space,"System")){
+            static const char *names[]={"NullReferenceException","", "ArgumentException","InvalidOperationException","IndexOutOfRangeException","MissingMethodException","NotSupportedException","TypeLoadException","InvalidCastException","ObjectDisposedException","ArgumentNullException","ArgumentOutOfRangeException","Exception"};
+            for(size_t i=0;i<sizeof(names)/sizeof(*names);++i)if(*names[i]&&!strcmp(name,names[i]))return uint32_t(i+1);
+        }
+        if(!api.class_get_parent)break;klass=api.class_get_parent(klass);
+    }
+    return 0;
+}
+void recordNativeException(const Method *method,Exception *exception) noexcept {
+    if(!NSThread.isMainThread||!method||!exception)return;
+    @try {try {
+        auto &api=state().api;if(!api.method_get_token||!api.method_get_name||!api.method_get_declaring_type||!api.class_get_name||!api.class_get_namespace)return;
+        RuntimeClass *owner=api.method_get_declaring_type(method);if(!owner)return;
+        ehr_diagnostics::FailureDetail value;value.kind=2;value.status=EHR_RUNTIME_MANAGED_EXCEPTION;
+        value.method_token=api.method_get_token(method);
+        value.owner_hash=diagnosticNameHash(api.class_get_namespace(owner),api.class_get_name(owner));
+        value.method_hash=diagnosticNameHash(nullptr,api.method_get_name(method));
+        value.exception_kind=diagnosticExceptionKind(api,reinterpret_cast<Object *>(exception));
+        ehr_diagnostics::state().failureDetail(EHRDiagnosticTick(),value,ehr_diagnostics::context);
+    }catch(...) {}}@catch(__unused NSException *error){}
+}
 EHRRuntimeStatus diagnosticLimit(uint32_t category,uint64_t count,uint64_t limit);
 void deferredDrainCallback(void *);
 void scheduleDeferredDrainIfNeeded() {
@@ -892,6 +930,7 @@ extern "C" EHRRuntimeStatus ehr_runtime_invoke(EHRRuntimeToken token, EHRRuntime
     Object *returned = invokeWithOriginalPermit(dispatchMethod, invokeThis, count ? params.data() : nullptr, &raised);
     if (raised) {
         status = root(reinterpret_cast<Object *>(raised), exception);
+        if(status==EHR_RUNTIME_OK)recordNativeException(dispatchMethod,raised);
         return status == EHR_RUNTIME_OK ? EHR_RUNTIME_MANAGED_EXCEPTION : status;
     }
     return root(returned, result);
@@ -981,6 +1020,7 @@ extern "C" EHRRuntimeStatus ehr_runtime_invoke_with_refs(EHRRuntimeToken token,
         memcpy(copyback.bytes, prepared[copyback.index].argument, copyback.byteCount);
     if (raised) {
         status = root(reinterpret_cast<Object *>(raised), exception);
+        if(status==EHR_RUNTIME_OK)recordNativeException(dispatchMethod,raised);
         return status == EHR_RUNTIME_OK ? EHR_RUNTIME_MANAGED_EXCEPTION : status;
     }
     return root(returned, result);

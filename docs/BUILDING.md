@@ -37,7 +37,7 @@ python3 tools/build_source_application.py build \
 
 Use fresh output paths. The materializer checks the exact upstream commit, tracked contained resource paths and every C# and resource hash. It does not copy resource assets into this repository or access a game/account. `build-proof.json` records the resulting library hash and required exports; a successful source build does not establish gameplay correctness. To review only the emitted project, add `--emit-only` to the builder.
 
-`source-app/manifest.json` selects the actual 796 C# inputs for build 47. The separate reusable `managed/` tree and source-transform tools are not automatically substituted for those files. Intentional edits require updating the selection/hashes and revalidating the generated dispatcher/native contracts.
+`source-app/manifest.json` selects the actual 796 C# inputs for build 48. The separate reusable `managed/` tree and source-transform tools are not automatically substituted for those files. Intentional edits require updating the selection/hashes and revalidating the generated dispatcher/native contracts.
 
 ## Native generation and signing
 
