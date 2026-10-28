@@ -1,6 +1,9 @@
 #import "EHRFullSourceRuntime.h"
 #include "EHRRuntimeDiagnostics.h"
 #include "EHRAppleAuthDiagnostics.h"
+#if EHR_HAS_GAME_START_ITERATOR
+#include "EHRGameStartIteratorAdapter.h"
+#endif
 #if EHR_HAS_AUTH_RETRY_GUARD
 #include "EHRAuthRetryGuard.h"
 #endif
@@ -106,6 +109,9 @@ NSDictionary *EHRFullSourceCopyRuntimeStatus(void) {
             @"activeBindings":@(app.active_bindings),@"loadAttempts":@(app.load_attempts),@"dynamicCodeFlags":@(app.dynamic_code_flags),
             @"optionsLoaded":@(app.options_is_loaded_observed),@"optionCount":@(app.option_count),@"postLoadTasksComplete":@(app.options_post_load_completed)};}}
     result[@"numericDiagnostics"]=EHRRuntimeDiagnosticsCopyStatus();
+#if EHR_HAS_GAME_START_ITERATOR
+    result[@"gameStartIterator"]=EHRGameStartIteratorCopyStatus();
+#endif
 #if EHR_HAS_AUTH_RETRY_GUARD
     // Own counters only. Do not prepare/activate a guard or read an account.
     result[@"authRetryGuard"]=EHRAuthRetryGuardCopyStatus();
@@ -201,7 +207,15 @@ NSDictionary *EHRFullSourceLoadApplication(void) {
     if(!NSThread.isMainThread)return @{@"status":@(EHR_RUNTIME_WRONG_THREAD)};
     EHRFullSourcePrepareApplication();auto &s=state();if(!s.ready||s.status||s.loadAttempted)return EHRFullSourceCopyRuntimeStatus();
     s.loadAttempted=true;s.stage=@"load_source_application";diagnosticStage(13);
-    try{s.status=required<decltype(&ehr_source_application_load_v1)>("ehr_source_application_load_v1")();}
+    try{
+        s.status=required<decltype(&ehr_source_application_load_v1)>("ehr_source_application_load_v1")();
+#if EHR_HAS_GAME_START_ITERATOR
+        // The parent iterator hook may replace a yielded host factory only
+        // while the complete source callback set is active.
+        if(!s.status)s.status=EHRGameStartIteratorPrepare();
+        if(!s.status)s.status=EHRGameStartIteratorSetEnabled(1);
+#endif
+    }
     catch(...){s.status=EHR_RUNTIME_UNSUPPORTED;}
     if(s.status){
         NSMutableDictionary *cleanup=[EHRFullSourceFailureCleanup() mutableCopy];

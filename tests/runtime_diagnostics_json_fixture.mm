@@ -1,5 +1,11 @@
 #import <Foundation/Foundation.h>
 #include "EHRRuntimeDiagnostics.h"
+#if EHR_HAS_GAME_START_ITERATOR
+#include "EHRGameStartIteratorAdapter.h"
+// Fixed owned counters only: exercise the writer's optional linkage/schema
+// without loading a runtime or inspecting game state.
+extern "C" NSDictionary *EHRGameStartIteratorCopyStatus(void){return @{@"preparedStatus":@0,@"enabled":@YES,@"replacements":@2};}
+#endif
 int main(){@autoreleasepool {
  {EHRDiagnosticRouteScope scope(42,4096);scope.at(13,2);{EHRDiagnosticIteratorScope iterator(33,1);EHRDiagnosticLimit(ehr_diagnostics::RootCapacity,65536,65536);iterator.status=8;}scope.status=5;scope.flags=0;}
  {EHRDiagnosticComponentScope scope(7,2);scope.status=7;}
@@ -14,7 +20,11 @@ int main(){@autoreleasepool {
  NSData *bytes=[NSJSONSerialization dataWithJSONObject:value options:0 error:&error];
  if(!bytes||error||bytes.length>512*1024)return 1;
  NSDictionary *copy=[NSJSONSerialization JSONObjectWithData:bytes options:0 error:&error];
- NSSet *expected=[NSSet setWithArray:@[@"schema",@"sequence",@"routeLimit",@"eventLimit",@"unknownRoutes",@"routes",@"events",@"failureTotal",@"failures",@"application",@"appleAuth",@"eosLogin",@"guardLimit",@"guardTotal",@"guards",@"gateway",@"productionIterators",@"failureDetailLimit",@"failureDetailTotal",@"failureDetails",@"writeStatus",@"writtenSequence"]];
+ NSMutableSet *expected=[NSMutableSet setWithArray:@[@"schema",@"sequence",@"routeLimit",@"eventLimit",@"unknownRoutes",@"routes",@"events",@"failureTotal",@"failures",@"application",@"appleAuth",@"eosLogin",@"guardLimit",@"guardTotal",@"guards",@"gateway",@"productionIterators",@"failureDetailLimit",@"failureDetailTotal",@"failureDetails",@"writeStatus",@"writtenSequence"]];
+#if EHR_HAS_GAME_START_ITERATOR
+ [expected addObject:@"gameStartIterator"];
+ if(![copy[@"gameStartIterator"] isEqualToDictionary:@{@"preparedStatus":@0,@"enabled":@YES,@"replacements":@2}])return 12;
+#endif
  if(error||![expected isEqualToSet:[NSSet setWithArray:copy.allKeys]])return 2;
  NSDictionary *route=[copy[@"routes"] firstObject];
  if([route[@"targetId"] unsignedLongLongValue]!=42||[route[@"started"] intValue]!=1||[route[@"completed"] intValue]!=1||[route[@"failed"] intValue]!=1||[route[@"lastStatus"] intValue]!=5||[route[@"lastFlags"] intValue]!=0||[route[@"lastPhase"] intValue]!=13||[route[@"lastArgument"] intValue]!=2)return 3;

@@ -57,6 +57,10 @@ EHRNativePatchOutcomeV1 EHRNativePatchInvokePrepared(const EHRNativePatchSiteV1 
 // Rethrows rooted native exceptions or constructs a real native exception for
 // CLR-only failure, only after all NativeAOT frames have returned.
 void EHRNativePatchFinish(EHRNativePatchOutcomeV1);
+// Native-only failure path for adapters outside a source dispatch. Consumes
+// owned_exception and propagates it, or constructs a native fallback for a
+// nonzero status. No dispatcher participation or V2 proof is manufactured.
+void EHRNativeRaiseOwnedFailure(int32_t status,EHRRuntimeToken owned_exception);
 // Native-only bounded adapter for a real borrowed value payload (for example
 // an incoming IL2CPP value argument or a pinned object's public unbox view).
 // Only this native scope sees references in the payload. Returns one new root.

@@ -21,6 +21,9 @@
 #ifndef EHR_EXERCISE_ITERATOR_RETIREMENT
 #define EHR_EXERCISE_ITERATOR_RETIREMENT 0
 #endif
+#ifndef EHR_EXERCISE_GAME_START_ITERATOR
+#define EHR_EXERCISE_GAME_START_ITERATOR 0
+#endif
 
 namespace {
 void *helperExport(const char *name) {
@@ -123,6 +126,15 @@ NSDictionary *status() {
         XCTAssertEqualObjects(guard[@"failureHandlerEntries"],@0);
         XCTAssertEqualObjects(guard[@"failureHandlerCompleted"],@0);
     }
+    if([NSBundle.mainBundle.infoDictionary[@"EHRGameStartIteratorCompiled"] boolValue]){
+        NSDictionary *adapter=last[@"gameStartIterator"];
+        XCTAssertEqualObjects(adapter[@"preparedStatus"],@0);
+        XCTAssertEqualObjects(adapter[@"enabled"],@YES);
+        XCTAssertEqualObjects(adapter[@"failures"],@0);
+        XCTAssertEqualObjects(adapter[@"factoryCalls"],@0);
+        XCTAssertEqualObjects(diagnostics[@"gameStartIterator"][@"preparedStatus"],@0);
+        XCTAssertEqualObjects(diagnostics[@"gameStartIterator"][@"enabled"],@YES);
+    }
     XCTAssertEqual([last[@"status"] intValue],0,@"%@",last);
     XCTAssertEqual([app[@"state"] unsignedIntValue],3u,@"%@",last);
     XCTAssertEqual([app[@"loadAttempts"] unsignedIntValue],1u);
@@ -142,6 +154,20 @@ NSDictionary *status() {
     XCTAttachment *retirementAttachment=[XCTAttachment attachmentWithData:retirementData uniformTypeIdentifier:@"public.json"];
     retirementAttachment.name=@"EHRIteratorRetirementProof.json";retirementAttachment.lifetime=XCTAttachmentLifetimeKeepAlways;[self addAttachment:retirementAttachment];
     XCTAssertTrue([retirement[@"success"] boolValue],@"%@",retirement);
+#endif
+#if EHR_EXERCISE_GAME_START_ITERATOR
+    auto gameStartProbe=reinterpret_cast<NSDictionary *(*)(void)>(helperExport("EHRGameStartIteratorSelfTest"));
+    NSDictionary *gameStartProof=gameStartProbe?gameStartProbe():@{@"success":@NO};
+    NSData *gameStartData=[NSJSONSerialization dataWithJSONObject:gameStartProof options:NSJSONWritingPrettyPrinted error:nil];
+    NSLog(@"EHR_GAME_START_ITERATOR_PROOF %@",[[NSString alloc] initWithData:gameStartData encoding:NSUTF8StringEncoding]);
+    XCTAttachment *gameStartAttachment=[XCTAttachment attachmentWithData:gameStartData uniformTypeIdentifier:@"public.json"];
+    gameStartAttachment.name=@"EHRGameStartIteratorProof.json";gameStartAttachment.lifetime=XCTAttachmentLifetimeKeepAlways;[self addAttachment:gameStartAttachment];
+    XCTAssertTrue([gameStartProof[@"success"] boolValue],@"%@",gameStartProof);
+    XCTAssertEqualObjects(gameStartProof[@"rootAccountingBalanced"],@YES);
+    XCTAssertEqualObjects(gameStartProof[@"fixtureNullOwner"],@YES);
+    XCTAssertEqualObjects(gameStartProof[@"realGameOwnerInvoked"],@NO);
+    XCTAssertEqualObjects(gameStartProof[@"originalMoveNextInvoked"],@NO);
+    XCTAssertEqualObjects(gameStartProof[@"realHostFactoryInvoked"],@NO);
 #endif
 #if EHR_EXERCISE_TOUCH_SHORTCUTS
     void *touchModule=nullptr,*touchHelper=nullptr;
@@ -246,6 +272,8 @@ NSDictionary *status() {
     XCTAssertTrue([cleanup[@"sourceTouchHidden"] boolValue]);
     XCTAssertTrue([cleanup[@"sourceStatesReleased"] boolValue]);
     XCTAssertTrue([cleanup[@"registrationSealed"] boolValue]);
+    if([NSBundle.mainBundle.infoDictionary[@"EHRGameStartIteratorCompiled"] boolValue])
+        XCTAssertEqualObjects(cleanup[@"gameStartIteratorDisabled"],@YES);
     XCTAssertEqual([cleanup[@"activeSources"] unsignedLongLongValue],0ULL);
     XCTAssertEqual([cleanup[@"currentRoots"] unsignedLongLongValue],0ULL);
     XCTAssertEqual([cleanup[@"associationWeakRoots"] unsignedLongLongValue],0ULL);

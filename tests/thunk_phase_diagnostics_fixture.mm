@@ -10,6 +10,8 @@ struct OwnObject{const void*klass;};
 static int ownerClass=0,otherClass=0,stringClass=0,scalarClass=0;
 static size_t rooted=0,released=0,dispatched=0,observed=0;static int observerMode=0;
 static std::set<uint64_t> live;
+struct OwnedRaised{};struct FallbackRaised{EHRRuntimeStatus status;};
+static OwnObject raisedIdentity{&otherClass};
 static uint64_t owned(){auto value=++rooted;if(!live.insert(value).second)abort();return value;}
 static int32_t observer(uint64_t target,uint32_t*words,size_t count){++observed;
  if(observerMode==1)throw std::runtime_error("owned synthetic observer failure");
@@ -47,7 +49,9 @@ extern "C" void il2cpp_object_unbox(){}
 extern "C" void il2cpp_field_get_name(){}
 extern "C" void il2cpp_type_get_name(){}
 extern "C" void il2cpp_free(){}
-extern "C" void il2cpp_raise_exception(){}
+extern "C" void il2cpp_raise_exception(void *value){if(value!=&raisedIdentity)abort();throw OwnedRaised{};}
+EHRRuntimeStatus EHRRuntimeIteratorBorrow(EHRRuntimeToken token,void **value){*value=live.count(token)?&raisedIdentity:nullptr;return *value?EHR_RUNTIME_OK:EHR_RUNTIME_INVALID_TOKEN;}
+void EHRRuntimeIteratorRaise(EHRRuntimeStatus status){throw FallbackRaised{status};}
 EHRRuntimeStatus EHRRuntimeBorrowClass(EHRRuntimeToken token,const void**klass){*klass=token==1?&ownerClass:nullptr;return *klass?EHR_RUNTIME_OK:EHR_RUNTIME_INVALID_TOKEN;}
 EHRRuntimeStatus EHRRuntimeActionRootBorrowed(void*object,EHRRuntimeToken*token){*token=object?owned():0;return EHR_RUNTIME_OK;}
 extern "C" EHRRuntimeStatus ehr_runtime_object_release(EHRRuntimeToken token){if(token){if(live.erase(token)!=1)abort();++released;}return EHR_RUNTIME_OK;}
@@ -75,9 +79,16 @@ int main(){@autoreleasepool {size_t checks=0;
  for(observerMode=0;observerMode<3;++observerMode){
   outcome=EHRNativePatchInvokePrepared(site,&good,arguments,2,nullptr,0);
   CHECK(outcome.status==6&&outcome.dispatcher_entered&&outcome.exception!=0&&outcome.proof.original_attempted==1&&outcome.proof.hook_consumptions==1);
-  CHECK(live.size()==1&&live.count(outcome.exception)==1);ehr_runtime_object_release(outcome.exception);CHECK(live.empty()&&rooted==released);
+  CHECK(live.size()==1&&live.count(outcome.exception)==1);
+  bool caught=false;try{EHRNativePatchFinish(outcome);}catch(const OwnedRaised&){caught=true;}
+  CHECK(caught&&live.empty()&&rooted==released);
  }
  CHECK(dispatched==3&&observed==3);snapshot=ehr_diagnostics::state().snapshot();CHECK(snapshot.detail_total==1&&snapshot.details[0].callback==89&&snapshot.details[0].original_entered==1);
+ EHRNativeRaiseOwnedFailure(EHR_RUNTIME_OK,0);CHECK(live.empty());
+ bool fallback=false;try{EHRNativeRaiseOwnedFailure(EHR_RUNTIME_TYPE_MISMATCH,0);}catch(const FallbackRaised&error){fallback=error.status==EHR_RUNTIME_TYPE_MISMATCH;}
+ CHECK(fallback&&live.empty());
+ const auto exception=owned();bool native=false;try{EHRNativeRaiseOwnedFailure(EHR_RUNTIME_MANAGED_EXCEPTION,exception);}catch(const OwnedRaised&){native=true;}
+ CHECK(native&&live.empty()&&rooted==released&&dispatched==3&&observed==3);
 
  std::printf("{\"pass\":true,\"checks\":%zu,\"gameLoaded\":false,\"sourceCalls\":%zu}\n",checks,size_t(0));return 0;
 }}

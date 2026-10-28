@@ -1,5 +1,8 @@
 # Development build 48 validation
 
+Historical build-48 validation record. See [build 49](BUILD49_VALIDATION.md) and
+[known issues](KNOWN_ISSUES.md) for the later phone reproduction and current work.
+
 Validated on 2026-10-28 against the pinned Among Us iPhoneOS 2026.9.29 (3)
 framework, Unity 2022.3.62f3, and EHR v8.0.3. The signed local candidate uses
 NativeAOT, with no runtime JIT. No game binaries, assets, profiles, device

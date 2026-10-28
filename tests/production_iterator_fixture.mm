@@ -43,7 +43,7 @@ int32_t step(uint64_t source,int32_t *next,uint64_t *current){++steps[source];*c
  if(source==404){*next=1;*current=root(yielded);require(EHRManagedIteratorProductionFailClosed(&duringFailure,sizeof(duringFailure))==6);require(duringFailure.deferred==1&&duringFailure.active_sources==1);require(cancels[404]==0);return 0;}
  if(source==401){*next=1;*current=root(yielded);return 0;}
  if(source==61){*next=0;return EHR_RUNTIME_LIMIT;}
- if(source==50){*next=1;if(closeDuringStep)require(host.close(closeDuringStep)==0);return 0;}
+ if(source==50){*next=1;if(closeDuringStep){auto entry=ehr_production_iterators::byId(closeDuringStep);require(entry&&entry->executing&&!EHRProductionIteratorHasActiveIdentity(entry->identity));require(host.close(closeDuringStep)==0);}return 0;}
  if(source==51){*next=0;*current=root(yielded);return EHR_RUNTIME_UNSUPPORTED;}
  if(source==52){*next=1;*current=root(*selfYield);return 0;}
  if(source==53||source==54){*next=1;*current=root(source==53?*cycleB:*cycleA);return 0;}
@@ -96,6 +96,7 @@ int main(){@autoreleasepool{using namespace fixture;EHRManagedIteratorProduction
  require(status().entries==0);uint64_t id=99;require(host.register_carrier(0,0,nullptr,&id)==4&&id==0);
  Object carrier{Enumerator},ordinary{Enumerator},foreign{Foreign};auto invalid=root(foreign);require(host.register_carrier(invalid,1,&callbacks,&id)==5&&id==0);release(invalid);
  uint64_t owned=0;id=add(carrier,1,&owned);require(strong(carrier)==1);require(status().carrier_weak_roots==1&&status().active_sources==1);
+ auto predicateCalls=runtimeCalls;require(EHRProductionIteratorHasActiveIdentity(&carrier)&&!EHRProductionIteratorHasActiveIdentity(&ordinary)&&!EHRProductionIteratorHasActiveIdentity(nullptr)&&runtimeCalls==predicateCalls);
  uint64_t acquired=0;require(host.acquire(id,&acquired)==0&&acquired!=owned&&strong(carrier)==2);release(acquired);
  uint64_t duplicate=0;require(host.register_carrier(owned,2,&callbacksOther,&duplicate)==4&&!duplicate);
  bool next=true;void *current=reinterpret_cast<void*>(1);require(!EHRProductionIteratorMoveNext(&ordinary,&next));require(raised([&]{EHRProductionIteratorCurrent(&carrier,&current);})==4);
@@ -105,6 +106,7 @@ int main(){@autoreleasepool{using namespace fixture;EHRManagedIteratorProduction
  require(raised([&]{EHRProductionIteratorReset(&carrier);})==7&&status().current_roots==1);
  require(EHRProductionIteratorMoveNext(&carrier,&next)&&!next&&cancels[1]==1);require(EHRProductionIteratorMoveNext(&carrier,&next)&&!next&&steps[1]==3&&cancels[1]==1);
  auto terminalStatus=status();require(terminalStatus.entries==0&&terminalStatus.active_sources==0&&terminalStatus.terminal_tombstones==0&&terminalStatus.carrier_weak_roots==0&&terminalStatus.current_roots==0&&strong(yielded)==0);
+ require(!EHRProductionIteratorHasActiveIdentity(&carrier)&&EHRProductionIteratorOwnsIdentity(&carrier));
  require(host.register_carrier(owned,2,&callbacks,&duplicate)==4&&duplicate==0&&EHRProductionIteratorOwnsIdentity(&carrier));
  require(host.acquire(id,&acquired)==7&&acquired==0);require(host.close(id)==0&&cancels[1]==1);require(raised([&]{EHRProductionIteratorCurrent(&carrier,&current);})==4);require(raised([&]{EHRProductionIteratorReset(&carrier);})==7);finish(carrier,owned);require(status().entries==0);
  Object second{Enumerator};id=add(second,1,&owned,&callbacksOther);require(EHRProductionIteratorMoveNext(&second,&next)&&!next&&otherSteps[1]==1&&otherCancels[1]==1&&steps[1]==3);finish(second,owned);
@@ -145,7 +147,7 @@ int main(){@autoreleasepool{using namespace fixture;EHRManagedIteratorProduction
  {auto proof=ehr_diagnostics::state().snapshot();const auto&guard=proof.guards[(proof.guard_total-1)%ehr_diagnostics::GuardLimit];
   require(guard.category==ehr_diagnostics::CallbackReturnedLimit&&guard.iterator==id&&guard.count==0&&guard.limit==0&&guard.iterator_entries==1&&guard.iterator_active==1);}
  finish(limitedStep,owned);
- Object workerCarrier{Enumerator};id=add(workerCarrier,103,&owned);auto calls=runtimeCalls;int wrong=0;std::thread worker([&]{uint64_t result=7;wrong=host.acquire(id,&result);require(result==0);bool resultNext=true;require(EHRProductionIteratorMoveNext(&workerCarrier,&resultNext)&&!resultNext);require(!EHRProductionIteratorMoveNext(&ordinary,&resultNext));require(host.is_main()==0);});worker.join();require(wrong==2&&runtimeCalls==calls&&steps[103]==0);require(host.close(id)==0);finish(workerCarrier,owned);
+ Object workerCarrier{Enumerator};id=add(workerCarrier,103,&owned);auto calls=runtimeCalls;int wrong=0;std::thread worker([&]{uint64_t result=7;wrong=host.acquire(id,&result);require(result==0&&!EHRProductionIteratorHasActiveIdentity(&workerCarrier));bool resultNext=true;require(EHRProductionIteratorMoveNext(&workerCarrier,&resultNext)&&!resultNext);require(!EHRProductionIteratorMoveNext(&ordinary,&resultNext));require(host.is_main()==0);});worker.join();require(wrong==2&&runtimeCalls==calls&&steps[103]==0);require(host.close(id)==0);finish(workerCarrier,owned);
  // Retained terminal identities no longer consume registry/weak-handle slots.
  // Keep all 1024 real fixture receivers alive while one source stays active.
  Object longLived{Enumerator};uint64_t longRoot=0;auto longId=add(longLived,800,&longRoot);
@@ -186,6 +188,7 @@ int main(){@autoreleasepool{using namespace fixture;EHRManagedIteratorProduction
  // returning an owned terminal receiver to the unrelated original method.
  Object publicationFailure{Enumerator};id=add(publicationFailure,702,&owned);failMarker=true;
  require(host.close(id)==0&&cancels[702]==1&&status().terminal_tombstones==1&&status().entries==1);
+ require(!EHRProductionIteratorHasActiveIdentity(&publicationFailure)&&EHRProductionIteratorOwnsIdentity(&publicationFailure));
  require(EHRProductionIteratorMoveNext(&publicationFailure,&next)&&!next&&host.acquire(id,&acquired)==7);
  require(raised([&]{EHRProductionIteratorCurrent(&publicationFailure,&current);})==4&&raised([&]{EHRProductionIteratorReset(&publicationFailure);})==7);
  failMarker=false;require(host.sweep(256,&scanned,&pruned)==0&&pruned==1&&status().entries==0&&cancels[702]==1);finish(publicationFailure,owned);

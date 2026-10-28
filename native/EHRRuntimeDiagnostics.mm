@@ -1,5 +1,8 @@
 #import <Foundation/Foundation.h>
 #include "EHRRuntimeDiagnostics.h"
+#if EHR_HAS_GAME_START_ITERATOR
+#include "EHRGameStartIteratorAdapter.h"
+#endif
 #include <atomic>
 #include <cerrno>
 #include <fcntl.h>
@@ -24,13 +27,19 @@ NSDictionary *dictionary(const ehr_diagnostics::Snapshot &s) {
  for(size_t n=0;n<s.detail_count;++n){const auto&d=s.details[(s.detail_total-s.detail_count+n)%ehr_diagnostics::DetailLimit];
   [details addObject:@{@"sequence":@(d.sequence),@"monotonicNs":@(d.tick),@"targetId":@(d.target),@"methodRva":@(d.rva),@"registrationId":@(d.iterator),@"kind":@(d.kind),@"sourceSequence":@(d.source_sequence),@"stage":@(d.stage),@"callbackIndexPlusOne":@(d.callback),@"argumentIndexPlusOne":@(d.argument),@"exceptionKind":@(d.exception_kind),@"status":@(d.status),@"originalEntered":@(d.original_entered),@"metadataMethodToken":@(d.method_token),@"metadataOwnerHash":@(d.owner_hash),@"metadataMethodHash":@(d.method_hash)}];}
  const auto&a=s.application;
- return @{@"schema":@"ehr.numeric-runtime-diagnostics.v1",@"sequence":@(s.sequence),@"routeLimit":@(ehr_diagnostics::RouteLimit),@"eventLimit":@(ehr_diagnostics::EventLimit),@"unknownRoutes":@(s.unknown_routes),@"routes":routes,@"events":events,@"failureTotal":@(s.failure_total),@"failures":failures,@"guardLimit":@(ehr_diagnostics::GuardLimit),@"guardTotal":@(s.guard_total),@"guards":guards,
+ NSMutableDictionary *result=[@{@"schema":@"ehr.numeric-runtime-diagnostics.v1",@"sequence":@(s.sequence),@"routeLimit":@(ehr_diagnostics::RouteLimit),@"eventLimit":@(ehr_diagnostics::EventLimit),@"unknownRoutes":@(s.unknown_routes),@"routes":routes,@"events":events,@"failureTotal":@(s.failure_total),@"failures":failures,@"guardLimit":@(ehr_diagnostics::GuardLimit),@"guardTotal":@(s.guard_total),@"guards":guards,
  @"failureDetailLimit":@(ehr_diagnostics::DetailLimit),@"failureDetailTotal":@(s.detail_total),@"failureDetails":details,
  @"gateway":@{@"monotonicNs":@(g.tick),@"samples":@(g.samples),@"loaded":@(g.loaded),@"rootCount":@(g.roots),@"weakRootCount":@(g.weak_roots),@"rootLimit":@(g.root_limit),@"observedRootHighWater":@(g.observed_root_high_water),@"deferredCount":@(g.deferred),@"deferredLimit":@(g.deferred_limit),@"deferredHighWater":@(g.deferred_high_water),@"deferredEnqueued":@(g.enqueued),@"deferredDequeued":@(g.dequeued),@"deferredReleased":@(g.released),@"deferredFull":@(g.full)},
  @"productionIterators":@{@"monotonicNs":@(i.tick),@"entries":@(i.entries),@"entryLimit":@256,@"activeSources":@(i.active),@"terminalTombstones":@(i.terminal),@"currentRoots":@(i.current),@"carrierWeakRoots":@(i.weak),@"associationWeakRoots":@(i.associations),@"temporaryPins":@(i.pins),@"created":@(i.created),@"swept":@(i.swept),@"closed":@(i.closed),@"callbackFailures":@(i.callback_failures)},
  @"application":@{@"stage":@(a.stage),@"status":@(a.status),@"readyFlags":@(a.flags),@"state":@(a.state),@"loadAttempts":@(a.load_attempts),@"optionsLoaded":@(a.options_loaded),@"optionCount":@(a.options),@"activeBindings":@(a.active),@"candidates":@(a.candidates),@"postLoadTasksComplete":@(a.post_load)},
  @"appleAuth":@{@"domain":@(s.auth.domain),@"code":@(s.auth.code),@"observedCount":@(s.auth.count),@"installStatus":@(s.auth.install_status),@"requestCallbacks":@(s.auth.requests),@"successCallbacks":@(s.auth.successes),@"errorCallbacks":@(s.auth.errors),@"overlapObservations":@(s.auth.overlaps)},
- @"eosLogin":@{@"normal":@{@"resultCode":@(s.eos[0].result),@"observerStatus":@(s.eos[0].status),@"observedCount":@(s.eos[0].count)},@"silent":@{@"resultCode":@(s.eos[1].result),@"observerStatus":@(s.eos[1].status),@"observedCount":@(s.eos[1].count)}}};
+ @"eosLogin":@{@"normal":@{@"resultCode":@(s.eos[0].result),@"observerStatus":@(s.eos[0].status),@"observedCount":@(s.eos[0].count)},@"silent":@{@"resultCode":@(s.eos[1].result),@"observerStatus":@(s.eos[1].status),@"observedCount":@(s.eos[1].count)}}} mutableCopy];
+#if EHR_HAS_GAME_START_ITERATOR
+ // This getter copies only adapter-owned atomics; the writer performs no
+ // runtime, metadata, source, scene or account operation.
+ result[@"gameStartIterator"]=EHRGameStartIteratorCopyStatus();
+#endif
+ return result;
 }
 // All filesystem work is on the private diagnostics queue. The worker never
 // queries IL2CPP, game objects, source state, UIKit or account data.

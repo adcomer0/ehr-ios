@@ -29,7 +29,7 @@ python3 tools/materialize_source_snapshot.py \
 
 python3 tools/build_source_application.py build \
   --manifest "$EHR_OUTPUT/source-inputs.json" \
-  --output "$EHR_OUTPUT/Managed47" \
+  --output "$EHR_OUTPUT/Managed" \
   --dotnet "$EHR_DOTNET" \
   --native-binder native/EHRFullSourceRuntime.mm \
   --omit-debug-symbols
@@ -51,6 +51,27 @@ The native pipeline is implemented in these tools:
 6. `install_protected_iphone.py`: upgrade only the explicitly selected test app after matching the passed Mac proof and exact-device/profile checks.
 
 Run each tool with `--help` for its actual input schema. Intermediate native maps, component-class association reports and generated thunk inputs are produced locally from the selected game and source inventory. They are not bundled as private reports or raw game metadata. Automating their entire regeneration from the public snapshot remains contribution work.
+
+The optional iOS host-factory inlining adapter has one additional local input.
+Generate it with `tools/prepare_game_start_iterator_map.py --framework FRAMEWORK
+--metadata METADATA --pins SOURCE_PIN_REPORT --output PRIVATE_MAP`, then add
+`--game-start-iterator-map PRIVATE_MAP` to the existing full-profile build. Use
+actual local paths in place of these placeholders and a fresh map outside Git.
+The pin report comes from `map_native_methods.py` for those same source bytes.
+The builder also requires the normal full native catalog, target map, thunk
+inputs, production iterator map, static-class plan, managed library and signing
+inputs. This option does not regenerate or replace those inputs. See the
+[complete adapter generation example](IOS_GAME_START_ITERATOR.md#generate-and-select-the-optional-adapter).
+
+When selected, the signed `EHRGameStartIteratorCompiled` flag requires the passed
+startup proof to show the adapter prepared successfully and enabled after full
+source startup. The separate owned native iterator probe must also pass on the
+signed runtime before delivery. Build 49 passed this iOS-on-Mac metadata/barrier
+probe with 46 checks and exact root conservation; it did not invoke a real game
+owner, the original game-start iterator body or the real host factory. Physical
+build 49 host-start remains unverified; the latest physical build 48 test still
+black-screened on Start. These gates supplement the existing four-binary,
+startup, exact-device and signing checks.
 
 Signing tools require explicit `--team-id` and `--bundle-id` values. `--team-name` can add an exact organization assertion. Use a separate test app identity and your own provisioning; the official game's bundle identity is rejected. No certificate/profile/device values are supplied. See [portable tooling](PORTABLE_TOOLING.md) for parameter flow. Do not uninstall the official game, import its container, reset account data or bypass consent/authentication to work around failures.
 

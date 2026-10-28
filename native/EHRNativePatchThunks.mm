@@ -254,8 +254,11 @@ EHRNativePatchOutcomeV1 EHRNativePatchInvokePrepared(const EHRNativePatchSiteV1 
 }
 void EHRNativePatchFinish(EHRNativePatchOutcomeV1 outcome) {
     if(!outcome.dispatcher_entered)abort();
-    if(outcome.exception){struct Release{uint64_t token;~Release(){ehr_runtime_object_release(token);}} release{outcome.exception};void *exception=nullptr;API *a=api();if(!a||EHRRuntimeIteratorBorrow(outcome.exception,&exception)!=EHR_RUNTIME_OK||!exception)abort();a->raise_exception(exception);abort();}
-    if(outcome.status!=EHR_RUNTIME_OK)EHRRuntimeIteratorRaise(static_cast<EHRRuntimeStatus>(outcome.status));
+    EHRNativeRaiseOwnedFailure(outcome.status,outcome.exception);
+}
+void EHRNativeRaiseOwnedFailure(int32_t status,EHRRuntimeToken owned_exception) {
+    if(owned_exception){struct Release{uint64_t token;~Release(){ehr_runtime_object_release(token);}} release{owned_exception};void *exception=nullptr;API *a=api();if(!a||EHRRuntimeIteratorBorrow(owned_exception,&exception)!=EHR_RUNTIME_OK||!exception)abort();a->raise_exception(exception);abort();}
+    if(status!=EHR_RUNTIME_OK)EHRRuntimeIteratorRaise(static_cast<EHRRuntimeStatus>(status));
 }
 EHRRuntimeStatus EHRNativePatchBoxBorrowedValue(EHRRuntimeToken token,const EHRNativePatchTypeV1 &expected,void *payload,size_t count,EHRRuntimeToken *owned) {
     if(!owned)return EHR_RUNTIME_BAD_ARGUMENT;*owned=0;

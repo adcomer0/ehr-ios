@@ -98,6 +98,24 @@ class InstallerGuards(unittest.TestCase):
         summary={'status':'not_started','installation_succeeded':False}
         return M.execute(self.app,self.summary,self.device,self.output,runtime,self.verifier,runner,summary,team_id=TEAM,bundle_id=BUNDLE,**options)
 
+    def enable_game_start_adapter(self):
+        path=self.app/'Info.plist';info=plistlib.loads(path.read_bytes())
+        info['EHRGameStartIteratorCompiled']=True;path.write_bytes(plistlib.dumps(info))
+        proof=json.loads(self.proof.read_text());proof['status']['gameStartIterator']={'preparedStatus':0,'enabled':True}
+        self.proof.write_text(json.dumps(proof))
+
+    def write_game_start_proof(self,**changes):
+        proof={'schema':'ehr.game-start-iterator-proof.v1','success':True,'status':0,'stage':0,
+            'checks':46,'factorySeamCalls':6,'rootsBefore':12,'rootsAfter':12,'rootAccountingBalanced':True,
+            'deferredReleasedBefore':100,'deferredReleasedAfter':100,'deferredEnqueuedBefore':100,
+            'deferredEnqueuedAfter':100,'deferredDequeuedBefore':100,'deferredDequeuedAfter':100,
+            'cancelCallsBefore':1,'cancelCallsAfter':2,'fixtureNullOwner':True,'realGameOwnerInvoked':False,
+            'originalMoveNextInvoked':False,'realHostFactoryInvoked':False,'unityObjectCreated':False,
+            'runtimeExecutableWrites':False}
+        proof.update(changes)
+        path=self.proof.with_name('EHRGameStartIteratorProof.json');path.write_text(json.dumps(proof))
+        return path
+
     def test_changed_binary_or_profile_rejected_before_any_device_operation(self):
         for path in (runtime.RELATIVE_BINARIES[2], 'embedded.mobileprovision'):
             target=self.app/path;before=target.read_bytes();target.write_bytes(before+b'changed')
@@ -145,6 +163,62 @@ class InstallerGuards(unittest.TestCase):
         self.proof.write_text(json.dumps(proof));runner=OwnDeviceRunner(disconnected=True)
         summary=self.run_fixture(runner,preflight_only=True)
         self.assertIn('unreachable',summary['status']);self.assertEqual([c[0]for c in runner.calls],['device-inventory'])
+
+    def test_compiled_game_start_adapter_requires_ready_enabled_actual_startup_before_device_access(self):
+        path=self.app/'Info.plist';info=plistlib.loads(path.read_bytes())
+        info['EHRGameStartIteratorCompiled']=True;path.write_bytes(plistlib.dumps(info))
+        original=json.loads(self.proof.read_text());ready={'preparedStatus':0,'enabled':True}
+        for adapter in (None,{},dict(ready,preparedStatus=1),dict(ready,enabled=False)):
+            proof=json.loads(json.dumps(original))
+            if adapter is not None:proof['status']['gameStartIterator']=adapter
+            self.proof.write_text(json.dumps(proof));runner=OwnDeviceRunner()
+            with self.subTest(adapter=adapter),self.assertRaisesRegex(M.Rejected,'game_start_iterator_startup_not_ready'):
+                self.run_fixture(runner)
+            self.assertEqual(runner.calls,[])
+        proof=json.loads(json.dumps(original));proof['status']['gameStartIterator']=ready
+        self.proof.write_text(json.dumps(proof));self.write_game_start_proof();runner=OwnDeviceRunner(disconnected=True)
+        self.assertIn('unreachable',self.run_fixture(runner,preflight_only=True)['status'])
+        self.assertEqual([c[0]for c in runner.calls],['device-inventory'])
+
+    def test_compiled_game_start_adapter_rejects_absent_or_invalid_self_test_before_device_access(self):
+        self.enable_game_start_adapter();runner=OwnDeviceRunner()
+        with self.assertRaisesRegex(M.Rejected,'game_start_iterator_self_test_missing'):self.run_fixture(runner)
+        self.assertEqual(runner.calls,[]);self.assertEqual(self.verified,[])
+        path=self.proof.with_name('EHRGameStartIteratorProof.json')
+        for content in ('{', '[]', '{}', 'null'):
+            path.write_text(content);runner=OwnDeviceRunner()
+            with self.subTest(content=content),self.assertRaisesRegex(M.Rejected,'game_start_iterator_self_test'):
+                self.run_fixture(runner)
+            self.assertEqual(runner.calls,[]);self.assertEqual(self.verified,[])
+
+    def test_compiled_game_start_adapter_rejects_failed_incomplete_or_actionful_probe(self):
+        self.enable_game_start_adapter()
+        cases=[{'schema':'own.unrelated-proof'}, {'success':False}, {'status':6}, {'status':False}, {'stage':1},
+               {'checks':45}, {'checks':True}, {'factorySeamCalls':5}, {'cancelCallsAfter':1},
+               {'rootAccountingBalanced':False}, {'fixtureNullOwner':False}]
+        for flag in ('realGameOwnerInvoked','originalMoveNextInvoked','realHostFactoryInvoked',
+                     'unityObjectCreated','runtimeExecutableWrites'):
+            cases.extend(({flag:True},{flag:None}))
+        for values in cases:
+            self.write_game_start_proof(**values);runner=OwnDeviceRunner()
+            with self.subTest(values=values),self.assertRaisesRegex(M.Rejected,'game_start_iterator_self_test'):
+                self.run_fixture(runner)
+            self.assertEqual(runner.calls,[]);self.assertEqual(self.verified,[])
+
+    def test_compiled_game_start_adapter_verifies_actual_root_and_deferred_counts(self):
+        self.enable_game_start_adapter()
+        for values in ({'rootsAfter':13}, {'rootsBefore':None}, {'deferredReleasedAfter':99},
+                       {'deferredEnqueuedAfter':99}, {'deferredDequeuedAfter':99},
+                       {'deferredReleasedAfter':101}, {'rootsAfter':'12'}, {'rootsBefore':-1}):
+            self.write_game_start_proof(**values);runner=OwnDeviceRunner()
+            with self.subTest(values=values),self.assertRaisesRegex(M.Rejected,'game_start_iterator_self_test'):
+                self.run_fixture(runner)
+            self.assertEqual(runner.calls,[]);self.assertEqual(self.verified,[])
+        self.write_game_start_proof(rootsAfter=10,deferredReleasedAfter=102,
+                                   deferredDequeuedAfter=102,deferredEnqueuedAfter=102)
+        runner=OwnDeviceRunner(disconnected=True)
+        self.assertIn('unreachable',self.run_fixture(runner,preflight_only=True)['status'])
+        self.assertEqual([c[0]for c in runner.calls],['device-inventory'])
 
     def test_failed_or_non_full_startup_and_wrong_paid_team_are_rejected(self):
         before=self.proof.read_text();proof=json.loads(before)

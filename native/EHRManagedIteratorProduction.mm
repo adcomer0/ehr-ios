@@ -258,6 +258,14 @@ extern "C" void EHRManagedIteratorProductionMakeTable(EHRManagedIteratorProducti
     [](EHRProductionIteratorStatusV1*s,size_t b)->int32_t{return contained([&]{return copyStatus(s,b);});}};}
 extern "C" EHRRuntimeStatus EHRManagedIteratorProductionFailClosed(EHRProductionIteratorFailureV1 *output,size_t bytes){return static_cast<EHRRuntimeStatus>(ehr_production_iterators::contained([&]{return ehr_production_iterators::failureCloseAll(output,bytes);}));}
 bool EHRProductionIteratorOwnsIdentity(void *identity){return ehr_production_iterators::ownedIdentity(identity);}
+bool EHRProductionIteratorHasActiveIdentity(void *identity){using namespace ehr_production_iterators;
+    if(!NSThread.isMainThread||!identity)return false;
+    auto&s=state();std::lock_guard<std::mutex>lock(s.mutex);auto found=s.identities.find(identity);
+    if(s.failureSealed||found==s.identities.end()||!found->second)return false;
+    const auto&e=*found->second;auto registration=s.entries.find(e.registration);
+    return registration!=s.entries.end()&&registration->second==found->second&&e.identity==identity&&e.weak&&
+        !e.terminal&&!e.sourceClosed&&!e.failureRetire&&!e.cancelRequested&&!e.executing;
+}
 bool EHRProductionIteratorMoveNext(void *identity,bool *result){using namespace ehr_production_iterators;if(!result)abort();*result=false;
     if(!NSThread.isMainThread){if(!ownedIdentity(identity))return false;++state().rejectedThreads;return true;}
     Lease pin;auto e=routed(identity,pin);if(!e)return terminalIdentity(identity);if(e->executing){e->cancelRequested=true;EHRRuntimeIteratorRaise(EHR_RUNTIME_BAD_ARGUMENT);}if(e->terminal)return true;

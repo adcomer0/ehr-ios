@@ -2,7 +2,7 @@
 
 Modified iOS/AOT source snapshot, 2026-10-28. See [provenance and modification notice](../NOTICE.md).
 
-`compiled/<index>/<filename>.cs` contains the 796 exact C# files selected for development build 48. The numeric index disambiguates names and preserves compile ordering. `manifest.json` pins their bytes and the public NuGet package versions; it contains no absolute machine paths. Build 47 remains the physical failure baseline until a new phone test is recorded.
+`compiled/<index>/<filename>.cs` contains the 796 exact C# files selected for development build 48 and reused unchanged in native build 49. The numeric index disambiguates names and preserves compile ordering. `manifest.json` pins their bytes and the public NuGet package versions; it contains no absolute machine paths. See [the current validation](../docs/BUILD49_VALIDATION.md) for the physical baseline and remaining limits.
 
 The 224 resources are catalogued by pinned upstream path, logical name and SHA256. Resource bytes are not included. `tools/materialize_source_snapshot.py` verifies the upstream Git revision, contained tracked resource paths and every source/resource hash, then writes a local absolute-path manifest outside Git. That manifest is accepted by the existing NativeAOT builder.
 

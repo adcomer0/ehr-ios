@@ -8,18 +8,19 @@ EHR's C# source is compiled ahead of time with **.NET NativeAOT** into an ARM64 
 
 There is no BepInEx Unity/IL2CPP plugin loader running on the phone and no embedded .NET JIT. Some BepInEx Core configuration/logging APIs and Harmony-compatible source descriptors remain as compile-time/AOT dependencies. This is not a Windows DLL copied into an iOS app. See [the architecture](docs/ARCHITECTURE.md) for the ABI, ownership, coroutine, hook and loader details.
 
-## Current state: build-48 development, physical baseline 47
+## Current state: native build 49, physical baseline 48
 
 - The full selected EHR source compiles for `ios-arm64`: 796 C# inputs; the 224 resource names/hashes are catalogued separately.
 - Signed startup on an Apple Silicon Mac loads EHR once, initializes 5,049 options and activates 292 permitted bindings from 298 metadata targets. Six account/consent-related patches are deliberately excluded.
 - A physical iPhone can open an Online lobby and configure settings. Starting a game remains unreliable; end-to-end gameplay and vanilla-peer compatibility have not been validated.
-- The device diagnostic caught the native coroutine registry reaching its 256-entry limit with 255 terminal entries retained. Apple authorization is separately followed by EOS result 7000; successful account sign-in is unverified.
-- Build 48 retires completed coroutine slots, adds generation-guarded settings cleanup and records bounded numeric failure origins. A default-off, explicitly enabled development guard can route the observed automatic sign-in retry to the game's original failure UI. These changes still need phone reproduction; backend authentication remains unresolved.
+- Build 48's phone diagnostic showed immediate retirement of completed coroutine slots, two active entries and no recorded callback failures during the black screen. The earlier 256-entry exhaustion did not recur in that reproduction.
+- The pinned native game inlines host-start iterator construction, bypassing EHR's patched host factory. Build 49 adapts the exact native yield through the existing EHR factory and callbacks. Signed runtime tests pass; real-owner game start still needs phone verification.
+- Apple authorization is followed by EOS result 7000. The explicitly enabled development retry guard stopped the repeated sheets during the phone test, but successful backend authentication remains unresolved.
 - UIKit touch controls, mobile input, audio, static source components and bounded numeric diagnostics are implemented. Compiled role source is not evidence that every role works in play.
 
 Read [known failures and evidence](docs/KNOWN_ISSUES.md). No protection against bans or account/progression loss is established. Use a disposable test identity; keep valuable accounts outside testing.
 
-Build 48 passed signed iOS-on-Mac startup and the real-runtime 1,024-retained-carrier check, plus touch/audio/cleanup probes. See [the validation scope](docs/BUILD48_VALIDATION.md); physical game-start reproduction is still pending.
+Build 49 passed signed iOS-on-Mac startup, its owned native game-start adapter probe and the real-runtime 1,024-retained-carrier check, plus touch/audio/cleanup probes. See [the validation scope](docs/BUILD49_VALIDATION.md). These probes do not run a real lobby or establish playable rounds.
 
 ## Repository contents
 

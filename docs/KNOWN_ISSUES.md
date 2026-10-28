@@ -1,6 +1,6 @@
-# Known issues and build-48 work
+# Known issues and build-49 work
 
-This snapshot is incomplete. Physical build 47 reached Online lobby hosting and mod settings, encountered lag, then a black screen after Start → Start Immediately. Build 48 contains the fixes and additional diagnostics below; their presence is not evidence that those symptoms are resolved. Full rounds, victory/meeting transitions, every role and vanilla-peer combinations remain unverified.
+This snapshot is incomplete. Physical build 48 reached Online lobby hosting and mod settings, then a black screen after starting the game. Build 49 contains the native game-start adaptation below and has passed signed runtime probes, but is awaiting phone verification. Full rounds, victory/meeting transitions, every role and vanilla-peer combinations remain unverified.
 
 ## Confirmed native coroutine capacity pressure
 
@@ -8,15 +8,25 @@ The bounded numeric diagnostic recorded category 18 at count/limit 256, usually 
 
 The options sender creates short-lived helper iterators continuously. Build 47 kept completed carrier identities as weak tombstones until collection. Build 48 retires their registry slots immediately after publishing a private terminal marker in the exact validated carrier's existing field. The active limit stays 256, and failed publication retains the safe bounded fallback. Owned stress fixtures retain 1,024 completed carriers beside one active carrier without filling the registry. See [terminal retirement](ITERATOR_RETIREMENT.md) for the runtime validation and evidence limits. This capacity pressure is confirmed; it does not explain every possible black-screen path.
 
-## Game-start native exception
+In the build-48 phone reproduction, 2,941 carriers had been created and 2,939 closed and retired, leaving two active entries and no retained terminal entries. No callback failures or capacity guards were recorded. The black screen persisted through a different game-start path.
 
-`GameStartManager.Start` recorded one dispatched failure with retained native exception and original participation. That route has map-icon callbacks and a start callback. The evidence does not yet identify which original/nested operation produced the exception. Build 48 adds bounded numeric source callback/stage and native method/exception metadata diagnostics while preserving the original exception and call behavior. See [sanitized route facts](RUNTIME_BUG_FACTS_47.md) and [failure diagnostics](NATIVE_PATCH_FAILURE_DIAGNOSTICS.md).
+## Native host-start factory bypass
+
+The phone trace recorded `CoStartGame` and ship initialization, but no `CoStartGameHost` factory route or intro. Inspection of the pinned native parent `MoveNext` confirms it directly constructs the host iterator at its host yields, bypassing the patched method entry. The EHR host-start replacement therefore never runs at that boundary.
+
+Build 49 adds an optional native adapter after the original parent `MoveNext`. It recognizes only the exact host yield, checks matching owners and untouched state, invokes the existing patched host factory once, then publishes an active production iterator through the public reference-field API. Activation, owners and iterator fields are checked again before commit. Other yields remain unchanged. See [the adapter](IOS_GAME_START_ITERATOR.md) and [build-49 validation](BUILD49_VALIDATION.md).
+
+The adapter passed synthetic owner/reentrancy cases and an owned probe in the actual signed runtime. That probe deliberately avoids real game owners and scene/network operations. It establishes native metadata, field access, replacement and cleanup behavior; it does not prove that the physical game-start black screen is resolved.
+
+## Earlier game-start native exception
+
+Build 47's `GameStartManager.Start` recorded one dispatched failure with retained native exception and original participation. That route has map-icon callbacks and a start callback. The evidence does not identify which original/nested operation produced the exception. Build 48 adds bounded numeric source callback/stage and native method/exception metadata diagnostics while preserving the original exception and call behavior. The build-48 phone reproduction recorded a successful `GameStartManager.Start` and no failure details. See [sanitized route facts](RUNTIME_BUG_FACTS_47.md) and [failure diagnostics](NATIVE_PATCH_FAILURE_DIAGNOSTICS.md).
 
 ## Apple/EOS authentication
 
 Apple authorization callbacks can complete, but the original EOS platform login returned 7000 (`EOS_Connect_ExternalTokenValidationFailed`). This proves token validation failed, not a particular audience/expiry/provider cause. The original game then automatically retries platform sign-in, producing repeated Apple sheets. Successful account authentication and progression safety are unverified.
 
-No token contents were read, no success was fabricated and no online/account permission checks were removed. This snapshot includes a default-disabled retry-failure guard. A development build can explicitly opt in after exact runtime metadata preparation succeeds. It routes one synchronous same-owner automatic retry after normal result 7000 to the original native failure handler. Metadata preparation has passed against the actual runtime without sign-in; live failure-UI behavior remains unverified. It does not make the backend accept a token. See [the guard](AUTH_RETRY_GUARD.md). Use disposable test identities; valuable accounts remain outside testing.
+No token contents were read, no success was fabricated and no online/account permission checks were removed. This snapshot includes a default-disabled retry-failure guard. A development build can explicitly opt in after exact runtime metadata preparation succeeds. It routes one synchronous same-owner automatic retry after normal result 7000 to the original native failure handler. In the build-48 phone test, the Apple sheet stopped repeating after one attempt; diagnostics still recorded one Apple success followed by one EOS 7000 result. The guard does not make the backend accept a token. See [the guard](AUTH_RETRY_GUARD.md). Use disposable test identities; valuable accounts remain outside testing.
 
 ## Other boundaries
 

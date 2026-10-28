@@ -72,6 +72,42 @@ def verify_candidate(candidate, udid, runtime, verifier, *, team_id, bundle_id, 
     return result
 
 
+def validate_game_start_iterator_proof(attachments):
+    path = attachments / "EHRGameStartIteratorProof.json"
+    require(path.is_file() and not path.is_symlink()
+            and path.resolve().parent == attachments.resolve(), "game_start_iterator_self_test_missing")
+    try:
+        proof = json.loads(path.read_text())
+    except (OSError, UnicodeError, ValueError) as error:
+        raise Rejected("game_start_iterator_self_test_invalid") from error
+    require(isinstance(proof, dict), "game_start_iterator_self_test_invalid")
+    require(proof.get("schema") == "ehr.game-start-iterator-proof.v1"
+            and proof.get("success") is True and type(proof.get("status")) is int
+            and proof["status"] == 0 and type(proof.get("stage")) is int and proof["stage"] == 0
+            and proof.get("rootAccountingBalanced") is True
+            and proof.get("fixtureNullOwner") is True
+            and all(proof.get(key) is False for key in (
+                "realGameOwnerInvoked", "originalMoveNextInvoked", "realHostFactoryInvoked",
+                "unityObjectCreated", "runtimeExecutableWrites")), "game_start_iterator_self_test_not_passed")
+    counts = ("checks", "factorySeamCalls", "cancelCallsBefore", "cancelCallsAfter", "rootsBefore", "rootsAfter",
+              "deferredReleasedBefore", "deferredReleasedAfter", "deferredEnqueuedBefore", "deferredEnqueuedAfter",
+              "deferredDequeuedBefore", "deferredDequeuedAfter")
+    require(all(type(proof.get(key)) is int and 0 <= proof[key] <= (1 << 64) - 1 for key in counts),
+            "game_start_iterator_self_test_counts_invalid")
+    require(46 <= proof["checks"] <= (1 << 32) - 1 and proof["factorySeamCalls"] == 6
+            and proof["cancelCallsAfter"] == proof["cancelCallsBefore"] + 1,
+            "game_start_iterator_self_test_counts_invalid")
+    # Deferred finalizer releases can reduce the baseline while the own probe
+    # runs. Match the native test's accounting rather than requiring raw totals
+    # equal or trusting its success flag alone.
+    require(all(proof["deferred" + name + "After"] >= proof["deferred" + name + "Before"]
+                for name in ("Released", "Enqueued", "Dequeued"))
+            and all(proof["deferredReleased" + side] <= proof["deferredDequeued" + side]
+                    <= proof["deferredEnqueued" + side] for side in ("Before", "After"))
+            and proof["rootsAfter"] + proof["deferredReleasedAfter"] - proof["deferredReleasedBefore"]
+                    == proof["rootsBefore"], "game_start_iterator_self_test_root_accounting_invalid")
+
+
 def validate_mac_proof(candidate, summary_path, runtime, *, team_id, bundle_id):
     candidate, summary_path = candidate.resolve(), summary_path.resolve()
     require(outside_git(candidate) and outside_git(summary_path), "artifact_input_inside_git")
@@ -122,6 +158,11 @@ def validate_mac_proof(candidate, summary_path, runtime, *, team_id, bundle_id):
                 and guard.get("startupRequested") is True and guard.get("preparedStatus") == 0
                 and guard.get("startupPrepareStatus") == 0 and guard.get("startupEnableStatus") == 0
                 and guard.get("enabled") is True, "auth_retry_guard_startup_not_ready")
+    if info.get("EHRGameStartIteratorCompiled"):
+        adapter = status.get("gameStartIterator", {})
+        require(isinstance(adapter, dict) and adapter.get("preparedStatus") == 0
+                and adapter.get("enabled") is True, "game_start_iterator_startup_not_ready")
+        validate_game_start_iterator_proof(attachments)
     require(version_proof.get("success") is True and version_proof.get("status") == 0
             and version_proof.get("value") == info.get("EHRReferenceGameVersion")
             == info.get("CFBundleShortVersionString") == version_proof.get("expected")
