@@ -1,0 +1,13 @@
+{
+  "schema": "ehr.native-hook-contracts.v1",
+  "methods": {
+    "Constants.IsVersionModded": {
+      "declaring_type": "Constants",
+      "name": "IsVersionModded",
+      "return": "System.Boolean",
+      "parameters": [],
+      "static": true,
+      "symbol": "_ehr_native_is_version_modded_hook"
+    }
+  }
+}

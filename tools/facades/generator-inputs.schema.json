@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "EHR facade generator input pins",
+  "type": "object",
+  "required": ["formatVersion", "upstreamCommit", "inputs"],
+  "properties": {
+    "formatVersion": {"const": 1},
+    "upstreamCommit": {"const": "ce23f0d050f617a59507e5bb0fbfff751d4b5134"},
+    "inputs": {
+      "type": "object",
+      "required": ["references", "nativeDefinitions"],
+      "additionalProperties": false,
+      "properties": {
+        "references": {"$ref": "#/$defs/pin"},
+        "nativeDefinitions": {"$ref": "#/$defs/pin"},
+        "sourceProfile": {"$ref": "#/$defs/pin"},
+        "selectors": {"$ref": "#/$defs/pin"}
+      }
+    }
+  },
+  "$defs": {"pin": {"type":"object", "required":["sha256"],"properties":{"sha256":{"type":"string","pattern":"^[0-9a-f]{64}$"}},"additionalProperties":false}}
+}

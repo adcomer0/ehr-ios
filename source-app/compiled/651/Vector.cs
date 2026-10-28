@@ -1,0 +1,91 @@
+﻿using System.Collections.Generic;
+using System.Linq;
+using AmongUs.GameOptions;
+using EHR.Modules;
+using Hazel;
+using UnityEngine;
+using static EHR.Options;
+
+namespace EHR.Roles;
+
+internal class Vector : RoleBase
+{
+    public static Dictionary<byte, int> VectorVentCount = [];
+
+    public static bool On;
+
+    private static OptionItem VectorVentCD;
+
+    private static Dictionary<MapNames, OptionItem> MapWinCounts = [];
+    private static int VectorVentNumWin;
+    
+    public override bool IsEnable => On;
+
+    public override void SetupCustomOption()
+    {
+        SetupRoleOptions(18300, TabGroup.NeutralRoles, CustomRoles.Vector);
+
+        VectorVentCD = new FloatOptionItem(18311, "VentCooldown", new(0f, 180f, 1f), 0f, TabGroup.NeutralRoles)
+            .SetParent(CustomRoleSpawnChances[CustomRoles.Vector])
+            .SetValueFormat(OptionFormat.Seconds);
+
+        MapWinCounts = Main.MapNamesValues.ToDictionary(x => x, x => new IntegerOptionItem(18312 + (int)x, $"Vector.NumVentsToWinOn.{x}", new(0, 900, 5), 80, TabGroup.NeutralRoles)
+            .SetParent(CustomRoleSpawnChances[CustomRoles.Vector])
+            .SetValueFormat(OptionFormat.Times));
+    }
+
+    public override void Add(byte playerId)
+    {
+        On = true;
+        if (!AmongUsClient.Instance.AmHost) return;
+        VectorVentNumWin = MapWinCounts[SubmergedCompatibility.IsSubmerged() || Main.LIMap ? MapNames.Airship : Main.CurrentMap].GetInt();
+        LateTask.New(() => Utils.SendRPC(CustomRPC.SyncRoleData, playerId, VectorVentNumWin), 8f);
+    }
+
+    public override void Init()
+    {
+        On = false;
+    }
+
+    public override void ApplyGameOptions(IGameOptions opt, byte playerId)
+    {
+        AURoleOptions.EngineerCooldown = VectorVentCD.GetFloat();
+        AURoleOptions.EngineerInVentMaxTime = 1f;
+    }
+
+    public override void GetProgressText(byte playerId, bool comms, StringBuilder resultText)
+    {
+        int count = VectorVentCount.GetValueOrDefault(playerId, 0);
+        resultText.Append(Utils.ColorPrefix(Color.white))
+            .Append("<color=#777777>-</color> ")
+            .Append(count)
+            .Append('/')
+            .Append(VectorVentNumWin)
+            .Append("</color>");
+    }
+
+    public override void SetButtonTexts(HudManager hud, byte id)
+    {
+        hud.AbilityButton.buttonLabelText.text = Translator.GetString("VectorVentButtonText");
+    }
+
+    public override void OnEnterVent(PlayerControl pc, Vent vent) // called as non-host modded client too!
+    {
+        VectorVentCount.TryAdd(pc.PlayerId, 0);
+        VectorVentCount[pc.PlayerId]++;
+        if (!pc.IsModdedClient()) Utils.NotifyRoles(SpecifySeer: pc, SpecifyTarget: pc, SendOption: SendOption.None);
+        if (pc.AmOwner) CustomSoundsManager.Play("MarioJump");
+
+        if (AmongUsClient.Instance.AmHost && VectorVentCount[pc.PlayerId] >= VectorVentNumWin)
+        {
+            pc.RPCPlayCustomSound("MarioCoin");
+            CustomWinnerHolder.SetWinnerOrAdditonalWinner(CustomWinner.Vector);
+            CustomWinnerHolder.WinnerIds.Add(pc.PlayerId);
+        }
+    }
+
+    public void ReceiveRPC(MessageReader reader)
+    {
+        VectorVentNumWin = reader.ReadPackedInt32();
+    }
+}

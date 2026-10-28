@@ -1,0 +1,315 @@
+using System;
+using HarmonyLib;
+using TMPro;
+using UnityEngine;
+using Priority = HarmonyLib.Priority;
+#if IL2CPP
+using BepInEx.Unity.IL2CPP;
+#else
+using BepInEx.Bootstrap;
+#endif
+
+namespace EHR;
+
+[HarmonyPatch]
+public static class MainMenuManagerPatch
+{
+    public static PassiveButton Template;
+    public static PassiveButton UpdateButton;
+    private static PassiveButton GitHubButton;
+    private static PassiveButton DiscordButton;
+    private static PassiveButton WebsiteButton;
+
+    private static bool IsOnline;
+    public static bool ShowedBak;
+    private static bool ShowingPanel;
+    private static SpriteRenderer MgLogo;
+    private static MainMenuManager Instance { get; set; }
+
+    [HarmonyPatch(typeof(MainMenuManager), "OpenGameModeMenu")]
+    [HarmonyPatch(typeof(MainMenuManager), "OpenAccountMenu")]
+    [HarmonyPatch(typeof(MainMenuManager), "OpenCredits")]
+    [HarmonyPrefix]
+    [HarmonyPriority(Priority.Last)]
+    public static void ShowRightPanel()
+    {
+        ShowingPanel = true;
+    }
+
+    [HarmonyPatch(typeof(MainMenuManager), "Start")]
+    [HarmonyPatch(typeof(OptionsMenuBehaviour), "Open")]
+    [HarmonyPatch(typeof(AnnouncementPopUp), "Show")]
+    [HarmonyPrefix]
+    [HarmonyPriority(Priority.Last)]
+    public static void HideRightPanel()
+    {
+        ShowingPanel = false;
+        AccountManager.Instance?.transform.Find("AccountTab/AccountWindow")?.gameObject.SetActive(false);
+    }
+
+    public static void ShowRightPanelImmediately()
+    {
+        ShowingPanel = true;
+        TitleLogoPatch.RightPanel.transform.localPosition = TitleLogoPatch.RightPanelOp;
+        Instance.OpenGameModeMenu();
+        Instance.playButton.OnClick.AddListener(ShowRightPanelImmediately);
+    }
+
+    [HarmonyPatch(typeof(SignInStatusComponent), "SetOnline")]
+    [HarmonyPostfix]
+    public static void SetOnline_Postfix()
+    {
+        LateTask.New(() => { IsOnline = true; }, 0.1f, "Set Online Status");
+    }
+
+    [HarmonyPatch(typeof(MainMenuManager), "Start")]
+    [HarmonyPrefix]
+    public static void Start_Prefix(MainMenuManager __instance)
+    {
+        if (!Template) Template = __instance.quitButton;
+
+        if (!Template) return;
+
+        if (!UpdateButton)
+        {
+            UpdateButton = CreateButton(
+                "updateButton",
+                new(4.2f, -1.3f, 1f),
+                new(255, 165, 0, byte.MaxValue),
+                new(255, 200, 0, byte.MaxValue),
+                () => ModUpdater.StartUpdate(ModUpdater.DownloadUrl),
+                Translator.GetString("updateButton"));
+
+            UpdateButton.transform.localScale = Vector3.one;
+        }
+
+        UpdateButton.gameObject.SetActive(ModUpdater.HasUpdate);
+
+        Application.targetFrameRate = Main.UnlockFps.Value ? 120 : 60;
+    }
+
+    [HarmonyPatch(typeof(MainMenuManager), "LateUpdate")]
+    [HarmonyPostfix]
+    public static void MainMenuManager_LateUpdate(MainMenuManager __instance)
+    {
+        if (!GameObject.Find("MainUI")) ShowingPanel = false;
+
+        if (TitleLogoPatch.RightPanel)
+        {
+            Vector3 pos1 = TitleLogoPatch.RightPanel.transform.localPosition;
+            Vector3 lerp1 = Vector3.Lerp(pos1, TitleLogoPatch.RightPanelOp + new Vector3(ShowingPanel ? 0f : 10f, 0f, 0f), Time.deltaTime * (ShowingPanel ? 3f : 2f));
+
+            if (ShowingPanel
+                    ? TitleLogoPatch.RightPanel.transform.localPosition.x > TitleLogoPatch.RightPanelOp.x + 0.03f
+                    : TitleLogoPatch.RightPanel.transform.localPosition.x < TitleLogoPatch.RightPanelOp.x + 9f
+                )
+                TitleLogoPatch.RightPanel.transform.localPosition = lerp1;
+        }
+
+        if (ShowedBak || !IsOnline) return;
+
+        GameObject bak = GameObject.Find("BackgroundTexture");
+        if (!bak || !bak.activeSelf) return;
+
+        Vector3 pos2 = bak.transform.position;
+        Vector3 lerp2 = Vector3.Lerp(pos2, new(pos2.x, 7.1f, pos2.z), Time.deltaTime * 1.4f);
+        bak.transform.position = lerp2;
+        if (pos2.y > 7f) ShowedBak = true;
+    }
+
+    [HarmonyPatch(typeof(MainMenuManager), "Start")]
+    [HarmonyPostfix]
+    [HarmonyPriority(Priority.VeryHigh)]
+    public static void Start_Postfix(MainMenuManager __instance)
+    {
+        Instance = __instance;
+        
+        SimpleButton.SetBase(__instance.creditsButton);
+        var logoObject = new GameObject("titleLogo_MG");
+        Transform logoTransform = logoObject.transform;
+        MgLogo = logoObject.AddComponent<SpriteRenderer>();
+        logoTransform.localPosition = new(2f, -0.5f, 1f);
+        logoTransform.localScale *= 1.2f;
+        MgLogo.sprite = Utils.LoadSprite("EHR.Resources.Images.EHR-Icon.png", 400f);
+
+        // GitHub Button
+        if (!GitHubButton)
+        {
+            GitHubButton = CreateButton(
+                "GitHubButton",
+                new(-2.3f, -1.3f, 1f),
+                new(153, 153, 153, byte.MaxValue),
+                new(209, 209, 209, byte.MaxValue),
+                () => Constants.OpenURL("https://github.com/Gurge44/EndlessHostRoles"),
+                Translator.GetString("GitHub")); //"GitHub"
+        }
+
+        GitHubButton.gameObject.SetActive(true);
+
+        // Discord Button
+        if (!DiscordButton)
+        {
+            DiscordButton = CreateButton(
+                "DiscordButton",
+                new(-0.5f, -1.3f, 1f),
+                new(88, 101, 242, byte.MaxValue),
+                new(148, 161, 255, byte.MaxValue),
+                () => Constants.OpenURL("https://discord.com/invite/m3ayxfumC8"),
+                Translator.GetString("Discord")); //"Discord"
+        }
+
+        DiscordButton.gameObject.SetActive(true);
+
+        // Website Button
+        if (!WebsiteButton)
+        {
+            WebsiteButton = CreateButton(
+                "WebsiteButton",
+                new(1.3f, -1.3f, 1f),
+                new(251, 81, 44, byte.MaxValue),
+                new(211, 77, 48, byte.MaxValue),
+                () => Constants.OpenURL("https://app.gurge44.eu"),
+                Translator.GetString("Website")); //"Website"
+        }
+
+        WebsiteButton.gameObject.SetActive(true);
+
+        Application.targetFrameRate = Main.UnlockFps.Value ? 120 : 60;
+
+        foreach (string buttonName in new[] { "SettingsButton", "Inventory Button", "CreditsButton", "ExitGameButton" })
+        {
+#if IL2CPP
+            if (buttonName == "Inventory Button" && IL2CPPChainloader.Instance.Plugins.ContainsKey("com.DigiWorm.LevelImposter")) continue;
+#else
+            if (buttonName == "Inventory Button" && Chainloader.PluginInfos.ContainsKey("com.DigiWorm.LevelImposter")) continue;
+#endif
+            var go = GameObject.Find(buttonName);
+            if (!go) continue;
+            var buttonText = go.GetComponentInChildren<TMP_Text>();
+            if (!buttonText) continue;
+            buttonText.DestroyTranslator();
+            buttonText.text = Translator.GetString($"MainMenu.{buttonName.Replace(" ", "")}");
+        }
+
+        __instance.PlayOnlineButton.OnClick.AddListener(() =>
+        {
+            GameOptionsManager.Instance.Initialize();
+            
+            if (GameOptionsManager.Instance.normalGameHostOptions.MapId == 3 || GameOptionsManager.Instance.normalGameHostOptions.MapId > 5 && !SubmergedCompatibility.Loaded)
+            {
+                GameOptionsManager.Instance.normalGameHostOptions.MapId = 0;
+                GameOptionsManager.Instance.SaveNormalHostOptions();
+            }
+        });
+    }
+
+    private static PassiveButton CreateButton(string name, Vector3 localPosition, Color32 normalColor, Color32 hoverColor, Action action, string label, Vector2? scale = null)
+    {
+        PassiveButton button = Object.Instantiate(Template, Template.transform.parent);
+        button.name = name;
+        Object.Destroy(button.GetComponent<AspectPosition>());
+        button.transform.localPosition = localPosition;
+
+        button.OnClick = new();
+        button.OnClick.AddListener(() => action());
+
+        var buttonText = button.transform.Find("FontPlacer/Text_TMP").GetComponent<TMP_Text>();
+        buttonText.DestroyTranslator();
+        buttonText.fontSize = buttonText.fontSizeMax = buttonText.fontSizeMin = 3.5f;
+        buttonText.enableWordWrapping = false;
+        buttonText.text = label;
+        var normalSprite = button.inactiveSprites.GetComponent<SpriteRenderer>();
+        var hoverSprite = button.activeSprites.GetComponent<SpriteRenderer>();
+        normalSprite.color = normalColor;
+        hoverSprite.color = hoverColor;
+
+        Transform container = buttonText.transform.parent;
+        Object.Destroy(container.GetComponent<AspectPosition>());
+        Object.Destroy(buttonText.GetComponent<AspectPosition>());
+        container.SetLocalX(0f);
+        buttonText.transform.SetLocalX(0f);
+        buttonText.horizontalAlignment = HorizontalAlignmentOptions.Center;
+
+        var buttonCollider = button.GetComponent<BoxCollider2D>();
+        if (scale.HasValue) normalSprite.size = hoverSprite.size = buttonCollider.size = scale.Value;
+
+        buttonCollider.offset = new(0f, 0f);
+
+        return button;
+    }
+
+    internal static void __EHRStaticCallback_183(global::EHR.EHRStaticPatchFrame __ehrFrame)
+    {
+        try
+        {
+            ShowRightPanel();
+        }
+        finally
+        {
+        }
+    }
+
+
+    internal static void __EHRStaticCallback_184(global::EHR.EHRStaticPatchFrame __ehrFrame)
+    {
+        try
+        {
+            HideRightPanel();
+        }
+        finally
+        {
+        }
+    }
+
+
+    internal static void __EHRStaticCallback_185(global::EHR.EHRStaticPatchFrame __ehrFrame)
+    {
+        try
+        {
+            SetOnline_Postfix();
+        }
+        finally
+        {
+        }
+    }
+
+
+    internal static void __EHRStaticCallback_186(global::EHR.EHRStaticPatchFrame __ehrFrame)
+    {
+        MainMenuManager __ehrp0 = __ehrFrame.GetInstance<MainMenuManager>();
+        try
+        {
+            Start_Prefix(__ehrp0);
+        }
+        finally
+        {
+        }
+    }
+
+
+    internal static void __EHRStaticCallback_187(global::EHR.EHRStaticPatchFrame __ehrFrame)
+    {
+        MainMenuManager __ehrp0 = __ehrFrame.GetInstance<MainMenuManager>();
+        try
+        {
+            MainMenuManager_LateUpdate(__ehrp0);
+        }
+        finally
+        {
+        }
+    }
+
+
+    internal static void __EHRStaticCallback_188(global::EHR.EHRStaticPatchFrame __ehrFrame)
+    {
+        MainMenuManager __ehrp0 = __ehrFrame.GetInstance<MainMenuManager>();
+        try
+        {
+            Start_Postfix(__ehrp0);
+        }
+        finally
+        {
+        }
+    }
+
+}

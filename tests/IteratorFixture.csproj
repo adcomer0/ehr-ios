@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework><AssemblyName>EHRIteratorFixture</AssemblyName>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks><Nullable>enable</Nullable><LangVersion>preview</LangVersion>
+    <PublishAot>true</PublishAot><NativeLib>Shared</NativeLib><PublishAotUsingRuntimePack>true</PublishAotUsingRuntimePack>
+    <IsAotCompatible>true</IsAotCompatible><InvariantGlobalization>true</InvariantGlobalization>
+    <DisableRuntimeMarshalling>true</DisableRuntimeMarshalling><TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <IteratorSourcePath Condition="'$(IteratorSourcePath)' == '' and Exists('../managed/IteratorRuntime.cs')">../managed/IteratorRuntime.cs</IteratorSourcePath>
+    <IteratorSourcePath Condition="'$(IteratorSourcePath)' == ''">../managed/SourceReuse/Facades/IteratorRuntime.cs</IteratorSourcePath>
+    <FacadeSourcePath Condition="'$(FacadeSourcePath)' == '' and Exists('../DependencySnapshot/FacadeRuntime.cs')">../DependencySnapshot/FacadeRuntime.cs</FacadeSourcePath>
+    <FacadeSourcePath Condition="'$(FacadeSourcePath)' == ''">../managed/SourceReuse/Facades/FacadeRuntime.cs</FacadeSourcePath>
+    <LifetimeSourcePath Condition="'$(LifetimeSourcePath)' == '' and Exists('../DependencySnapshot/NativeLifetime.cs')">../DependencySnapshot/NativeLifetime.cs</LifetimeSourcePath>
+    <LifetimeSourcePath Condition="'$(LifetimeSourcePath)' == ''">../managed/SourceReuse/Facades/NativeLifetime.cs</LifetimeSourcePath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(IteratorSourcePath)" />
+    <Compile Include="$(FacadeSourcePath)" />
+    <Compile Include="$(LifetimeSourcePath)" />
+    <Compile Include="IteratorUnavailableFixtureSurface.cs" />
+  </ItemGroup>
+</Project>

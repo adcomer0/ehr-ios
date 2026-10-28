@@ -1,0 +1,213 @@
+﻿using System;
+using System.Collections.Generic;
+using AmongUs.GameOptions;
+using EHR.Modules;
+using EHR.Modules.Extensions;
+using Hazel;
+using static EHR.Options;
+using static EHR.Translator;
+using static EHR.Utils;
+
+namespace EHR.Roles;
+
+public class Druid : RoleBase
+{
+    private const int Id = 642800;
+    private static bool On;
+
+    public static OptionItem VentCooldown;
+    private static OptionItem TriggerPlaceDelay;
+    private static OptionItem UseLimitOpt;
+    public static OptionItem DruidAbilityUseGainWithEachTaskCompleted;
+    public static OptionItem AbilityChargesWhenFinishedTasks;
+
+    private PlayerControl DruidPC;
+    private CountdownTimer DelayTimer;
+    private Dictionary<Vector2, int> TriggerIds = [];
+    private Dictionary<Vector2, string> Triggers = [];
+
+    private readonly StringBuilder Suffix = new();
+    private readonly StringBuilder HudText = new();
+    public override bool IsEnable => On;
+
+    public override void SetupCustomOption()
+    {
+        SetupRoleOptions(Id, TabGroup.CrewmateRoles, CustomRoles.Druid);
+
+        VentCooldown = new IntegerOptionItem(Id + 10, "VentCooldown", new(0, 60, 1), 15, TabGroup.CrewmateRoles)
+            .SetParent(CustomRoleSpawnChances[CustomRoles.Druid])
+            .SetValueFormat(OptionFormat.Seconds);
+
+        TriggerPlaceDelay = new IntegerOptionItem(Id + 11, "DruidTriggerPlaceDelayOpt", new(1, 20, 1), 7, TabGroup.CrewmateRoles)
+            .SetParent(CustomRoleSpawnChances[CustomRoles.Druid])
+            .SetValueFormat(OptionFormat.Seconds);
+
+        UseLimitOpt = new IntegerOptionItem(Id + 12, "AbilityUseLimit", new(0, 20, 1), 3, TabGroup.CrewmateRoles)
+            .SetParent(CustomRoleSpawnChances[CustomRoles.Druid])
+            .SetValueFormat(OptionFormat.Times);
+
+        DruidAbilityUseGainWithEachTaskCompleted = new FloatOptionItem(Id + 13, "AbilityUseGainWithEachTaskCompleted", new(0f, 5f, 0.05f), 1f, TabGroup.CrewmateRoles)
+            .SetParent(CustomRoleSpawnChances[CustomRoles.Druid])
+            .SetValueFormat(OptionFormat.Times);
+
+        AbilityChargesWhenFinishedTasks = new FloatOptionItem(Id + 14, "AbilityChargesWhenFinishedTasks", new(0f, 5f, 0.05f), 0.2f, TabGroup.CrewmateRoles)
+            .SetParent(CustomRoleSpawnChances[CustomRoles.Druid])
+            .SetValueFormat(OptionFormat.Times);
+    }
+
+    public override void Init()
+    {
+        On = false;
+    }
+
+    public override void Add(byte playerId)
+    {
+        On = true;
+        DruidPC = GetPlayerById(playerId);
+        playerId.SetAbilityUseLimit(UseLimitOpt.GetFloat());
+        TriggerIds = [];
+        Triggers = [];
+        DelayTimer = null;
+    }
+
+    public override void ApplyGameOptions(IGameOptions opt, byte playerId)
+    {
+        AURoleOptions.EngineerCooldown = VentCooldown.GetInt();
+        AURoleOptions.EngineerInVentMaxTime = 1f;
+    }
+
+    public static void SendRPCAddTrigger(bool add, byte playerId, Vector2 position, string roomName = "")
+    {
+        if (!DoRPC) return;
+
+        MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.DruidAddTrigger, SendOption.Reliable);
+        writer.Write(add);
+        writer.Write(playerId);
+        writer.Write(position.x);
+        writer.Write(position.y);
+        if (add) writer.Write(roomName);
+
+        AmongUsClient.Instance.FinishRpcImmediately(writer);
+    }
+
+    public static void ReceiveRPCAddTrigger(MessageReader reader)
+    {
+        bool add = reader.ReadBoolean();
+        byte playerId = reader.ReadByte();
+
+        if (Main.PlayerStates[playerId].Role is not Druid { IsEnable: true } di) return;
+
+        float x = reader.ReadSingle();
+        float y = reader.ReadSingle();
+
+        Vector2 position = new(x, y);
+
+        if (add)
+        {
+            string roomName = reader.ReadString();
+
+            di.DelayTimer.Dispose();
+            di.DelayTimer = null;
+            di.Triggers.TryAdd(position, roomName);
+        }
+        else
+            di.Triggers.Remove(position);
+    }
+
+    public override void OnPet(PlayerControl pc)
+    {
+        PlaceTrigger(pc, true);
+    }
+
+    public override void OnEnterVent(PlayerControl pc, Vent vent)
+    {
+        if (UsePets.GetBool()) return;
+        PlaceTrigger(pc);
+    }
+
+    private void PlaceTrigger(PlayerControl pc, bool isPet = false)
+    {
+        if (!IsEnable) return;
+
+        if (!pc || !GameStates.IsInTask) return;
+
+        if (pc.GetAbilityUseLimit() < 1) return;
+
+        if (isPet)
+        {
+            (Vector2 location, string roomName) = pc.GetPositionInfo();
+            Triggers.TryAdd(location, roomName);
+            SendRPCAddTrigger(true, pc.PlayerId, location, roomName);
+            _ = new PlayerDetector(location, pc, out int id);
+            TriggerIds.TryAdd(location, id);
+        }
+        else
+        {
+            DelayTimer = new CountdownTimer(TriggerPlaceDelay.GetInt(), () =>
+            {
+                byte id = pc.PlayerId;
+                DelayTimer = null;
+                (Vector2 location, string roomName) = pc.GetPositionInfo();
+                Triggers.TryAdd(location, roomName);
+                SendRPCAddTrigger(true, id, location, roomName);
+                _ = new PlayerDetector(location, pc, out int oid);
+                TriggerIds.TryAdd(location, oid);
+            }, onTick: () => pc.Notify(string.Format(GetString("DruidTimeLeft"), (int)Math.Ceiling(DelayTimer.Remaining.TotalSeconds)), 2f, overrideAll: true), onCanceled: () => DelayTimer = null);
+        }
+
+        pc.RpcRemoveAbilityUse(notify: isPet);
+    }
+
+    public override void OnCheckPlayerPosition(PlayerControl pc)
+    {
+        if (!GameStates.IsInTask || Triggers.Count <= 0 || pc.Is(CustomRoles.Druid)) return;
+
+        List<Vector2> toRemove = null;
+
+        foreach (KeyValuePair<Vector2, string> trigger in Triggers)
+        {
+            if (FastVector2.DistanceWithinRange(trigger.Key, pc.Pos(), 1.5f))
+            {
+                toRemove ??= [];
+                toRemove.Add(trigger.Key);
+                DruidPC.Notify(string.Format(GetString("DruidTriggerTriggered"), GetFormattedRoomName(trigger.Value), GetFormattedVectorText(trigger.Key)));
+                SendRPCAddTrigger(false, DruidPC.PlayerId, trigger.Key);
+                CustomNetObject.Get(TriggerIds[trigger.Key])?.Despawn();
+            }
+        }
+        
+        toRemove?.ForEach(x => Triggers.Remove(x));
+    }
+
+    public override string GetSuffix(PlayerControl seer, PlayerControl target, bool hud = false, bool meeting = false)
+    {
+        if (hud) return GetHUDText(seer);
+
+        if (seer.IsModdedClient() || seer.PlayerId != target.PlayerId || seer.PlayerId != DruidPC.PlayerId || Triggers.Count == 0) return string.Empty;
+
+        Suffix.Clear().Append("\n<size=1.7>");
+
+        Suffix.AppendLine($"<#00ffa5>{Triggers.Count}</color> trigger{(Triggers.Count == 1 ? string.Empty : 's')} active")
+            .Append(Triggers.Join(", ", trigger => $"Trigger {GetFormattedRoomName(trigger.Value)} {GetFormattedVectorText(trigger.Key)}"))
+            .Append("</size>");
+
+        return Suffix.ToString();
+    }
+
+    private string GetHUDText(PlayerControl pc)
+    {
+        if (!pc || Triggers.Count == 0) return string.Empty;
+
+        HudText.Clear();
+
+        HudText.AppendLine($"<#00ffa5>{Triggers.Count}</color> trigger{(Triggers.Count == 1 ? string.Empty : 's')} active");
+        HudText.Append(Triggers.Join('\n', trigger => $"Trigger {GetFormattedRoomName(trigger.Value)} {GetFormattedVectorText(trigger.Key)}"));
+
+        return HudText.ToString();
+    }
+
+    public override bool CanUseVent(PlayerControl pc, int ventId)
+    {
+        return !IsThisRole(pc) || pc.Is(CustomRoles.Nimble) || pc.GetClosestVent()?.Id == ventId;
+    }
+}

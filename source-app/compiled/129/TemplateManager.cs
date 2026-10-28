@@ -1,0 +1,613 @@
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+using System.Text.RegularExpressions;
+using AmongUs.Data;
+using InnerNet;
+using UnityEngine;
+using static EHR.Translator;
+
+namespace EHR;
+
+public static class TemplateManager
+{
+    private static readonly string TemplateFilePath = $"{Main.DataPath}/EHR_DATA/template.txt";
+
+    private static readonly Regex HeaderRegex = new(
+        """^([a-zA-Z0-9_]+)(?:\[([^\]"]*(?:"[^"]*"[^\]"]*)*)\])?:\s*(.*)$""",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    private static readonly Regex PropertyRegex = new(
+        @"^\s*(\w+)\s*([><=!]{1,2})?\s*(.*?)\s*$",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    private static readonly Regex PlaceholderRegex = new(
+        @"\{\{(\w+)\}\}|@(\w+)",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    private static readonly Regex UserVariableRegex = new(
+        @"^@(\w+)\s*=\s*(.+)$",
+        RegexOptions.Compiled);
+
+    private const int MaxWeight = 10;
+    private const int MinDelay = 1;
+    private const int MaxDelay = 300;
+
+    private static readonly Dictionary<string, Regex> RegexCache = new(StringComparer.Ordinal);
+
+    private static Dictionary<string, List<TemplateEntry>> _cachedEntries;
+    private static HashSet<string> _cachedTags;
+    private static Dictionary<string, string> _cachedUserVars;
+    private static DateTime _cacheTimestamp = DateTime.MinValue;
+
+    private static readonly Dictionary<string, Func<string>> Placeholders = new()
+    {
+        ["RoomCode"]             = () => GameCode.IntToGameName(AmongUsClient.Instance.GameId),
+        ["AmongUsVersion"]       = () => Application.version,
+        ["InternalVersion"]      = () => Main.PluginVersion,
+        ["ModVersion"]           = () => Main.PluginDisplayVersion,
+        ["PlayerName"]           = () => DataManager.Player.Customization.Name,
+        ["HostName"]             = () => Main.AllPlayerNames.GetValueOrDefault(PlayerControl.LocalPlayer.PlayerId, PlayerControl.LocalPlayer.GetRealName()),
+        ["Players"]              = () => string.Join(", ", Main.AllPlayerNames.Values),
+        ["AlivePlayers"]         = () => Main.EnumerateAlivePlayerControls().Join(", ", x => x.GetRealName()),
+        ["DeadPlayers"]          = () => Main.EnumeratePlayerControls().Where(x => !x.IsAlive()).Join(", ", x => x.GetRealName()),
+        ["PlayerCount"]          = () => (GameData.Instance ? GameData.Instance.PlayerCount : 0).ToString(),
+        ["AlivePlayerCount"]     = () => Main.EnumerateAlivePlayerControls().Count().ToString(),
+        ["DeadPlayerCount"]      = () => Main.EnumeratePlayerControls().Count(x => !x.IsAlive()).ToString(),
+        ["Map"]                  = () => Constants.MapNames[Main.NormalOptions.MapId],
+        ["KillCooldown"]         = () => Main.NormalOptions.KillCooldown.ToString(CultureInfo.CurrentCulture),
+        ["DiscussionTime"]       = () => Main.NormalOptions.DiscussionTime.ToString(),
+        ["VotingTime"]           = () => Main.NormalOptions.VotingTime.ToString(),
+        ["EmergencyCooldown"]    = () => Main.NormalOptions.EmergencyCooldown.ToString(),
+        ["MeetingCount"]         = () => MeetingStates.MeetingNum.ToString(),
+        ["NumEmergencyMeetings"] = () => Main.NormalOptions.NumEmergencyMeetings.ToString(),
+        ["PlayerSpeedMod"]       = () => Main.NormalOptions.PlayerSpeedMod.ToString(CultureInfo.CurrentCulture),
+        ["CrewLightMod"]         = () => Main.NormalOptions.CrewLightMod.ToString(CultureInfo.CurrentCulture),
+        ["ImpostorLightMod"]     = () => Main.NormalOptions.ImpostorLightMod.ToString(CultureInfo.CurrentCulture),
+        ["NumCommonTasks"]       = () => Main.NormalOptions.NumCommonTasks.ToString(),
+        ["NumLongTasks"]         = () => Main.NormalOptions.NumLongTasks.ToString(),
+        ["NumShortTasks"]        = () => Main.NormalOptions.NumShortTasks.ToString(),
+        ["GameDuration"]         = () => { if (!GameStates.IsInGame) return "00:00"; int e = (int)(Utils.TimeStamp - IntroCutsceneDestroyPatch.IntroDestroyTS); return $"{e / 60:00}:{e % 60:00}"; },
+        ["Date"]                 = () => DateTime.Now.ToShortDateString(),
+        ["Time"]                 = () => DateTime.Now.ToShortTimeString(),
+        ["Preset"]               = () => GetString($"Preset_{OptionItem.CurrentPreset + 1}")
+    };
+
+    private class TemplateEntry
+    {
+        public string Tag { get; init; }
+        public string Content { get; init; }
+        public int Weight { get; init; } = 1;
+        public int Delay { get; init; }
+        public bool Hidden { get; init; }
+        public HashSet<MapNames> AllowedMaps { get; init; }
+        public HashSet<int> AllowedMeetings { get; init; }
+        public HashSet<string> AllowedRoles { get; init; }
+        public HashSet<string> AllowedRanks { get; init; }
+        public HashSet<int> AllowedPresets { get; init; }
+        public string PlayerCountOp { get; init; }
+        public int PlayerCountVal { get; init; }
+        public string MessagePattern { get; init; }
+
+        public bool MatchesContext() => MatchesMap() && MatchesMeeting() && MatchesPlayerCount() && MatchesPreset();
+
+        public bool MatchesMessage(string message)
+        {
+            if (MessagePattern == null) return true;
+            Regex rx = GetOrAddCachedRegex(MessagePattern);
+            return rx != null && rx.IsMatch(message);
+        }
+
+        public bool MatchesRole(PlayerControl player)
+        {
+            if (AllowedRoles == null || !player) return AllowedRoles == null;
+
+            return AllowedRoles.Any(entry =>
+            {
+                bool negate = entry.StartsWith("!");
+                string name = negate ? entry[1..] : entry;
+
+                bool has = Main.CustomRoleValues.FindFirst(r => string.Equals(GetString(r.ToString()), name, StringComparison.OrdinalIgnoreCase), out CustomRoles role)
+                    ? player.Is(role)
+                    : Main.CustomRoleTypesValues.FindFirst(t => string.Equals(GetString(t.ToString()), name, StringComparison.OrdinalIgnoreCase), out CustomRoleTypes roleType) && player.Is(roleType);
+
+                return negate ? !has : has;
+            });
+        }
+
+        public bool MatchesRank(PlayerControl player)
+        {
+            if (AllowedRanks == null || !player) return AllowedRanks == null;
+
+            string fc = player.FriendCode;
+            return AllowedRanks.Any(rank => rank.ToLower() switch
+            {
+                "host" => player.IsHost(),
+                "admin" => ChatCommands.IsPlayerAdmin(fc),
+                "mod" or "moderator" => ChatCommands.IsPlayerModerator(fc),
+                "vip" => ChatCommands.IsPlayerVIP(fc),
+                _ => false
+            });
+        }
+
+        private bool MatchesMap() => AllowedMaps == null || AllowedMaps.Contains(Main.CurrentMap);
+        private bool MatchesMeeting() => AllowedMeetings == null || AllowedMeetings.Contains(MeetingStates.MeetingNum);
+
+        private bool MatchesPlayerCount()
+        {
+            if (PlayerCountOp == null) return true;
+            int count = GameData.Instance ? GameData.Instance.PlayerCount : 0;
+            return PlayerCountOp switch
+            {
+                ">" => count > PlayerCountVal,
+                ">=" => count >= PlayerCountVal,
+                "<" => count < PlayerCountVal,
+                "<=" => count <= PlayerCountVal,
+                "=" or "==" => count == PlayerCountVal,
+                "!=" => count != PlayerCountVal,
+                _ => true
+            };
+        }
+        private bool MatchesPreset() => AllowedPresets == null || AllowedPresets.Contains(OptionItem.CurrentPreset + 1);
+    }
+
+    private static Regex GetOrAddCachedRegex(string pattern)
+    {
+        if (RegexCache.TryGetValue(pattern, out Regex cached)) return cached;
+
+        try
+        {
+            Regex rx = new(pattern, RegexOptions.Compiled, TimeSpan.FromMilliseconds(100));
+            RegexCache[pattern] = rx;
+            return rx;
+        }
+        catch (ArgumentException ex)
+        {
+            Logger.Warn($"Invalid regex pattern '{pattern}': {ex.Message}", "TemplateManager");
+            RegexCache[pattern] = null;
+            return null;
+        }
+    }
+
+    public static void Init() => CreateIfNotExists();
+
+    public static void CreateIfNotExists()
+    {
+        if (File.Exists(TemplateFilePath)) return;
+
+        try
+        {
+            if (!Directory.Exists($"{Main.DataPath}/EHR_DATA"))
+                Directory.CreateDirectory($"{Main.DataPath}/EHR_DATA");
+
+            if (File.Exists($"{Main.DataPath}/template.txt"))
+            {
+                File.Move($"{Main.DataPath}/template.txt", TemplateFilePath);
+            }
+            else
+            {
+                string[] name = CultureInfo.CurrentCulture.Name.Split("-");
+                string fileName = name.Length >= 2
+                    ? name[0] switch { "zh" => "SChinese", "ru" => "Russian", _ => "English" }
+                    : "English";
+
+                Logger.Warn($"Creating new template file: {fileName}", "TemplateManager");
+                File.WriteAllText(TemplateFilePath, GetResourcesTxt($"EHR.Resources.Config.template.{fileName}.txt"));
+            }
+        }
+        catch (Exception ex) { Logger.Exception(ex, "TemplateManager"); }
+    }
+
+    private static string GetResourcesTxt(string path)
+    {
+        Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(path);
+        if (stream == null) 
+        {
+            Logger.Error($"Embedded Resource not found: {path}", "TemplateManager");
+            return string.Empty;
+        }
+        stream.Position = 0;
+        using StreamReader reader = new(stream, Encoding.UTF8);
+        return reader.ReadToEnd();
+    }
+
+    private static Dictionary<string, string> ParseProperties(string propString)
+    {
+        var props = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        if (string.IsNullOrWhiteSpace(propString)) return props;
+
+        // Extract quoted regex value first to avoid commas inside it confusing the splitter
+        propString = ExtractQuotedProperty(propString, "regex", out string regexVal, out propString);
+        if (regexVal != null) props["regex"] = regexVal;
+
+        foreach (string token in propString.Split(','))
+        {
+            Match m = PropertyRegex.Match(token);
+            if (m.Success) props[m.Groups[1].Value] = m.Groups[2].Value + m.Groups[3].Value;
+        }
+
+        return props;
+    }
+
+    // Pulls `key="..."` out of propString, returning the quoted value and the remaining string
+    private static string ExtractQuotedProperty(string input, string key, out string value, out string remaining)
+    {
+        Match m = Regex.Match(input, $"""
+                                      (?:^|,)\s*{Regex.Escape(key)}\s*=\s*"((?:[^"\\]|\\.)*)"
+                                      """, RegexOptions.IgnoreCase);
+        if (m.Success)
+        {
+            value = m.Groups[1].Value;
+            remaining = (input[..m.Index] + input[(m.Index + m.Length)..]).Trim(',').Trim();
+            return remaining;
+        }
+
+        value = null;
+        remaining = input;
+        return input;
+    }
+
+    private static TemplateEntry BuildEntry(string tag, string content, Dictionary<string, string> props)
+    {
+        content = content.Replace("\\n", "\n");
+
+        if (props == null || props.Count == 0)
+            return new TemplateEntry { Tag = tag, Content = content };
+
+        int weight = 1;
+        int delay = 0;
+        bool hidden = props.ContainsKey("hidden");
+        HashSet<MapNames> allowedMaps = null;
+        HashSet<int> allowedMeetings = null;
+        HashSet<string> allowedRoles = null;
+        HashSet<string> allowedRanks = null;
+        HashSet<int> allowedPresets = null;
+        string playerCountOp = null;
+        int playerCountVal = 0;
+        string messagePattern = null;
+
+        if (props.TryGetValue("weight", out string wStr) && int.TryParse(wStr.TrimStart('='), out int w))
+            weight = Math.Clamp(w, 1, MaxWeight);
+
+        if (props.TryGetValue("delay", out string dStr) && float.TryParse(dStr.TrimStart('=').Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out float d))
+            delay = Math.Clamp((int)d, MinDelay, MaxDelay);
+
+        if (props.TryGetValue("map", out string mapStr))
+        {
+            allowedMaps = [];
+            foreach (string part in mapStr.TrimStart('=').Split('|'))
+                if (Enum.TryParse(part.Trim(), ignoreCase: true, out MapNames map))
+                    allowedMaps.Add(map);
+        }
+
+        if (props.TryGetValue("meeting", out string meetingStr))
+        {
+            allowedMeetings = [];
+            foreach (string part in meetingStr.TrimStart('=').Split('|'))
+                if (int.TryParse(part.Trim(), out int meeting))
+                    allowedMeetings.Add(meeting);
+        }
+
+        if (props.TryGetValue("role", out string roleStr))
+            allowedRoles = roleStr.TrimStart('=').Split('|').Select(r => r.Trim()).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        if (props.TryGetValue("rank", out string rankStr))
+            allowedRanks = rankStr.TrimStart('=').Split('|').Select(r => r.Trim()).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        if (props.TryGetValue("players", out string playersStr))
+        {
+            Match pm = Regex.Match(playersStr, @"^([><=!]{1,2})(\d+)$");
+            if (pm.Success)
+            {
+                playerCountOp = pm.Groups[1].Value;
+                int.TryParse(pm.Groups[2].Value, out playerCountVal);
+            }
+        }
+
+        if (props.TryGetValue("preset", out string presetStr))
+        {
+            allowedPresets = [];
+            foreach (string part in presetStr.TrimStart('=').Split('|'))
+                if (int.TryParse(part.Trim(), out int preset))
+                    allowedPresets.Add(preset);
+        }
+
+        if (props.TryGetValue("regex", out string patternStr) && !string.IsNullOrWhiteSpace(patternStr))
+        {
+            messagePattern = patternStr;
+            // Get the cache now at parse time rather than at first match
+            GetOrAddCachedRegex(messagePattern);
+        }
+
+        return new TemplateEntry
+        {
+            Tag = tag,
+            Content = content,
+            Weight = weight,
+            Delay = delay,
+            Hidden = hidden,
+            AllowedMaps = allowedMaps,
+            AllowedMeetings = allowedMeetings,
+            AllowedRoles = allowedRoles,
+            AllowedRanks = allowedRanks,
+            AllowedPresets = allowedPresets,
+            PlayerCountOp = playerCountOp,
+            PlayerCountVal = playerCountVal,
+            MessagePattern = messagePattern
+        };
+    }
+
+    public static HashSet<string> GetAllTags() => GetParsedFile().Tags;
+
+    // Called for every incoming chat message
+    // Finds all entries across all tags whose regex= property matches the raw message and sends them
+    public static void SendTemplateForMessage(string message, byte playerId, MessageImportance importance = MessageImportance.Medium)
+    {
+        (Dictionary<string, List<TemplateEntry>> entries, _, Dictionary<string, string> userVars) = GetParsedFile();
+
+        PlayerControl player = playerId == 0xff
+            ? PlayerControl.LocalPlayer
+            : Utils.GetPlayerById(playerId);
+
+        foreach (List<TemplateEntry> bucket in entries.Values)
+        {
+            List<TemplateEntry> eligible = bucket.FindAll(e =>
+                e.MessagePattern != null &&
+                e.MatchesContext() &&
+                e.MatchesMessage(message));
+
+            if (eligible.Count == 0) continue;
+
+            eligible = ApplyFilter(eligible, e => e.AllowedRoles != null, e => e.MatchesRole(player),
+                out _, out _);
+            eligible = ApplyFilter(eligible, e => e.AllowedRanks != null, e => e.MatchesRank(player),
+                out _, out _);
+
+            if (eligible.Count == 0) continue;
+
+            List<TemplateEntry> immediate = eligible.FindAll(e => e.Delay == 0);
+            List<TemplateEntry> delayed = eligible.FindAll(e => e.Delay > 0);
+
+            if (immediate.Count > 0)
+            {
+                bool hasWeights = immediate.Exists(e => e.Weight != 1);
+                if (hasWeights)
+                    Dispatch(ApplyPlaceholders(WeightedPick(immediate).Content, userVars), playerId, importance);
+                else
+                    foreach (TemplateEntry entry in immediate)
+                        Dispatch(ApplyPlaceholders(entry.Content, userVars), playerId, importance);
+            }
+
+            foreach (TemplateEntry entry in delayed)
+            {
+                string content = ApplyPlaceholders(entry.Content, userVars);
+                LateTask.New(() => Dispatch(content, playerId, importance), entry.Delay, log: false);
+            }
+        }
+    }
+
+    public static void InvalidateCache()
+    {
+        _cacheTimestamp = DateTime.MinValue;
+        _cachedEntries = null;
+        _cachedTags = null;
+        _cachedUserVars = null;
+        RegexCache.Clear();
+    }
+
+    private static (Dictionary<string, List<TemplateEntry>> Entries, HashSet<string> Tags, Dictionary<string, string> UserVars) GetParsedFile()
+    {
+        CreateIfNotExists();
+
+        DateTime lastWrite = File.GetLastWriteTimeUtc(TemplateFilePath);
+        if (_cachedEntries != null && lastWrite == _cacheTimestamp)
+            return (_cachedEntries, _cachedTags, _cachedUserVars);
+
+        (_cachedEntries, _cachedTags, _cachedUserVars) = ParseTemplateFile();
+        _cacheTimestamp = lastWrite;
+        return (_cachedEntries, _cachedTags, _cachedUserVars);
+    }
+
+    private static (Dictionary<string, List<TemplateEntry>> Entries, HashSet<string> Tags, Dictionary<string, string> UserVars) ParseTemplateFile()
+    {
+        Dictionary<string, List<TemplateEntry>> entries = new(StringComparer.OrdinalIgnoreCase);
+        HashSet<string> tags = [];
+        Dictionary<string, string> userVars = [];
+        string currentTag = null;
+        Dictionary<string, string> currentProps = null;
+        StringBuilder buffer = new();
+
+        using StreamReader sr = new(TemplateFilePath, Encoding.GetEncoding("UTF-8"));
+        while (sr.ReadLine() is { } line)
+        {
+            if (line.TrimStart().StartsWith("#")) continue;
+
+            Match v = UserVariableRegex.Match(line);
+            if (v.Success)
+            {
+                userVars[v.Groups[1].Value] = v.Groups[2].Value.Trim();
+                continue;
+            }
+
+            Match m = HeaderRegex.Match(line);
+            if (m.Success)
+            {
+                Commit();
+                currentTag = m.Groups[1].Value;
+                currentProps = ParseProperties(m.Groups[2].Success ? m.Groups[2].Value : null);
+                buffer.Clear();
+                string inline = m.Groups[3].Value;
+                if (!string.IsNullOrEmpty(inline)) buffer.Append(inline);
+            }
+            else if (currentTag != null)
+            {
+                if (buffer.Length > 0) buffer.Append('\n');
+                buffer.Append(line);
+            }
+        }
+
+        Commit();
+        return (entries, tags, userVars);
+
+        void Commit()
+        {
+            if (currentTag == null) return;
+            TemplateEntry entry = BuildEntry(currentTag, buffer.ToString().TrimEnd(), currentProps);
+            if (!entry.Hidden) tags.Add(currentTag);
+            if (!entries.TryGetValue(currentTag, out List<TemplateEntry> list))
+            {
+                list = [];
+                entries[currentTag] = list;
+            }
+            list.Add(entry);
+        }
+    }
+
+    public static void SendTemplate(string str = "", byte playerId = 0xff, bool noErr = false, MessageImportance importance = MessageImportance.Medium)
+    {
+        (Dictionary<string, List<TemplateEntry>> entries, HashSet<string> tags, Dictionary<string, string> userVars) = GetParsedFile();
+
+        entries.TryGetValue(str, out List<TemplateEntry> allMatched);
+
+        PlayerControl player = playerId == 0xff
+            ? PlayerControl.LocalPlayer
+            : Utils.GetPlayerById(playerId);
+
+        if (allMatched is not { Count: > 0 })
+        {
+            if (noErr) return;
+            string errMsg = string.Format(GetString(playerId == 0xff ? "Message.TemplateNotFoundHost" : "Message.TemplateNotFoundClient"), str, string.Join(", ", tags));
+            if (playerId == 0xff)
+                HudManager.Instance.Chat.AddChat(PlayerControl.LocalPlayer, errMsg);
+            else
+                Utils.SendMessage(errMsg, playerId, importance: MessageImportance.Low);
+            return;
+        }
+
+        List<TemplateEntry> eligible = allMatched.FindAll(e => e.MatchesContext());
+        if (eligible.Count == 0)
+        {
+            if (!noErr) Utils.SendMessage(GetString("Message.TemplateConditionsNotMet"), playerId, importance: MessageImportance.Low);
+            return;
+        }
+
+        eligible = ApplyFilter(eligible, e => e.AllowedRoles != null, e => e.MatchesRole(player),
+            out bool roleBlocked, out TemplateEntry roleBlockSource);
+
+        eligible = ApplyFilter(eligible, e => e.AllowedRanks != null, e => e.MatchesRank(player),
+            out bool rankBlocked, out TemplateEntry rankBlockSource);
+
+        if (eligible.Count == 0)
+        {
+            if (noErr) return;
+
+            string msg = (roleBlocked, rankBlocked) switch
+            {
+                (true, _) => string.Format(GetString("Message.TemplateRoleRequired"), roleBlockSource.AllowedRoles.Join('/', r =>
+                    {
+                        string name = r.TrimStart('!');
+                        return Enum.TryParse(name, ignoreCase: true, out CustomRoles role)
+                            ? GetString(role.ToString())
+                            : name;
+                    })),
+                (_, true) => string.Format(GetString("Message.TemplateRankRequired"), string.Join('/', rankBlockSource.AllowedRanks)),
+                _ => string.Format(GetString(playerId == 0xff ? "Message.TemplateNotFoundHost" : "Message.TemplateNotFoundClient"), str, string.Join(", ", tags))
+            };
+
+            if (playerId == 0xff)
+                HudManager.Instance.Chat.AddChat(PlayerControl.LocalPlayer, msg);
+            else
+                Utils.SendMessage(msg, playerId, importance: MessageImportance.Low);
+
+            return;
+        }
+
+        List<TemplateEntry> immediate = eligible.FindAll(e => e.Delay == 0);
+        List<TemplateEntry> delayed = eligible.FindAll(e => e.Delay > 0);
+
+        if (immediate.Count > 0)
+        {
+            bool hasWeights = immediate.Exists(e => e.Weight != 1);
+
+            if (hasWeights)
+            {
+                string content = ApplyPlaceholders(WeightedPick(immediate).Content, userVars);
+                Dispatch(content, playerId, importance);
+            }
+            else
+            {
+                foreach (TemplateEntry entry in immediate)
+                    Dispatch(ApplyPlaceholders(entry.Content, userVars), playerId, importance);
+            }
+        }
+
+        foreach (TemplateEntry entry in delayed)
+        {
+            string content = ApplyPlaceholders(entry.Content, userVars);
+            LateTask.New(() => Dispatch(content, playerId, importance), entry.Delay, log: false);
+        }
+    }
+
+    private static List<TemplateEntry> ApplyFilter(
+        List<TemplateEntry> eligible,
+        Predicate<TemplateEntry> hasCondition,
+        Predicate<TemplateEntry> meetsCondition,
+        out bool blocked,
+        out TemplateEntry blockSource)
+    {
+        blocked = false;
+        blockSource = null;
+
+        List<TemplateEntry> restricted = eligible.FindAll(hasCondition);
+        if (restricted.Count == 0) return eligible;
+
+        List<TemplateEntry> unrestricted = eligible.FindAll(e => !hasCondition(e));
+        List<TemplateEntry> passing = restricted.FindAll(meetsCondition);
+
+        if (passing.Count > 0) return passing;
+        if (unrestricted.Count > 0) return unrestricted;
+
+        blocked = true;
+        blockSource = restricted[0];
+        return [];
+    }
+
+    private static void Dispatch(string content, byte playerId, MessageImportance importance) =>
+        Utils.SendMessage(content, playerId, importance: importance);
+
+    private static TemplateEntry WeightedPick(List<TemplateEntry> entries)
+    {
+        int total = entries.Sum(e => e.Weight);
+        int roll = IRandom.Instance.Next(total);
+        int running = 0;
+
+        foreach (TemplateEntry entry in entries)
+        {
+            running += entry.Weight;
+            if (roll < running) return entry;
+        }
+
+        return entries[^1];
+    }
+
+    private static string ApplyPlaceholders(string text, Dictionary<string, string> userVars) =>
+        PlaceholderRegex.Replace(text, match =>
+        {
+            if (match.Groups[1].Success)
+                return Placeholders.TryGetValue(match.Groups[1].Value, out Func<string> getValue)
+                    ? getValue() ?? ""
+                    : match.Value;
+
+            if (!userVars.TryGetValue(match.Groups[2].Value, out string val))
+                return match.Value;
+
+            return PlaceholderRegex.Replace(val, inner =>
+                inner.Groups[1].Success && Placeholders.TryGetValue(inner.Groups[1].Value, out Func<string> getValue)
+                    ? getValue() ?? ""
+                    : inner.Value);
+        });
+}

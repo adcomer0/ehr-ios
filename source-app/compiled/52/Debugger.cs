@@ -1,0 +1,372 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Net;
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using BepInEx.Logging;
+using EHR.Modules;
+using EHR.Patches;
+using UnityEngine;
+
+namespace EHR;
+
+internal static class Logger
+{
+    private static bool IsEnable;
+    private static readonly List<string> DisableList = [];
+    private static readonly StringBuilder LogText = new();
+#if DEBUG
+    public static bool IsAlsoInGame;
+#endif
+
+    private static readonly Dictionary<string, DateTime> NowDetailedErrorLog = [];
+
+    public static void Enable()
+    {
+        IsEnable = true;
+    }
+
+    /*
+        public static void Disable()
+        {
+            IsEnable = false;
+        }
+
+        public static void Enable(string tag, bool toGame = false)
+        {
+            DisableList.Remove(tag);
+
+            if (toGame && !SendToGameList.Contains(tag))
+                SendToGameList.Add(tag);
+            else
+                SendToGameList.Remove(tag);
+        }
+    */
+
+    public static void Disable(string tag)
+    {
+        if (!DisableList.Contains(tag)) DisableList.Add(tag);
+    }
+
+    public static void SendInGame(string text, Color? textColor = null)
+    {
+        if (!IsEnable) return;
+
+        NotificationPopper np = NotificationPopperPatch.Instance;
+
+        if (np)
+        {
+            Warn(text, "SendInGame");
+
+            LobbyNotificationMessage newMessage = Object.Instantiate(np.notificationMessageOrigin, Vector3.zero, Quaternion.identity, np.transform);
+            newMessage.transform.localPosition = new(0f, 0f, -2f);
+            text = "<font=\"Barlow-Black SDF\" material=\"Barlow-Black Outline\">" + text + "</font>";
+#if IL2CPP
+            newMessage.SetUp(text, np.settingsChangeSprite, textColor ?? np.settingsChangeColor, (Action)(() => np.OnMessageDestroy(newMessage)));
+#else
+            newMessage.SetUp(text, np.settingsChangeSprite, textColor ?? np.settingsChangeColor, () => np.OnMessageDestroy(newMessage));
+#endif
+            np.ShiftMessages();
+            np.AddMessageToQueue(newMessage);
+
+            SoundManager.Instance.PlaySoundImmediate(np.settingsChangeSound, false);
+        }
+    }
+
+    private static void SendToFile(string text, LogLevel level = LogLevel.Info, string tag = "", bool escapeCRLF = true, int lineNumber = 0, string fileName = "", bool multiLine = false)
+    {
+        if (!IsEnable || DisableList.Contains(tag) || level == LogLevel.Debug && !DebugModeManager.AmDebugger) return;
+
+#if DEBUG
+        if (IsAlsoInGame) SendInGame($"[{tag}]{text}");
+#endif
+
+        LogText.Clear();
+        DateTime now = DateTime.Now;
+
+        if (level is LogLevel.Error or LogLevel.Fatal && !multiLine && (!NowDetailedErrorLog.TryGetValue(tag, out DateTime dt) || dt.AddSeconds(3) < now))
+        {
+            var t = now.ToString("HH:mm:ss");
+            StackFrame stack = new(2);
+            string className = stack.GetMethod()?.ReflectedType?.Name;
+            string memberName = stack.GetMethod()?.Name;
+            LogText.Append($"[{t}][{className}.{memberName}({Path.GetFileName(fileName)}:{lineNumber})][{tag}]{text}");
+            NowDetailedErrorLog[tag] = now;
+        }
+        else
+        {
+            if (escapeCRLF && (text.Contains('\n') || text.Contains('\r')))
+            {
+                text = text.Replace("\r", "\\r").Replace("\n", "\\n");
+            }
+
+            var t = now.ToString("HH:mm:ss");
+            LogText.Append($"[{t}][{tag}]{text}");
+
+            if (level == LogLevel.Message) NowDetailedErrorLog.Clear();
+        }
+        
+        if (!Main.Loaded)
+        {
+            LateTask.New(() => CustomLogger.Instance.Log(level.ToString(), LogText, multiLine), 1f, log: false);
+            return;
+        }
+
+        CustomLogger.Instance.Log(level.ToString(), LogText, multiLine);
+    }
+
+    public static void Test(object content, string tag = "======= Test =======", bool escapeCRLF = true, [CallerLineNumber] int lineNumber = 0, [CallerFilePath] string fileName = "", bool multiLine = false)
+    {
+        SendToFile(content.ToString(), LogLevel.Debug, tag, escapeCRLF, lineNumber, fileName, multiLine);
+    }
+
+    public static void Info(string text, string tag, bool escapeCRLF = true, [CallerLineNumber] int lineNumber = 0, [CallerFilePath] string fileName = "", bool multiLine = false)
+    {
+        SendToFile(text, LogLevel.Info, tag, escapeCRLF, lineNumber, fileName, multiLine);
+    }
+
+    public static void Warn(string text, string tag, bool escapeCRLF = true, [CallerLineNumber] int lineNumber = 0, [CallerFilePath] string fileName = "", bool multiLine = false)
+    {
+        SendToFile(text, LogLevel.Warning, tag, escapeCRLF, lineNumber, fileName, multiLine);
+    }
+
+    public static void Error(string text, string tag, bool escapeCRLF = true, [CallerLineNumber] int lineNumber = 0, [CallerFilePath] string fileName = "", bool multiLine = false)
+    {
+        SendToFile(text, LogLevel.Error, tag, escapeCRLF, lineNumber, fileName, multiLine);
+    }
+
+    public static void Fatal(string text, string tag, bool escapeCRLF = true, [CallerLineNumber] int lineNumber = 0, [CallerFilePath] string fileName = "", bool multiLine = false)
+    {
+        SendToFile(text, LogLevel.Fatal, tag, escapeCRLF, lineNumber, fileName, multiLine);
+    }
+
+    public static void Msg(string text, string tag, bool escapeCRLF = true, [CallerLineNumber] int lineNumber = 0, [CallerFilePath] string fileName = "", bool multiLine = false)
+    {
+        SendToFile(text, LogLevel.Message, tag, escapeCRLF, lineNumber, fileName, multiLine);
+    }
+
+    public static void Exception(Exception ex, string tag, [CallerLineNumber] int lineNumber = 0, [CallerFilePath] string fileName = "", bool multiLine = false)
+    {
+        SendToFile(ex.ToString(), LogLevel.Error, tag, false, lineNumber, fileName);
+    }
+
+    public static void CurrentMethod([CallerLineNumber] int lineNumber = 0, [CallerFilePath] string fileName = "")
+    {
+        StackFrame stack = new(1);
+        MethodBase method = stack.GetMethod();
+        Msg($"\"{method?.ReflectedType?.Name}.{method?.Name}\" Called in \"{Path.GetFileName(fileName)}({lineNumber})\"", "Method");
+    }
+
+    public static LogHandler Handler(string tag)
+    {
+        return new(tag);
+    }
+}
+
+public sealed class HtmlLogListener : ILogListener
+{
+    public void LogEvent(object sender, LogEventArgs eventArgs)
+    {
+        var sb = new StringBuilder();
+
+        sb.Append('[');
+        sb.Append(DateTime.Now.ToString("HH:mm:ss"));
+        sb.Append(']');
+        sb.Append('[');
+        sb.Append(eventArgs.Source.SourceName);
+        sb.Append(']');
+        sb.Append(' ');
+        sb.Append(WebUtility.HtmlEncode(eventArgs.Data.ToString()));
+        sb.Replace("\r\n", "<br>");
+        sb.Replace("\n", "<br>");
+        sb.Replace("\\n", "<br>");
+
+        CustomLogger.Instance.Log(eventArgs.Level.ToString(), sb, fromUnity: true);
+    }
+
+    public LogLevel LogLevelFilter => LogLevel.All;
+
+    public void Dispose()
+    {
+    }
+}
+
+public class CustomLogger
+{
+    public static readonly string LOGFilePath = Path.Combine(Main.DataPath, OperatingSystem.IsAndroid() ? "EHR_Logs" : "BepInEx", "log.html");
+
+    private const string HtmlHeader =
+        """
+        <!DOCTYPE html>
+        <html lang='en'>
+        <head>
+          <meta charset='UTF-8'>
+          <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+          <title>EHR Log File</title>
+          <style>
+              body { font-family: Arial, sans-serif; background-color: #1e1e1e; color: #aaaaaa; margin: 0; padding: 1rem; font-family: "Roboto Mono", "Consolas", "Courier New", monospace; }
+              .log-entry-unity { margin: 0; padding: 0; border-radius: 5px; letter-spacing: 0.1rem; background-color: transparent; }
+              .info-unity { font-size: 0.8rem; color: gray; }
+              .warning-unity { color: #ffff99; }
+              .error-unity { color: red; border-radius: 10px; margin: 1rem; }
+              .fatal-unity { background: linear-gradient(to bottom, #ff9999, #cc0000); color: black; border: 3px solid yellow; border-radius: 15px; padding: 1rem; }
+              .debug-unity { color: black; font-size: 0.8rem; }
+              .message-unity { font-size: 0.8rem; color: gray; }
+              .log-entry { margin: 0; padding: 0; border-radius: 5px; letter-spacing: 0.1rem; }
+              .info { background-color: transparent; }
+              .warning { background-color: #ffff44; color: black; }
+              .error { background-color: red; color: black; border-radius: 10px; margin: 1rem; }
+              .fatal { background: linear-gradient(to bottom, #ff9999, #cc0000); color: black; border: 3px solid yellow; border-radius: 15px; padding: 1rem; }
+              .debug { background-color: gray; color: white; }
+              .message { color: aqua; }
+          </style>
+        </head>
+        <body>
+          <h1>EHR Log File</h1>
+          <div id='log-container'>
+
+        """;
+
+    private const string HtmlFooter =
+        """
+             </div>
+            </body>
+            </html>
+        """;
+
+    private const string UnityTag = "-unity";
+
+    private static string LastAppend;
+    private static CustomLogger PrivateInstance;
+    private float timer = 0.5f;
+
+    private readonly StringBuilder Builder;
+
+    private CustomLogger()
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(LOGFilePath) ?? throw new InvalidOperationException());
+        if (!File.Exists(LOGFilePath)) File.WriteAllText(LOGFilePath, HtmlHeader);
+        else if (Options.IsLoaded && new FileInfo(LOGFilePath).Length > 4 * 1024 * 1024) // 4 MB
+        {
+            ClearLog(false);
+            PrivateInstance ??= new();
+            LateTask.New(() => Logger.SendInGame("The size of the log file exceeded 4 MB and was dumped."), 0.1f, log: false);
+        }
+
+        Builder = new();
+        Main.Instance.StartCoroutine(InactivityCheck());
+    }
+
+    public static CustomLogger Instance => PrivateInstance ??= new();
+
+    public static void ClearLog(bool check = true)
+    {
+        if (!Directory.Exists(Path.GetDirectoryName(LOGFilePath))) return;
+
+        if (!check || File.Exists(LOGFilePath) && new FileInfo(LOGFilePath).Length > 0)
+        {
+            PrivateInstance?.Finish();
+            try { Utils.DumpLog(false, false); } catch (Exception e) { LateTask.New(() => Logger.Fatal(e.ToString(), "ClearLog.DumpLog"), 0.1f); }
+        }
+
+        File.WriteAllText(LOGFilePath, HtmlHeader);
+    }
+
+    public void Log(string level, StringBuilder message, bool multiLine = false, bool fromUnity = false)
+    {
+        if (multiLine) message.Replace("\\n", "<br>");
+
+        bool hasB = false, hasU = false, hasI = false, hasS = false;
+        bool containsException = false;
+
+        for (int i = 0; i < message.Length; i++)
+        {
+            if (i < message.Length - 2 && message[i] == '<')
+            {
+                switch (message[i + 1])
+                {
+                    case 'b':
+                        hasB = true;
+                        break;
+                    case 'u':
+                        hasU = true;
+                        break;
+                    case 'i':
+                        hasI = true;
+                        break;
+                    case 's':
+                        hasS = true;
+                        break;
+                }
+            }
+
+            if (!containsException &&
+                i <= message.Length - 9 &&
+                message[i]     == 'E' &&
+                message[i + 1] == 'x' &&
+                message[i + 2] == 'c' &&
+                message[i + 3] == 'e' &&
+                message[i + 4] == 'p' &&
+                message[i + 5] == 't' &&
+                message[i + 6] == 'i' &&
+                message[i + 7] == 'o' &&
+                message[i + 8] == 'n')
+            {
+                containsException = true;
+            }
+        }
+
+        if (hasB) message.Append("</b>");
+        if (hasU) message.Append("</u>");
+        if (hasI) message.Append("</i>");
+        if (hasS) message.Append("</s>");
+        
+        string unityTag = fromUnity && !containsException ? UnityTag : string.Empty;
+
+        string element = $"""
+                        <div class='log-entry{unityTag} {level.ToLower()}{unityTag}'>
+                            {message}
+                        </div>
+                        """;
+
+        if (LastAppend == element)
+            element = "<span style='color: lime'>+</span>";
+        else
+            LastAppend = element;
+        
+        Builder.Append(element);
+
+#if DEBUG
+        Finish(false);
+#else
+        timer = 0.5f;
+#endif
+    }
+
+    private IEnumerator InactivityCheck()
+    {
+        while (timer > 0)
+        {
+            timer -= Time.deltaTime;
+            yield return null;
+        }
+
+        Finish(false);
+    }
+
+    public void Finish(bool dump = true)
+    {
+        var append = Builder.ToString();
+        if (string.IsNullOrWhiteSpace(append)) return;
+        if (dump) append += HtmlFooter;
+        File.AppendAllText(LOGFilePath, append);
+        Builder.Clear();
+        PrivateInstance = null;
+#if DEBUG
+        Main.Instance.StopCoroutine(InactivityCheck());
+#endif
+    }
+}

@@ -1,0 +1,213 @@
+{
+  "schema": "ehr.source-account-state-audit.v1",
+  "upstream_commit": "ce23f0d050f617a59507e5bb0fbfff751d4b5134",
+  "compile_profile": "IL2CPP",
+  "source_hashes": {
+    "Patches/ClientPatch.cs": "91373bfc3189672c7ce1e1d45e24076a853c33d2cfced332b3e83755bac18b64",
+    "Modules/ModConsentPopUp.cs": "e7aa22be336acf0d89d49e1df87f9dcbf9f89ea780d7ebfa131da7530594639f",
+    "Patches/ChatControlPatch.cs": "09ef2f1620bfa8c4552771835a5294af60e1dc3512d672c497c65e47ce883f24",
+    "Patches/GameStartManagerPatch.cs": "26e848723a6c5a122c5025ebac78891c38a447295266b9e187b2bb2c0c3c356f",
+    "Patches/UsablesPatch.cs": "bd9197061c7c62d269a6e0843acffd2f6b841f2e8f779f505d8fad75420f54ba",
+    "Modules/LobbySharingAPI.cs": "b11ac3e5498646213ee506abe9035b29a1ed1ed5feb8bccf8fabb2e6b75d41db",
+    "Modules/OptionHolder.cs": "0d3239dfc9493acadfc7ed6eb5030ece6aa52aa26820f68b690668a4ca785540",
+    "Modules/OptionItem/OptionItem.cs": "fdb05556931d67b25f3b104c5acfd64a0c14ff20407b73f913cbb042a99dd3f4",
+    "Modules/OptionItem/TextOptionItem.cs": "fcf91d695416bcbaeed26096ec63fef3166067b9a1540c009d2cca32d1dbb836",
+    "Patches/ChatCommandPatch.cs": "876afae3bcf08aea3d96b9a1e22f45382092911da63422d4fc399709816a379a",
+    "Modules/Achievements.cs": "076ea03708316beb2b60a6c5907dee29ca1549245de7be39a1fddbe4786467ea",
+    "Modules/BanManager.cs": "2223840c7ab7c1790fea708a49ebc1c829765c340fdd1ba7f7ed38ea5e0b7370",
+    "Modules/OnlinePresetsManager.cs": "04c86beaa57bebb631313559b724934d4f1e23593d9d3d46da80ce654223d228",
+    "Modules/ModUpdater.cs": "565778e0fe7c98339ab749b292bee0a043cfa517ebb6ee45fe789692d9492ce9",
+    "Patches/PlayerJoinAndLeftPatch.cs": "317550035c52224b9696e750d8a3cb41ebec6abab4551c4cbb056d6896000f40",
+    "Patches/TmpAwakePatch.cs": "57ac13246054b1cf824b418ae489d75e70b0b0351af11b783c6c9847cce1227e",
+    "Main.cs": "55cb33819e1224dbad5a4b6f035f1ea198b5071c0f81b70b513ba15ba367513d"
+  },
+  "scope": "Pinned C# source review for concrete native account/auth/ban/progression/purchase state writes, credential sinks, and deletion paths. No account data inspected.",
+  "excluded_callback_count": 6,
+  "findings": [
+    {
+      "id": "native-privacy-version",
+      "source": [
+        "Modules/ModConsentPopUp.cs:15-42",
+        "Modules/ModConsentPopUp.cs:101-111"
+      ],
+      "classification": "vanilla persisted onboarding and consent UI",
+      "action": "exclude descriptors 15 and 16",
+      "evidence": "Reads, lowers and later restores LastAcceptedPrivacyPolicyVersion; saves Player data; replaces accept listeners and hides ManageData."
+    },
+    {
+      "id": "native-chat-mode",
+      "source": [
+        "Patches/ChatControlPatch.cs:28-31"
+      ],
+      "classification": "native multiplayer chat restriction",
+      "action": "exclude descriptor 41",
+      "evidence": "Host sets QuickChatOnly to FreeChatOrQuickChat; entire single source callback is excluded, including its additional chat visual changes."
+    },
+    {
+      "id": "native-online-permission",
+      "source": [
+        "Patches/ClientPatch.cs:100-116"
+      ],
+      "classification": "native permission bypass",
+      "action": "exclude descriptor 54",
+      "evidence": "Sets canOnline true for mod-debugger or missing mod consent. Bundled updater notice path is also excluded."
+    },
+    {
+      "id": "native-ban-points",
+      "source": [
+        "Patches/ClientPatch.cs:182-184"
+      ],
+      "classification": "native player ban state",
+      "action": "exclude descriptor 60",
+      "evidence": "Sets DataManager.Player.Ban.banPoints to zero before original online-permission check."
+    },
+    {
+      "id": "native-player-warning-flags",
+      "source": [
+        "Patches/GameStartManagerPatch.cs:680-695"
+      ],
+      "classification": "vanilla persisted onboarding flags",
+      "action": "exclude descriptor 138",
+      "evidence": "Writes AlwaysShowMinPlayerWarning and ViewedMinPlayerWarning and calls Player.Save; distinct GameStartManager.Start callback is retained."
+    },
+    {
+      "id": "directory-eos-bearer",
+      "source": [
+        "Modules/LobbySharingAPI.cs:53-86",
+        "Modules/LobbySharingAPI.cs:99-158",
+        "Modules/OptionHolder.cs:1815-1820"
+      ],
+      "classification": "real authentication credential forwarded to optional third party",
+      "action": "remove optional producer; unavailable false text option",
+      "evidence": "POST lobby_created adds Authorization Bearer EOSManager.Instance.UserIDToken. Server response room token is a separate EHR service capability used for update_status and logged. All those producer/parser/token paths are removed in protected directory body."
+    },
+    {
+      "id": "directory-confirm-auth",
+      "source": [
+        "Patches/ChatCommandPatch.cs:246",
+        "Patches/ChatCommandPatch.cs:743-809"
+      ],
+      "classification": "optional website verification, ordinary account identifiers",
+      "action": "preserve command recognition; local unavailable response",
+      "evidence": "Original submits user-provided nonce UUID plus friend_code, ProductUserId and game_id. Does not authenticate the official game. Protected body makes no request."
+    },
+    {
+      "id": "native-level-command",
+      "source": [
+        "Patches/ChatCommandPatch.cs:145",
+        "Patches/ChatCommandPatch.cs:2856-2870"
+      ],
+      "classification": "native player level network mutation",
+      "action": "preserve command recognition; protected informational response",
+      "evidence": "Original parses 1..999 then calls player.RpcSetLevel(number - 1). Only this command body changes. Persistent XP write was not established by that RPC alone; ordinary game XP remains unchanged."
+    },
+    {
+      "id": "purchase-query",
+      "source": [
+        "Patches/UsablesPatch.cs:155-164",
+        "Patches/ClientPatch.cs"
+      ],
+      "classification": "no active grant in this pinned source",
+      "action": "audit only; no new exclusion",
+      "evidence": "ClickCount is const zero; active prefix guard returns true. Apparent __result=true and return=false are comments. Descriptor EHR.PlayerPurchasesDataPatch::Prefix#331, selector 42e8132f1a70a4b96206."
+    },
+    {
+      "id": "ehr-achievements",
+      "source": [
+        "Modules/Achievements.cs:147",
+        "Modules/Achievements.cs:219-260",
+        "Modules/Achievements.cs:269-309",
+        "Modules/BanManager.cs:119-130"
+      ],
+      "classification": "EHR-only local/remote achievements with ordinary derived player identifier",
+      "action": "retain; distinguish from vanilla XP and credentials",
+      "evidence": "Local EHR_DATA/Achievements.json. Upload DTO userId is GetHashedPuid(), first five plus final four SHA256 hex characters of ProductUserId; achievements are EHR.CompletedAchievements. GET uses same userId. No EOS/authentication credential in DTO."
+    },
+    {
+      "id": "aot-achievements-dto",
+      "source": [
+        "EHR-iOS-json-aot-stage/managed/EHRPortableJsonContext.cs"
+      ],
+      "classification": "original NativeAOT DTO for same EHR-only request",
+      "action": "retain; no alternate credential path",
+      "evidence": "EHR.SourcePort.AchievementUploadRequest has string userId and HashSet<Achievements.Type> achievements. JSON adapter preserves original GetHashedPuid local userId dataflow; corroborated by owning adapter agent."
+    },
+    {
+      "id": "preset-upload-identifiers",
+      "source": [
+        "Modules/OnlinePresetsManager.cs:199-200"
+      ],
+      "classification": "ordinary friend/PUID identifiers on EHR preset upload",
+      "action": "retain; audit distinction",
+      "evidence": "User preset upload includes friend_code and ProductUserId; no EOS token or Authorization credential. These are player-related identifiers, not authentication secrets."
+    },
+    {
+      "id": "ehr-moderation",
+      "source": [
+        "Modules/BanManager.cs"
+      ],
+      "classification": "own host moderation lists and kick policy",
+      "action": "retain; distinguish from native account ban state",
+      "evidence": "EHR ban/EAC files and temporary whitelist are host-side moderation; not DataManager.Player.Ban.banPoints."
+    },
+    {
+      "id": "ehr-old-data-cleanup",
+      "source": [
+        "Modules/ModUpdater.cs:208-250"
+      ],
+      "classification": "old mod data and updater files",
+      "action": "audit only; updater separately adapted by parent",
+      "evidence": "Old TOH_DATA removal conditional on EHR_DATA/BanWords existing; cleanup of EHR DLL backups/temp files in mod directory. No vanilla game-save path observed in these calls."
+    },
+    {
+      "id": "ehr-log-cleanup",
+      "source": [
+        "Patches/PlayerJoinAndLeftPatch.cs:269-455"
+      ],
+      "classification": "EHR logs only",
+      "action": "retain scoped behavior; distinguish from account data deletion",
+      "evidence": "Targets exact rooted EHR_Logs basename; first dry-run, then explicit user confirmation before deletion. Does not select vanilla save directories."
+    },
+    {
+      "id": "font-temporary-file",
+      "source": [
+        "Patches/TmpAwakePatch.cs:163-189"
+      ],
+      "classification": "own temporary font file",
+      "action": "retain",
+      "evidence": "Creates unique GUID temporary font file under Application.temporaryCachePath and deletes that file."
+    },
+    {
+      "id": "account-presentation",
+      "source": [
+        "Patches/MainMenuManagerPatch.cs:47",
+        "Patches/CredentialsPatch.cs"
+      ],
+      "classification": "account UI presentation changes",
+      "action": "audit only",
+      "evidence": "Hides AccountWindow; decorates friend-code display and hides request UI. No provider replacement, credential mutation, XP reset or save write established from these presentation changes."
+    }
+  ],
+  "credential_search": {
+    "observed_eos_credential_sink_count": 1,
+    "observed_eos_credential_sink": "Modules/LobbySharingAPI.cs:64",
+    "sink_removed_in_protected_profile": true,
+    "other_eos_credential_sinks_observed": false,
+    "opaque_player_ids_are_not_auth_credentials": true
+  },
+  "negative_findings": {
+    "active_purchase_grant_found": false,
+    "vanilla_save_deletion_found": false,
+    "direct_vanilla_xp_or_currency_reset_found": false,
+    "scope_limited": true
+  },
+  "limitations": [
+    "Source findings do not prove server enforcement behavior or absence of account risk.",
+    "Full-source build, hook activation and physical-device playtesting are separate integration gates.",
+    "EHR achievements and preset services still carry ordinary player-related identifiers; narrow policy does not silently remove them."
+  ],
+  "performed_account_operations": 0,
+  "performed_network_operations": 0,
+  "modified_pinned_upstream": false,
+  "modified_native_authentication": false
+}

@@ -1,0 +1,140 @@
+#if IL2CPP
+using Il2CppSystem;
+#else
+using System;
+#endif
+using HarmonyLib;
+using TMPro;
+using UnityEngine;
+// ReSharper disable RedundantNameQualifier
+
+namespace EHR;
+
+//[HarmonyPatch(typeof(LobbyBehaviour), nameof(LobbyBehaviour.FixedUpdate))]
+public static class LobbyFixedUpdatePatch
+{
+    private static GameObject Paint;
+    private static SpriteRenderer LeftEngineSR;
+    private static SpriteRenderer RightEngineSR;
+
+    public static void Postfix()
+    {
+        try
+        {
+            if (!Paint)
+            {
+                GameObject leftBox = GameObject.Find("Leftbox");
+
+                if (leftBox)
+                {
+                    Paint = Object.Instantiate(leftBox, leftBox.transform.parent.transform);
+                    Paint.name = "Lobby Paint";
+                    Paint.transform.localPosition = new(0.042f, -2.59f, -10.5f);
+                    var renderer = Paint.GetComponent<SpriteRenderer>();
+                    renderer.sprite = Utils.LoadSprite("EHR.Resources.Images.LobbyPaint.png", 290f);
+                }
+            }
+
+            if (!LeftEngineSR || !RightEngineSR)
+            {
+                var leftEngine = GameObject.Find("LeftEngine");
+                if (leftEngine) LeftEngineSR = leftEngine.GetComponent<SpriteRenderer>();
+
+                var rightEngine = GameObject.Find("RightEngine");
+                if (rightEngine) RightEngineSR = rightEngine.GetComponent<SpriteRenderer>();
+            }
+            else
+            {
+                LeftEngineSR.color = Color.cyan;
+                RightEngineSR.color = Color.cyan;
+            }
+        }
+        catch (System.Exception e) { Utils.ThrowException(e); }
+    }
+}
+
+[HarmonyPatch(typeof(HostInfoPanel), "SetUp")]
+public static class HostInfoPanelSetUpPatch
+{
+    private static TextMeshPro HostText;
+
+    public static bool Prefix(HostInfoPanel __instance)
+    {
+        return GameStates.IsLobby && __instance.player.ColorId != byte.MaxValue;
+    }
+
+    public static void Postfix(HostInfoPanel __instance)
+    {
+        try
+        {
+            if (!HostText) HostText = __instance.content.transform.Find("Name").GetComponent<TextMeshPro>();
+
+            string name = AmongUsClient.Instance.GetHost().PlayerName.Split('\n')[^1];
+            if (name == string.Empty) return;
+
+            string text = AmongUsClient.Instance.AmHost
+                ? Translator.GetString("YouAreHostSuffix")
+                : name;
+
+            HostText.text = Utils.ColorString(Palette.PlayerColors[__instance.player.ColorId], text);
+        }
+        catch { }
+    }
+
+    internal static void __EHRStaticCallback_175(global::EHR.EHRStaticPatchFrame __ehrFrame)
+    {
+        HostInfoPanel __ehrp0 = __ehrFrame.GetInstance<HostInfoPanel>();
+        bool __ehrReturn = default;
+        try
+        {
+            __ehrReturn = Prefix(__ehrp0);
+        }
+        finally
+        {
+        }
+        __ehrFrame.RunOriginal = __ehrFrame.RunOriginal && __ehrReturn;
+    }
+
+
+    internal static void __EHRStaticCallback_176(global::EHR.EHRStaticPatchFrame __ehrFrame)
+    {
+        HostInfoPanel __ehrp0 = __ehrFrame.GetInstance<HostInfoPanel>();
+        try
+        {
+            Postfix(__ehrp0);
+        }
+        finally
+        {
+        }
+    }
+
+}
+
+// https://github.com/SuperNewRoles/SuperNewRoles/blob/master/SuperNewRoles/Patches/LobbyBehaviourPatch.cs
+//[HarmonyPatch(typeof(LobbyBehaviour), nameof(LobbyBehaviour.Update))]
+internal static class LobbyBehaviourUpdatePatch
+{
+    private static Predicate<ISoundPlayer> Lobbybgm;
+    private static ISoundPlayer MapThemeSound;
+    public static void Postfix(LobbyBehaviour __instance)
+    {
+        // ReSharper disable once ConvertToLocalFunction
+#if IL2CPP
+        Lobbybgm = (Predicate<ISoundPlayer>)(x => x.Name.Equals("MapTheme"));
+#else
+        Lobbybgm = x => x.Name.Equals("MapTheme");
+#endif
+        MapThemeSound = SoundManager.Instance.soundPlayers.Find(Lobbybgm);
+
+        if (!Main.LobbyMusic.Value)
+        {
+            if (MapThemeSound == null) return;
+            SoundManager.Instance.StopNamedSound("MapTheme");
+        }
+        else
+        {
+            if (MapThemeSound != null) return;
+            SoundManager.Instance.CrossFadeSound("MapTheme", __instance.MapTheme, 0.5f);
+        }
+    }
+}

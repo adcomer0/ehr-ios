@@ -1,0 +1,490 @@
+using System;
+using System.Collections.Generic;
+using System.Runtime.CompilerServices;
+using EHR.Modules;
+using HarmonyLib;
+using TMPro;
+using UnityEngine;
+using static EHR.Translator;
+
+
+namespace EHR;
+
+[HarmonyPatch(typeof(PingTracker), "Update")]
+internal static class PingTrackerUpdatePatch
+{
+    public static PingTracker Instance;
+    private static readonly StringBuilder Sb = new();
+
+    private static readonly float[] FpsBuffer = new float[10];
+    private static int FpsIndex;
+    private static int FpsCount;
+    private static readonly Color32 FpsColor = new(0, 165, 255, 255);
+
+    public static bool Prefix(PingTracker __instance)
+    {
+        FpsSampler.TickFrame();
+        PingTracker instance = !Instance ? __instance : Instance;
+        
+        var client = AmongUsClient.Instance;
+        if (!client) return false;
+
+        if (client.NetworkMode == NetworkModes.FreePlay)
+        {
+            instance.gameObject.SetActive(false);
+            return false;
+        }
+
+        if (instance.name != "EHR_SettingsText")
+        {
+            instance.aspectPosition.DistanceFromEdge = !client.IsGameStarted ? instance.lobbyPos : instance.gamePos;
+
+            instance.text.alignment = TextAlignmentOptions.Center;
+            instance.text.text = Sb.ToString();
+        }
+
+        if (!Instance) Instance = __instance;
+
+        if (!PerSecondUpdateScheduler.ShouldRunUpdate()) return false;
+
+        bool inGame = GameStates.InGame;
+        Sb.Clear()
+            .Append(GameStates.IsLobby ? "\r\n<size=2>" : "<size=1.5>")
+            .Append(Main.CredentialsText);
+
+        int ping = client.Ping;
+
+        string color =
+            ping < 30 ? "#44dfcc" :
+            ping < 100 ? "#7bc690" :
+            ping < 200 ? "#f3920e" :
+            ping < 400 ? "#ff146e" :
+            "#ff4500";
+
+        Sb.Append(inGame ? "    -    " : "\r\n")
+            .Append("<color=")
+            .Append(color)
+            .Append('>')
+            .Append(GetString("PingText"))
+            .Append(": ")
+            .Append(ping)
+            .Append("</color>");
+
+        AppendSeparator(inGame);
+
+        Sb.Append(GetString("Server"))
+            .Append("<b>")
+            .Append(Utils.GetRegionName())
+            .Append("</b>");
+
+        if (Main.ShowFps.Value && FpsCount > 0)
+        {
+            float sum = 0f;
+            for (int i = 0; i < FpsCount; i++)
+                sum += FpsBuffer[i];
+
+            float fps = sum / FpsCount;
+
+            Color fpsColor =
+                fps < 10f ? Color.red :
+                fps < 25f ? Color.yellow :
+                fps < 50f ? Color.green :
+                FpsColor;
+
+            AppendSeparator(inGame);
+
+            Sb.Append(Utils.ColorPrefix(fpsColor))
+                .Append(Utils.ColorPrefix(Color.cyan))
+                .Append(GetString("FPSGame"))
+                .Append((int)fps)
+                .Append("</color>")
+                .Append("</color>");
+        }
+
+        if (inGame) Sb.Append("\r\n.");
+        return false;
+    }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void AppendSeparator(bool inGame)
+    {
+        Sb.Append(inGame ? "    -    " : "  -  ");
+    }
+
+    static class FpsSampler
+    {
+        private static int Frames;
+        private static float Elapsed;
+        private const float SampleInterval = 0.5f; // half-second window
+
+        public static void TickFrame()
+        {
+            Frames++;
+            Elapsed += Time.unscaledDeltaTime;
+            if (Elapsed < SampleInterval) return;
+            float fps = Frames / Elapsed;
+            FpsBuffer[FpsIndex] = fps;
+            if (FpsCount < 10) FpsCount++;
+            FpsIndex++;
+            if (FpsIndex >= 10) FpsIndex = 0;
+            Frames = 0;
+            Elapsed = 0f;
+        }
+    }
+
+    internal static void __EHRStaticCallback_65(global::EHR.EHRStaticPatchFrame __ehrFrame)
+    {
+        PingTracker __ehrp0 = __ehrFrame.GetInstance<PingTracker>();
+        bool __ehrReturn = default;
+        try
+        {
+            __ehrReturn = Prefix(__ehrp0);
+        }
+        finally
+        {
+        }
+        __ehrFrame.RunOriginal = __ehrFrame.RunOriginal && __ehrReturn;
+    }
+
+}
+[HarmonyPatch(typeof(VersionShower), "Start")]
+internal static class VersionShowerStartPatch
+{
+    private static void Postfix(VersionShower __instance)
+    {
+#pragma warning disable CS0162 // Unreachable code detected
+        // ReSharper disable once HeuristicUnreachableCode
+        string testBuildIndicator = Main.TestBuildNumber > 0 ? $" <#ff0000>TEST <#bb0000>{Main.TestBuildNumber}</color></color>" : string.Empty;
+#pragma warning restore CS0162 // Unreachable code detected
+
+        Main.CredentialsText = $"<color={Main.ModColor}>Endless Host Roles</color> v{Main.PluginDisplayVersion}{testBuildIndicator} <color=#a54aff>by</color> <color=#ffff00>Gurge44</color>";
+
+        if (Main.IsAprilFools) Main.CredentialsText = "<color=#00bfff>Endless Madness</color> v11.45.14 <color=#a54aff>by</color> <color=#ffff00>No one</color>";
+
+        ErrorText.Create(__instance.text);
+
+        if (Main.HasArgumentException && ErrorText.Instance)
+            ErrorText.Instance.AddError(ErrorCode.Main_DictionaryError);
+
+        VersionChecker.Check();
+    }
+
+    internal static void __EHRStaticCallback_66(global::EHR.EHRStaticPatchFrame __ehrFrame)
+    {
+        VersionShower __ehrp0 = __ehrFrame.GetInstance<VersionShower>();
+        try
+        {
+            Postfix(__ehrp0);
+        }
+        finally
+        {
+        }
+    }
+
+}
+
+// From TONX/Patches/AccountManagerPatch.cs, by KARPED1EM
+[HarmonyPatch(typeof(AccountTab), "Awake")]
+public static class UpdateFriendCodeUIPatch
+{
+    private static GameObject VersionShower;
+
+    public static void Prefix()
+    {
+        var credentialsText = $"<color={Main.ModColor}>Gurge44</color> \u00a9 2026";
+        credentialsText += "\t\t\t";
+        credentialsText += $"<color={Main.ModColor}>{Main.ModName}</color> - {Main.PluginVersion}";
+
+        GameObject friendCode = GameObject.Find("FriendCode");
+
+        if (friendCode && !VersionShower)
+        {
+            VersionShower = Object.Instantiate(friendCode, friendCode.transform.parent);
+            VersionShower.name = "EHR Version Shower";
+            VersionShower.transform.localPosition = friendCode.transform.localPosition + new Vector3(3.2f, 0f, 0f);
+            VersionShower.transform.localScale *= 1.7f;
+            var tmp = VersionShower.GetComponent<TextMeshPro>();
+            tmp.alignment = TextAlignmentOptions.Right;
+            tmp.fontSize = 30f;
+            tmp.SetText(credentialsText);
+        }
+
+        GameObject newRequest = GameObject.Find("NewRequest");
+
+        if (newRequest)
+        {
+            newRequest.transform.localPosition -= new Vector3(0f, 0f, 10f);
+            newRequest.transform.localScale = new(0f, 0f, 0f);
+        }
+
+        GameObject friendsButton = GameObject.Find("FriendsButton");
+
+        if (friendsButton)
+        {
+            friendsButton.transform.Find("Highlight").GetComponent<SpriteRenderer>().color = new(0f, 0.647f, 1f, 1f);
+            friendsButton.transform.Find("Inactive").GetComponent<SpriteRenderer>().color = new(0f, 0.847f, 1f, 1f);
+        }
+    }
+
+    internal static void __EHRStaticCallback_67(global::EHR.EHRStaticPatchFrame __ehrFrame)
+    {
+        try
+        {
+            Prefix();
+        }
+        finally
+        {
+        }
+    }
+
+}
+
+[HarmonyPatch(typeof(MainMenuManager), "Start")]
+[HarmonyPriority(Priority.First)]
+internal static class TitleLogoPatch
+{
+    private static GameObject ModStamp;
+    private static GameObject Ambience;
+    private static GameObject CustomBG;
+    private static GameObject SpecialMessage;
+    private static GameObject LeftPanel;
+    public static GameObject RightPanel;
+    private static GameObject CloseRightButton;
+    private static GameObject Tint;
+    private static GameObject BottomButtonBounds;
+
+    public static Vector3 RightPanelOp;
+    
+    private static bool IsEasterPeriod(int daysBefore = 2, int daysAfter = 1)
+    {
+        DateTime today = DateTime.Today;
+        DateTime easter = GetEasterSunday(today.Year);
+
+        DateTime start = easter.AddDays(-daysBefore);
+        DateTime end = easter.AddDays(daysAfter);
+
+        return today >= start && today <= end;
+    }
+
+    private static DateTime GetEasterSunday(int year)
+    {
+        int a = year % 19;
+        int b = year / 100;
+        int c = year % 100;
+        int d = b / 4;
+        int e = b % 4;
+        int f = (b + 8) / 25;
+        int g = (b - f + 1) / 3;
+        int h = (19 * a + b - d - g + 15) % 30;
+        int i = c / 4;
+        int j = c % 4;
+        int k = (32 + 2 * e + 2 * i - h - j) % 7;
+        int l = (a + 11 * h + 22 * k) / 451;
+
+        int month = (h + k - 7 * l + 114) / 31;
+        int day = (h + k - 7 * l + 114) % 31 + 1;
+
+        return new DateTime(year, month, day);
+    }
+
+    private static void Postfix(MainMenuManager __instance)
+    {
+        GameObject.Find("BackgroundTexture")?.SetActive(!MainMenuManagerPatch.ShowedBak);
+
+        DateTime now = DateTime.Now;
+        bool holidays = now is { Month: 12, Day: < 24 or > 26 };
+        bool christmas = now is { Month: 12, Day: >= 24 and <= 26 };
+        bool newYear = now is { Month: 1, Day: <= 6 };
+        bool easter = IsEasterPeriod();
+
+        if (!SpecialMessage && (holidays || christmas || newYear || easter))
+        {
+            SpecialMessage = new GameObject("SpecialMessage");
+            SpecialMessage.transform.SetParent(__instance.transform);
+            SpecialMessage.transform.position = new Vector3(0f, -2.5f, 0f);
+            var text = SpecialMessage.AddComponent<TextMeshPro>();
+            text.alignment = TextAlignmentOptions.Center;
+            text.fontSize = 3f;
+            text.color = Color.white;
+            text.outlineColor = Color.black;
+            text.outlineWidth = 0.2f;
+            text.enableWordWrapping = false;
+            text.fontWeight = FontWeight.Black;
+            text.text = $"<b>{GetString(holidays ? "HolidayGreeting" : christmas ? "ChristmasGreeting" : newYear ? "NewYearGreeting" : "EasterGreeting")}</b>";
+        }
+
+        if (!CustomBG && (holidays || christmas || newYear || easter))
+        {
+            CustomBG = new GameObject("CustomBG");
+            CustomBG.transform.SetParent(__instance.transform);
+            CustomBG.transform.position = new(0f, 0f, 520f);
+            var sr = CustomBG.AddComponent<SpriteRenderer>();
+            sr.sprite = Utils.LoadSprite(easter ? "EHR.Resources.Images.EasterBG.jpg" : "EHR.Resources.Images.WinterBG.jpg", 180f);
+            PlayerParticles pp = Object.FindObjectOfType<PlayerParticles>();
+            if (pp) pp.gameObject.SetActive(false);
+        }
+
+        if (!(ModStamp = GameObject.Find("ModStamp"))) return;
+
+        ModStamp.transform.localScale = new(0.3f, 0.3f, 0.3f);
+
+        Ambience = GameObject.Find("Ambience");
+
+        if (Ambience)
+        {
+            try { __instance.playButton.transform.gameObject.SetActive(true); }
+            catch (Exception ex) { Logger.Warn(ex.ToString(), "MainMenuLoader"); }
+        }
+
+        if (!(LeftPanel = GameObject.Find("LeftPanel"))) return;
+
+        LeftPanel.transform.localScale = new(0.7f, 0.7f, 0.7f);
+        LeftPanel.ForEachChild((Action<GameObject>)ResetParent);
+        LeftPanel.SetActive(false);
+
+        Color shade = new(0f, 0f, 0f, 0f);
+        Sprite standardActiveSprite = __instance.newsButton.activeSprites.GetComponent<SpriteRenderer>().sprite;
+        Sprite minorActiveSprite = __instance.quitButton.activeSprites.GetComponent<SpriteRenderer>().sprite;
+
+        Dictionary<List<PassiveButton>, (Sprite, Color, Color, Color, Color)> mainButtons = new()
+        {
+            { [__instance.playButton, __instance.inventoryButton, __instance.shopButton], (standardActiveSprite, new(0f, 0.647f, 1f, 0.8f), shade, Color.white, Color.white) },
+            { [__instance.newsButton, __instance.myAccountButton, __instance.settingsButton], (minorActiveSprite, new(0f, 0.9f, 0.9f, 0.8f), shade, Color.white, Color.white) },
+            { [__instance.creditsButton, __instance.quitButton], (minorActiveSprite, new(0.825f, 0.825f, 0.286f, 0.8f), shade, Color.white, Color.white) }
+        };
+
+        foreach (KeyValuePair<List<PassiveButton>, (Sprite, Color, Color, Color, Color)> kvp in mainButtons)
+            kvp.Key.ForEach(button => FormatButtonColor(button, kvp.Value.Item2, kvp.Value.Item3, kvp.Value.Item4, kvp.Value.Item5));
+
+        try { mainButtons.Keys.Flatten().DoIf(x => x, x => x.buttonText.color = Color.white); }
+        catch { }
+
+        GameObject.Find("Divider")?.SetActive(false);
+
+        if (!(RightPanel = GameObject.Find("RightPanel"))) return;
+
+        var rpap = RightPanel.GetComponent<AspectPosition>();
+        if (rpap) Object.Destroy(rpap);
+
+        RightPanelOp = RightPanel.transform.localPosition;
+        RightPanel.transform.localPosition = RightPanelOp + new Vector3(10f, 0f, 0f);
+        RightPanel.GetComponent<SpriteRenderer>().color = new(1f, 0.78f, 0.9f, 1f);
+
+        CloseRightButton = new("CloseRightPanelButton");
+        CloseRightButton.transform.SetParent(RightPanel.transform);
+        CloseRightButton.transform.localPosition = new(-4.78f, 1.3f, 1f);
+        CloseRightButton.transform.localScale = new(1f, 1f, 1f);
+        CloseRightButton.AddComponent<BoxCollider2D>().size = new(0.6f, 1.5f);
+        var closeRightSpriteRenderer = CloseRightButton.AddComponent<SpriteRenderer>();
+        closeRightSpriteRenderer.sprite = Utils.LoadSprite("EHR.Resources.Images.RightPanelCloseButton.png", 100f);
+        closeRightSpriteRenderer.color = new(1f, 0.78f, 0.9f, 1f);
+        var closeRightPassiveButton = CloseRightButton.AddComponent<PassiveButton>();
+        closeRightPassiveButton.OnClick = new();
+        closeRightPassiveButton.OnClick.AddListener(MainMenuManagerPatch.HideRightPanel);
+        closeRightPassiveButton.OnMouseOut = new();
+        closeRightPassiveButton.OnMouseOut.AddListener(() => closeRightSpriteRenderer.color = new(1f, 0.78f, 0.9f, 1f));
+        closeRightPassiveButton.OnMouseOver = new();
+        closeRightPassiveButton.OnMouseOver.AddListener(() => closeRightSpriteRenderer.color = new(1f, 0.68f, 0.99f, 1f));
+
+        Tint = __instance.screenTint.gameObject;
+        var ttap = Tint.GetComponent<AspectPosition>();
+        if (ttap) Object.Destroy(ttap);
+
+        Tint.transform.SetParent(RightPanel.transform);
+        Tint.transform.localPosition = new(-0.0824f, 0.0513f, Tint.transform.localPosition.z);
+        Tint.transform.localScale = new(1f, 1f, 1f);
+        __instance.howToPlayButton.gameObject.SetActive(false);
+        __instance.howToPlayButton.transform.parent.Find("FreePlayButton").gameObject.SetActive(false);
+
+        if (!(BottomButtonBounds = GameObject.Find("BottomButtonBounds"))) return;
+
+        BottomButtonBounds.transform.localPosition -= new Vector3(0f, 0.1f, 0f);
+
+        return;
+
+        static void ResetParent(GameObject obj) => obj.transform.SetParent(LeftPanel.transform.parent);
+
+        void FormatButtonColor(PassiveButton button, Color inActiveColor, Color activeColor, Color inActiveTextColor, Color activeTextColor)
+        {
+            button.activeSprites.transform.Find("Shine")?.gameObject.SetActive(false);
+            button.inactiveSprites.transform.Find("Shine")?.gameObject.SetActive(false);
+            var activeRenderer = button.activeSprites.GetComponent<SpriteRenderer>();
+            var inActiveRenderer = button.inactiveSprites.GetComponent<SpriteRenderer>();
+            activeRenderer.sprite = minorActiveSprite;
+            inActiveRenderer.sprite = minorActiveSprite;
+            activeRenderer.color = activeColor.a == 0f ? new(inActiveColor.r, inActiveColor.g, inActiveColor.b, 1f) : activeColor;
+            inActiveRenderer.color = inActiveColor;
+            button.activeTextColor = activeTextColor;
+            button.inactiveTextColor = inActiveTextColor;
+        }
+    }
+
+    internal static void __EHRStaticCallback_68(global::EHR.EHRStaticPatchFrame __ehrFrame)
+    {
+        MainMenuManager __ehrp0 = __ehrFrame.GetInstance<MainMenuManager>();
+        try
+        {
+            Postfix(__ehrp0);
+        }
+        finally
+        {
+        }
+    }
+
+}
+
+[HarmonyPatch(typeof(OptionsMenuBehaviour), "Open")]
+internal static class OptionsMenuBehaviourOpenPatch
+{
+    public static bool Prefix(OptionsMenuBehaviour __instance)
+    {
+        try
+        {
+            if (HudManager.InstanceExists && !HudManager.Instance.SettingsButton.activeSelf) return false;
+        }
+        catch { }
+
+        __instance.ResetText();
+
+        if (__instance.gameObject.activeSelf)
+        {
+            if (!__instance.Toggle) return false;
+
+            __instance.GetComponent<TransitionOpen>().Close();
+        }
+        else
+        {
+            if (Minigame.Instance) Minigame.Instance.Close();
+
+            __instance.OpenTabGroup(0);
+            __instance.UpdateButtons();
+            __instance.gameObject.SetActive(true);
+            __instance.MenuButton?.SelectButton(true);
+            if (HudManager.InstanceExists) ConsoleJoystick.SetMode_MenuAdditive();
+
+            if (!__instance.grabbedControllerButtons)
+            {
+                __instance.grabbedControllerButtons = true;
+                __instance.GrabControllerButtons();
+            }
+
+            ControllerManager.Instance.OpenOverlayMenu("OptionsMenu", __instance.BackButton, __instance.DefaultButtonSelected, __instance.ControllerSelectable);
+        }
+
+        return false;
+    }
+
+    internal static void __EHRStaticCallback_69(global::EHR.EHRStaticPatchFrame __ehrFrame)
+    {
+        OptionsMenuBehaviour __ehrp0 = __ehrFrame.GetInstance<OptionsMenuBehaviour>();
+        bool __ehrReturn = default;
+        try
+        {
+            __ehrReturn = Prefix(__ehrp0);
+        }
+        finally
+        {
+        }
+        __ehrFrame.RunOriginal = __ehrFrame.RunOriginal && __ehrReturn;
+    }
+
+}

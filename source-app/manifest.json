@@ -1,0 +1,4324 @@
+{
+  "schema": "ehr.portable-source-snapshot.v1",
+  "upstreamCommit": "ce23f0d050f617a59507e5bb0fbfff751d4b5134",
+  "assemblyName": "EHR",
+  "defines": [
+    "IL2CPP",
+    "EHR_ALL_SOURCE_COMPONENTS"
+  ],
+  "packages": {
+    "BepInEx.Core": "6.0.0-be.785",
+    "GitInfo": "3.3.4",
+    "HarmonyX": "2.10.2",
+    "JetBrains.Annotations": "2026.2.0"
+  },
+  "baseGameDllReferences": false,
+  "sources": [
+    {
+      "path": "compiled/0/SourceSurface27.g.cs",
+      "sha256": "9ff67b031402462ee78236ed48d0eb977d824a5e899fd26bc3d58cf531921fbb"
+    },
+    {
+      "path": "compiled/1/FacadeRuntime.cs",
+      "sha256": "2b0782426634a46433f34da75fb4bf3e417bb0200b14aa877c4765a44897f842"
+    },
+    {
+      "path": "compiled/2/LiveArrays.cs",
+      "sha256": "07c31b7dd90ad7abfdd9c496c2dff453ab95011a453d5e3f3dc6b379f1b84928"
+    },
+    {
+      "path": "compiled/3/LiveLists.cs",
+      "sha256": "da8d7b298c362a47cb5ab660f9c2128363ecf926b4b89d3e1432f91e23cce285"
+    },
+    {
+      "path": "compiled/4/NativeLifetime.cs",
+      "sha256": "c0a7e9b4f5ec1c9d91f07ddd21966007d11755e81bfb6cfcc802ed37629ce577"
+    },
+    {
+      "path": "compiled/5/ArabicSupport.cs",
+      "sha256": "786545a0b7bc85d1a830634115ded0fee0968289215b52987fbfd9c03da3a851"
+    },
+    {
+      "path": "compiled/6/ArabicTextPatch.cs",
+      "sha256": "80a18dea7fb1781a067437a9d7d7e0fc465dffdad6979779dc2764b282bac102"
+    },
+    {
+      "path": "compiled/7/CustomRoles.cs",
+      "sha256": "9d905bf8510e4ecfc428e02cb9fe2af2f3241d8607b04507f6e7cf9c3bc3d9f8"
+    },
+    {
+      "path": "compiled/8/BedWars.cs",
+      "sha256": "6f683e79a0d4509feb7299d5d97b59117dc02cbed8236b1121e999d086a1039a"
+    },
+    {
+      "path": "compiled/9/CaptureTheFlag.cs",
+      "sha256": "cfd6805323fb41993af50155e9346dbdd483afde711f36b459a55540f470cea8"
+    },
+    {
+      "path": "compiled/10/CustomHnS.cs",
+      "sha256": "26bf4f300f069ca120edd8583f371102d38055bd625e28cbcedf5cc99592d934"
+    },
+    {
+      "path": "compiled/11/Deathrace.cs",
+      "sha256": "722de0a80f37ee0bbf2d84cc612df62043b68c51b936dfbb084b0e224304d0df"
+    },
+    {
+      "path": "compiled/12/DoomTag.cs",
+      "sha256": "99616d686cac9714655bec79d8500c8319987c38531f39324a01e702cbf7a4f2"
+    },
+    {
+      "path": "compiled/13/FreeForAll.cs",
+      "sha256": "241c3d9ceb2b2e1812e22d94ad55dcfac4075e38ee9fc90d86009ca43f431273"
+    },
+    {
+      "path": "compiled/14/HotPotato.cs",
+      "sha256": "432b15272306d60cf1a7422e972ad55ec1d0cc44540110041006b7ab8af3abe6"
+    },
+    {
+      "path": "compiled/15/KingOfTheZones.cs",
+      "sha256": "87d8bab0f022fc22696e977b8305699940450b61745f89fbd6bc370f29b4ec87"
+    },
+    {
+      "path": "compiled/16/Mingle.cs",
+      "sha256": "c4f890264fab7d847586e2ec651336d8d2493bc6e922f601520411a50a24dba6"
+    },
+    {
+      "path": "compiled/17/NaturalDisasters.cs",
+      "sha256": "8d8fff68815a7fec96a3ada1d5758ddc65180ef7c9c7cc0de1c8581103bffe46"
+    },
+    {
+      "path": "compiled/18/Quiz.cs",
+      "sha256": "f788cc7b88503e7b0f0a7cd4f2c86c6d58f4852bef48dd2525195df56613416e"
+    },
+    {
+      "path": "compiled/19/RRTimeTester.cs",
+      "sha256": "101a9ed72a6ef1a7631fc7b0162333f72ee9e946683a972611005f0872f88ad3"
+    },
+    {
+      "path": "compiled/20/RoomRush.cs",
+      "sha256": "78f3d9d1f5dde239539f37de2a7fae2896919d90e708cd08393eed378a0eb4d1"
+    },
+    {
+      "path": "compiled/21/Snowdown.cs",
+      "sha256": "646ae50fb5b07717f24b20fc8210011839a9c2f93ecb6a6fe1c98191983283e7"
+    },
+    {
+      "path": "compiled/22/SoloPVP.cs",
+      "sha256": "a6d6f743954d3044d731dd2c9e5eb7607e81ba2b4ce21dbe2dfff1adef92eb45"
+    },
+    {
+      "path": "compiled/23/Speedrun.cs",
+      "sha256": "a9bd10ccdb277bb12b489c0f040febe4894acb68ea0ef7d15887c9b79117f2b1"
+    },
+    {
+      "path": "compiled/24/StopAndGo.cs",
+      "sha256": "58ffcbecb25692c72148481a410c148ce35b5be22a9cef2eb5515dbae0dfac52"
+    },
+    {
+      "path": "compiled/25/TheMindGame.cs",
+      "sha256": "4b6c35547ee9589b4e864a2f3e01c8d8a97f9604662df0c25157d138b1bfe5bd"
+    },
+    {
+      "path": "compiled/26/IsExternalInit.cs",
+      "sha256": "c6f4554d7285cb333bb56fbcd6a81cc83e0ce2f695a4129f5593929d6e2c9bc1"
+    },
+    {
+      "path": "compiled/27/Main.cs",
+      "sha256": "767a5ee076926ea4f8c09c9323e45451b7da79292c0879755865e9b18baf936f"
+    },
+    {
+      "path": "compiled/28/AFKDetector.cs",
+      "sha256": "32698a75873a05b4d31cc16f618bd91b97c481f8f9bbe3be704ad0a3d5ce92b0"
+    },
+    {
+      "path": "compiled/29/AURoleOptions.cs",
+      "sha256": "db4a4ca6e6a1effa03cb80a26ec90f86f7712d7ee05e29d102ff9c7bdc3d46e5"
+    },
+    {
+      "path": "compiled/30/Achievements.cs",
+      "sha256": "331374a227e3a11f7ee491ecdd18a221c13af1754db8e14925a630eb682b5785"
+    },
+    {
+      "path": "compiled/31/AddSteamID.cs",
+      "sha256": "519a7a88bf4771aa23834bf8205ab9b532f209622286156b8a961f83dbce83a8"
+    },
+    {
+      "path": "compiled/32/AmciRegistration.cs",
+      "sha256": "9ff8817afebab4f2ab622aedacf6ca1eb44c5bae7c994e8f6745e4ddb795ddd0"
+    },
+    {
+      "path": "compiled/33/AntiBlackout.cs",
+      "sha256": "8b624cfa6160ddf61d164c35d18f00d140818411188304e7e5f0a02cc2d1ca23"
+    },
+    {
+      "path": "compiled/34/AutoHaunt.cs",
+      "sha256": "dde37688bc02a73b931aeda079be10404fe55a4fc7b1797c2738f65b233f28f6"
+    },
+    {
+      "path": "compiled/35/BanManager.cs",
+      "sha256": "8139c095d25ab56813bd7b6ca66e110531c5e599f22ced946928b50aaf49fbeb"
+    },
+    {
+      "path": "compiled/36/Camouflage.cs",
+      "sha256": "0872ac9f685f53f453f2accf5d3a5afd1f532123964e4392bd0068e94b428e51"
+    },
+    {
+      "path": "compiled/37/ChatBubbleShower.cs",
+      "sha256": "d2ea7a37a0982df19decd051b6f49b87d5113c01b0164571d49d1bb9cabcf292"
+    },
+    {
+      "path": "compiled/38/CheckAUVersion.cs",
+      "sha256": "7304897e17acd41cefea91b0083c4e1355ddebb4b36d22e27556c75dcb95758b"
+    },
+    {
+      "path": "compiled/39/ClientControlGUI.cs",
+      "sha256": "8ca03fb63aebf83a5ec453bad16707d5687480e8c470ad806c7d74b95acc87a9"
+    },
+    {
+      "path": "compiled/40/ClientOptionItem.cs",
+      "sha256": "325dc18afb0cb1962300ba242d43f881d0e2f54fd16c29beda34bab3e0744411"
+    },
+    {
+      "path": "compiled/41/CompilerGeneratedObjectWrapper.cs",
+      "sha256": "0645edb1300e14fd1912f45d1def90d0ee2c61b843b8a68a94a2a15369f23137"
+    },
+    {
+      "path": "compiled/42/CustomNetObject.cs",
+      "sha256": "b300c8016d5ab136d0294e3979d99f43ef2d87c9c57d65eaf398b386e735c3bd"
+    },
+    {
+      "path": "compiled/43/CustomRoleSelector.cs",
+      "sha256": "2ab5b95c65510719aafee618dd43f365937aa975eba65fccc8cd58bf1a755d3f"
+    },
+    {
+      "path": "compiled/44/CustomRolesHelper.cs",
+      "sha256": "a4d1603f1d95320bfe58e43afaad7801a1a20764a17ae0d0bbdcb5482a9fe1ae"
+    },
+    {
+      "path": "compiled/45/CustomRpcSender.cs",
+      "sha256": "7dd6f207bc0a4aedcb767c3ceb6aa488ae0098f7562a5c271787502f46cdc0d7"
+    },
+    {
+      "path": "compiled/46/CustomSabotage.cs",
+      "sha256": "4ded02c6fe738f9687e64aeb769cf09fbcd71d9604d6bd3f4a871bc7d2850c48"
+    },
+    {
+      "path": "compiled/47/CustomSounds.cs",
+      "sha256": "96fd927a5943e45e452514dc584b1e2251644ddd4cc0e2bfea2cd1e11a64de71"
+    },
+    {
+      "path": "compiled/48/CustomTeamManager.cs",
+      "sha256": "91bebca3afc72f72d181867bd47845f904be04061263d1bb62ca9a3f6f9dcdab"
+    },
+    {
+      "path": "compiled/49/CustomWinnerHolder.cs",
+      "sha256": "1c48f5e04d55ff10dd4f4ce2829780e768d6909714e8be2946120d26afbd1368"
+    },
+    {
+      "path": "compiled/50/DataFlagRateLimiter.cs",
+      "sha256": "11b574c2e1a2fb289d862f1b5de2fc8a11caa25b6098438f9681b8a909746a14"
+    },
+    {
+      "path": "compiled/51/DebugModeManager.cs",
+      "sha256": "23605044a5ce37486220842ace29792e3f91c00bd1c5fc22cb78cc1ba8e284cf"
+    },
+    {
+      "path": "compiled/52/Debugger.cs",
+      "sha256": "3f05f3c7add81fe347abfed36ab5c024f049dceb41c7d8b97bbf1594e76d642d"
+    },
+    {
+      "path": "compiled/53/DevManager.cs",
+      "sha256": "8378b64601244eff3d7aff0514c0d3e00ae7031551b9cb8ec77207038f5c2717"
+    },
+    {
+      "path": "compiled/54/DisableDevice.cs",
+      "sha256": "f06a8034ab434c197317b195e3b39bfa5e96d582bac357fcd41f4a301affad1a"
+    },
+    {
+      "path": "compiled/55/DoorsReset.cs",
+      "sha256": "8d18c4c810b20d06a7c3c1a2b8bb4cb11c647b58dd8ef1f4c523114b77010276"
+    },
+    {
+      "path": "compiled/56/DoubleTrigger.cs",
+      "sha256": "76008144fa273b1f5765ea889a7b175c4a5823d14266521fc1553712a36d7eb3"
+    },
+    {
+      "path": "compiled/57/EAC.cs",
+      "sha256": "98b38cd1b0bea9733e2da08186d1d13c94635c3e6494c579252fad317944dccd"
+    },
+    {
+      "path": "compiled/58/EmbeddedDeps.cs",
+      "sha256": "de2bb3762f9540d16f7f41ad6351889d6e02b4049d500a283d7b67fa327f48d2"
+    },
+    {
+      "path": "compiled/59/ErrorText.cs",
+      "sha256": "6602748fb053378439fb3e5055ee5d54cf5800bd172bbdd65c70d3974356306f"
+    },
+    {
+      "path": "compiled/60/ExtendedPlayerControl.cs",
+      "sha256": "ebc1aada0d2193b3def316ca3d51c944009644ac564c69b089f0b99b74e9162d"
+    },
+    {
+      "path": "compiled/61/CollectionExtensions.cs",
+      "sha256": "ebf1f598cbba3a237c2889521078ca82f1808d9ff69e14c2710fd5cfb8c8a526"
+    },
+    {
+      "path": "compiled/62/CountdownTimer.cs",
+      "sha256": "5190ce2b611a0dd265ed444586b447214701e110fec4a65486c3055c1ef21439"
+    },
+    {
+      "path": "compiled/63/FastVector2.cs",
+      "sha256": "4e05642f0e640df6c9460a83dd0cc73b52f2bfdfaf7924179fa2cb0c996201ee"
+    },
+    {
+      "path": "compiled/64/HazelExtensions.cs",
+      "sha256": "5d0f698f4b72ffe6c72fd6c62fd4bceb8a4a52944272a30bf990e5b563957834"
+    },
+    {
+      "path": "compiled/65/IGameManagerEx.cs",
+      "sha256": "76d373f6dc41d82f1b4f590c218f9d8852fa7bb3eb989a2d99f1f56deec65c0d"
+    },
+    {
+      "path": "compiled/66/ObjectHelper.cs",
+      "sha256": "5b85dfe08d8b12167b4988c32c2d277fe3360506a74b46dddbb814c833557ac6"
+    },
+    {
+      "path": "compiled/67/StopwatchHelper.cs",
+      "sha256": "8b166e502f438879621a97dfa4d1fd11de3ef78db73ef84f3fba1a9d40d00cd2"
+    },
+    {
+      "path": "compiled/68/FixedUpdateCaller.cs",
+      "sha256": "72ef0d8a013dad5bbeeb5ef219d3e7e5036006fb6fd0a00ebceecddc068c9482"
+    },
+    {
+      "path": "compiled/69/GameOptionsSender.cs",
+      "sha256": "492f9bd6211c1068c6844435c187a2330828a020dc45b841d01331c362de123c"
+    },
+    {
+      "path": "compiled/70/NormalGameOptionsSender.cs",
+      "sha256": "48fb618c65a64dbc5ab9cbe5d13bb673e8d75d245c3f6f59c64dcc5da88ba656"
+    },
+    {
+      "path": "compiled/71/PlayerGameOptionsSender.cs",
+      "sha256": "a55f07f01f2832721aba797cf6e0aef68f09d6a8ad794c52051ce0c800b179eb"
+    },
+    {
+      "path": "compiled/72/GameState.cs",
+      "sha256": "aa2ee94d3b8663dd905856b9229b806502ed465008f19b3632743975a55f5794"
+    },
+    {
+      "path": "compiled/73/GhostRolesManager.cs",
+      "sha256": "6b9c19b91e2e77f7c450dcf1145c288e04fcf96ec8ab1a4877297f2cb24b180f"
+    },
+    {
+      "path": "compiled/74/GuessManager.cs",
+      "sha256": "f1a7edd298f2c2e470cf74e6dba2e78bcd753314a373ce8e59080e25f487eef7"
+    },
+    {
+      "path": "compiled/75/HashAuth.cs",
+      "sha256": "e2b9f6d801837735f928ef17bab93af09eedbcbe0089ad23db2e6ae437bacb73"
+    },
+    {
+      "path": "compiled/76/ButtonClickCrashFix.cs",
+      "sha256": "2c35ef82e3744f3481d6f61c19adad6ccc876ca316c98066c6fd644bb5f10b7a"
+    },
+    {
+      "path": "compiled/77/CastHelper.cs",
+      "sha256": "ee06b8bc4590c5a23e9c5f6bd2d0f33b6c0a1ecf8f5b535ab45aadad628d4ebd"
+    },
+    {
+      "path": "compiled/78/UnityActionDelegateFix.cs",
+      "sha256": "161f3ca863dc63ee97b4f815821dd46921d287daa025225f3e5dc3ed56fc232d"
+    },
+    {
+      "path": "compiled/79/LateTask.cs",
+      "sha256": "feefebb3e3583705fd0af04ade7d17af832c6d00b597978c2ab13288a8126f75"
+    },
+    {
+      "path": "compiled/80/LoadingScreen.cs",
+      "sha256": "c62d22252c42d64f53c6e2042b24d0a6c242ebd476b9368e92553e8f1f677457"
+    },
+    {
+      "path": "compiled/81/LobbySharingAPI.cs",
+      "sha256": "5bb57c0d8246d05ba63fe95105ef03b5d40fed27ca70c192908b06bc1d4f416e"
+    },
+    {
+      "path": "compiled/82/LocateArrow.cs",
+      "sha256": "fced6f3c189a7bd318d24587b748e01988a9a1f85b69dd4a4b9d245f58827051"
+    },
+    {
+      "path": "compiled/83/LogHandler.cs",
+      "sha256": "68f5a6b8db89bd535ca4b6dac9369b9a7692e0af4279e56b582f07eb83d7c19d"
+    },
+    {
+      "path": "compiled/84/MeetingTimeManager.cs",
+      "sha256": "89f03885d73893032e0647cfdb3f457a58ea9f88553967287bbeba66a86c45af"
+    },
+    {
+      "path": "compiled/85/BAUCompatibility.cs",
+      "sha256": "df890c3996daed691f02cdce221b62cf3467f9e6fa6332d8a96081e544bbe07f"
+    },
+    {
+      "path": "compiled/86/LevelImposterCompatibility.cs",
+      "sha256": "a6cafae8fdf97908c2433ff8de670659586061572ddb7f83fac4eba5c6338cc3"
+    },
+    {
+      "path": "compiled/87/SubmergedCompatibility.cs",
+      "sha256": "d52f771d60117f2bf109e9f7cacc707bc3f721137432c59e77412e4b7baf52bc"
+    },
+    {
+      "path": "compiled/88/ModConsentPopUp.cs",
+      "sha256": "c0cb0c38e4cbcf31cb4ac1e8f9a857867fc4aa1f961fe820e7cf4d7218c198ba"
+    },
+    {
+      "path": "compiled/89/ModUpdater.cs",
+      "sha256": "4d04b165ecba5918b1ff1561825b70e490da9d2c1510e5fec9d56a5ff38a6389"
+    },
+    {
+      "path": "compiled/90/CallerArgumentExpressionAttribute.cs",
+      "sha256": "80c7d574c53696ed54e4d1c5795646b2186b0d4e08c1bb8e314c8d8f095008bb"
+    },
+    {
+      "path": "compiled/91/CharHelpers.cs",
+      "sha256": "2931e8fd1bc187f1f6a260437fd7fb8f9df9ec5869288c541148a66c5d8619d5"
+    },
+    {
+      "path": "compiled/92/CustomNetworkTransformHelper.cs",
+      "sha256": "562d7678bc010478a595eabafd9ccbac6fa2972095ae7dc4b77d4a590b0e15b5"
+    },
+    {
+      "path": "compiled/93/EnumHelper.cs",
+      "sha256": "0b7d0d729867a0193b49652763ad9bdc46e1db95e1c5dbcd5e865cb18be0b17d"
+    },
+    {
+      "path": "compiled/94/LinqExtensions.cs",
+      "sha256": "329c8768c7e458c94870cc379391787db2e1a746d5e79241cdd37c5e1f425a73"
+    },
+    {
+      "path": "compiled/95/LinqHelpers.cs",
+      "sha256": "3869dabead8b74547179258ddf8ee9feaa088e75e0a19f2ab1557f2b2e9280b5"
+    },
+    {
+      "path": "compiled/96/OperatingSystem.cs",
+      "sha256": "7346637e8ac8862b39f5e7078a4592c8b6fd600dd35471e37037f31d91505af2"
+    },
+    {
+      "path": "compiled/97/NameColorManager.cs",
+      "sha256": "d0f85c5f0d76f02e48f65bb337fbc3e9c7ec34b9d6a84b229b474ab8c7032217"
+    },
+    {
+      "path": "compiled/98/NameNotifyManager.cs",
+      "sha256": "5eef327dd9b6c776d358ba981bada6cf66e498ce704d8c1b0b4b9ad5592a057a"
+    },
+    {
+      "path": "compiled/99/OnlinePresetsManager.cs",
+      "sha256": "08992b946836dd46179b4175a6cf210abae4613aeb44cb164555ab39f85fbf1b"
+    },
+    {
+      "path": "compiled/100/OptionBackupData.cs",
+      "sha256": "cf732ff3f0d41fbd6341470fd132efe4bcff915d57016f7ddc64378e45c292a6"
+    },
+    {
+      "path": "compiled/101/OptionBackupValue.cs",
+      "sha256": "e8dd9ffc06c453d1f2a7c939380a5061431217929753aa99f77004c6287530a7"
+    },
+    {
+      "path": "compiled/102/OptionHolder.cs",
+      "sha256": "1e6245db5b1aabe290cd9f721de33c0442472ad7d8e4bb940de87e54d1e835ac"
+    },
+    {
+      "path": "compiled/103/BooleanOptionItem.cs",
+      "sha256": "177914905472db49f694e6d6fc0d808126ec3f97860a126e3f2c59336ad897d3"
+    },
+    {
+      "path": "compiled/104/FloatOptionItem.cs",
+      "sha256": "9fa998f4288711ae8040567d659d027f2d5aded1fff7fe3163c5741110112adc"
+    },
+    {
+      "path": "compiled/105/IntegerOptionItem.cs",
+      "sha256": "9359d9e1867da27aa0f21b44ebeda46bc7ef9489efe81a2caa6f086dffc75cbf"
+    },
+    {
+      "path": "compiled/106/OptionItem.cs",
+      "sha256": "b507632168bb2ca6568242f9f8a8fb7a08f574f9608e8637fc7d1e5d260d8274"
+    },
+    {
+      "path": "compiled/107/PresetOptionItem.cs",
+      "sha256": "c1155ad79c396178ef18b1f6081a7f0b3cc1d16073d2799d78a9b31abad7872e"
+    },
+    {
+      "path": "compiled/108/StringOptionItem.cs",
+      "sha256": "2576960b9c2a7a8578480dc88622fb4528972ae32f4384d79b3d39d555323ad7"
+    },
+    {
+      "path": "compiled/109/TextOptionItem.cs",
+      "sha256": "fcf91d695416bcbaeed26096ec63fef3166067b9a1540c009d2cca32d1dbb836"
+    },
+    {
+      "path": "compiled/110/ValueRule.cs",
+      "sha256": "3f74559c075dd31ebe611903bb26f6cd11bb12446359622b200759d1040b0d23"
+    },
+    {
+      "path": "compiled/111/OptionSaver.cs",
+      "sha256": "8d52144e5d2bbd06fc32209549def3d8f8b8a4755974cfadc112431d80b5e68c"
+    },
+    {
+      "path": "compiled/112/OptionShower.cs",
+      "sha256": "7180a3a2cb5e118db37dcdfd48fbce17b867778adc394eeb57a135543ea1f24b"
+    },
+    {
+      "path": "compiled/113/PerSecondUpdateScheduler.cs",
+      "sha256": "8f271e27ccc64cadc4e71aebbda7b1f725e38a2d059708f1e6d782ea7b51ff5e"
+    },
+    {
+      "path": "compiled/114/PetsHelper.cs",
+      "sha256": "54efe546943b01f0afaa8e0bc299a6f50fb7a08153d41c1fc565a3797faef8e4"
+    },
+    {
+      "path": "compiled/115/PrivateTagManager.cs",
+      "sha256": "b47c99edaecb11a8555797d3456df5fa05415a063d01020598487ece8c1f2146"
+    },
+    {
+      "path": "compiled/116/Prompt.cs",
+      "sha256": "5586007eaf2718667bbcc65d24957a2eeebdde35dff9ef40a076ecbed0a02f4c"
+    },
+    {
+      "path": "compiled/117/RPC.cs",
+      "sha256": "321fe6e7daaff0b6fc9bf3879298aeb79106416a69a011f3cc60f87a8fef0f39"
+    },
+    {
+      "path": "compiled/118/HashRandomWrapper.cs",
+      "sha256": "e5d5adfd7725f01c59a808adb9d844424a76da0451c79d04001bd3127a765348"
+    },
+    {
+      "path": "compiled/119/IRandom.cs",
+      "sha256": "1f1d57b2554d3b53fdd554c1b12f99d9a6579d0d0b5e544d5c04409ef606b1fc"
+    },
+    {
+      "path": "compiled/120/MersenneTwister.cs",
+      "sha256": "2ac2b868ced52c6481381ff64c6a8c47f0746b492095174cb2ff5aa6f46bfeb1"
+    },
+    {
+      "path": "compiled/121/NetRandomWrapper.cs",
+      "sha256": "e546f6a02d3323a4c6b2cef7f5d5fac06fbb3f28b6dd7a6d28bedbfc8cf2f787"
+    },
+    {
+      "path": "compiled/122/Xorshift.cs",
+      "sha256": "02add469a05835db17fd6377ad0a34cbe57c5394a45c112c98a2dcfdeeccaa09"
+    },
+    {
+      "path": "compiled/123/RoleBlockManager.cs",
+      "sha256": "7110bb5afe42c329c7b6255f81cf724174a0de42c13973f3516e841cafe219c2"
+    },
+    {
+      "path": "compiled/124/SimpleButton.cs",
+      "sha256": "5c1e42a6baaa007ed53d2bb94a6da6b4a8d16fad055d5c8040afce8b31bd5d51"
+    },
+    {
+      "path": "compiled/125/SpamManager.cs",
+      "sha256": "9006628503b4bed5f7d6723f220c4b69bb9b9f3f47b16365f313fad68fc93076"
+    },
+    {
+      "path": "compiled/126/StateMachineWrapper.cs",
+      "sha256": "dcec058f1a330ffd6ed01ee9188d1864a30da94737d2758e771869672e4ff3ac"
+    },
+    {
+      "path": "compiled/127/Statistics.cs",
+      "sha256": "133663a6e93c7e1f29c064f0866c4d42a2b7e48ef80c286b29dc87e03fb734db"
+    },
+    {
+      "path": "compiled/128/TargetArrow.cs",
+      "sha256": "eac4b98f5ea3f4255dc648ece9f89708097f191f00317ddea04f54e198856acb"
+    },
+    {
+      "path": "compiled/129/TemplateManager.cs",
+      "sha256": "c308139fa846fd634a587b1f42d7fbc72ee8e23345367d2458281c5501fca48f"
+    },
+    {
+      "path": "compiled/130/Translator.cs",
+      "sha256": "d7b2f2af84762fed4bf1fa1358674fa70ff6453df235c4d31f84e3411377eb17"
+    },
+    {
+      "path": "compiled/131/Utils.cs",
+      "sha256": "f77cfce5ae488159ff5b4346002005b63ce7dd55f471489b96bcca93c13a3c19"
+    },
+    {
+      "path": "compiled/132/Zoom.cs",
+      "sha256": "c4566c9adc7b5e5c95d233358254f32701e7bf3ab52e6257b3df356b12da5a2b"
+    },
+    {
+      "path": "compiled/133/AirShipElectricalDoors.cs",
+      "sha256": "722fca1ecfdb65bd0107b2b3cfec7fb391cf60ae04b963e3617ad8c44ea710b1"
+    },
+    {
+      "path": "compiled/134/AirshipStatus.cs",
+      "sha256": "661d7cc13515d30866153a039f565a807e73b7495365f47c30e4717587b59cd3"
+    },
+    {
+      "path": "compiled/135/AnnouncementPatch.cs",
+      "sha256": "1394a8bec7fec1911cdde8203e8bc6917fb3e1814b7fbaeae262d1823bde1674"
+    },
+    {
+      "path": "compiled/136/AprilFoolsPatch.cs",
+      "sha256": "ce78d05c1b225634a6da18c1fa3b4d8100974a3d2e12c91023445d060a4e92de"
+    },
+    {
+      "path": "compiled/137/ChatBubblePatch.cs",
+      "sha256": "630976883027bb6c4649f1ae3891243b23c3163a8ab4edc820310a61bf39c0f3"
+    },
+    {
+      "path": "compiled/138/ChatCommandPatch.cs",
+      "sha256": "95eadf5ba14556a177feef5c3b6a3278c0ba3674d42eec97df86d5b3e6ba357e"
+    },
+    {
+      "path": "compiled/139/ChatControlPatch.cs",
+      "sha256": "ffefefd9fe775a2268197612946527935ce46ff114bec1ddc0cd0336aaf4ce7b"
+    },
+    {
+      "path": "compiled/140/CheckGameEndPatch.cs",
+      "sha256": "83978bbadaeef48218af667b7cf4b9256a2609409fcada984ca2dc46b30f9a7b"
+    },
+    {
+      "path": "compiled/141/ClientOptionsPatch.cs",
+      "sha256": "6b5eec540dec60fce2e552e23cf5dabe3b7b5f55f4ec727ae96d72dd1c3e9531"
+    },
+    {
+      "path": "compiled/142/ClientPatch.cs",
+      "sha256": "8bf491a6e6239fcae13c4e92614cda36268ad6d051b13ae56cd1630519e3f689"
+    },
+    {
+      "path": "compiled/143/ControlPatch.cs",
+      "sha256": "8127942ba1ec2ed2c945a87cf61d0d2419c6b6a3eaf5c1c1c32732eb56f8a644"
+    },
+    {
+      "path": "compiled/144/CosmeticsPatch.cs",
+      "sha256": "338be74a14c3d4b0d216121830c304a0a98e85673741e31b5580702c43d14ca7"
+    },
+    {
+      "path": "compiled/145/CredentialsPatch.cs",
+      "sha256": "8bf89b22143bb5a82556f4363a8c999a422c74f8927ec6979e18879bde42c0e1"
+    },
+    {
+      "path": "compiled/146/Crowded.cs",
+      "sha256": "8e0534fc131b7e89cdd0a710c2b1f3102870667786bd1e27078a220265106f80"
+    },
+    {
+      "path": "compiled/147/DeconSystemPatch.cs",
+      "sha256": "4dea1e42c7bb4ce5f76fe6ac4f310161d7e23e1c40bafa8b9638253d44c747f6"
+    },
+    {
+      "path": "compiled/148/DisconnectPatch.cs",
+      "sha256": "752fe64a7a192bbedfe129dbb6dbd60ce3bfd8828cd7e4796348d588ffc5f715"
+    },
+    {
+      "path": "compiled/149/DiscordPatch.cs",
+      "sha256": "9154450f556818826b41845244ebd1f2b150d07adf184af064ea430de89fad3f"
+    },
+    {
+      "path": "compiled/150/DleksPatch.cs",
+      "sha256": "08c5d9731ad5ea6bd85cad834f48150dd9e2e297ca1ce9324678de5ea7936bc3"
+    },
+    {
+      "path": "compiled/151/EHROnlySearch.cs",
+      "sha256": "ebc3c3d993fcecadff82d3f8080a48a46b9cb1416d86e9f593e5a4d012b8bc21"
+    },
+    {
+      "path": "compiled/152/EndGameManagerPatch.cs",
+      "sha256": "da4fb04e5163b86d9862d66c4e37ff8ad61dae14cd5bdbb1bc2066c060e3640e"
+    },
+    {
+      "path": "compiled/153/ExceptionSwallowers.cs",
+      "sha256": "400ada2fe55b358f81ccfcc2cb36445f797dd20e644e9920d854f84c62a90aaa"
+    },
+    {
+      "path": "compiled/154/ExilePatch.cs",
+      "sha256": "cda98f2e42d0904d311627aff044368c6b8129b25a4cb636c532c2cf125511fa"
+    },
+    {
+      "path": "compiled/155/FindGameManagerPatch.cs",
+      "sha256": "60f1bff3fe090c3820b7bb85e53c94befd8f86d60ea5fad6da64acaaa8c8c967"
+    },
+    {
+      "path": "compiled/156/GameManagerPatch.cs",
+      "sha256": "7fd751bb2fe143f7f8137d9098ddf2c1f1b5eb55d697341f4b19a1e48e876aa1"
+    },
+    {
+      "path": "compiled/157/GameOptionsMenuPatch.cs",
+      "sha256": "8f0c225439e6b56546b5e6da120d4acc981c7d6bc4f547176ffac1b735e3feee"
+    },
+    {
+      "path": "compiled/158/GameOptionsPatch.cs",
+      "sha256": "20a11e581aa04e5fd8741cf49fbc72afb078a8e656f379671f5dc772bfe31321"
+    },
+    {
+      "path": "compiled/159/GameStartManagerPatch.cs",
+      "sha256": "6296efa42ff9beaa6d6436c0013c1207ba1af2afde1f63331a5d9289ed40d017"
+    },
+    {
+      "path": "compiled/160/GuardAngelPatch.cs",
+      "sha256": "0e1e46e6de56dfd1640576f061e86bf277a96998a556de3102f7fc2e8ed181f9"
+    },
+    {
+      "path": "compiled/161/HandshakePatch.cs",
+      "sha256": "6826adc0117dbfd576f8eb7db3f5a64a88b1603195464d6d518a0b24fd8c85a9"
+    },
+    {
+      "path": "compiled/162/HashRandomPatch.cs",
+      "sha256": "191439f03c549807277df5898194b33f80a67d7c221af65a21f6133d86347ce0"
+    },
+    {
+      "path": "compiled/163/HideBanButtonPatch.cs",
+      "sha256": "eeec25c1b334e1de544b2dd7efdb6c767c831bd4106e588c5b44e8f1047d73bb"
+    },
+    {
+      "path": "compiled/164/HudPatch.cs",
+      "sha256": "ca55072d882a61e9881cffafce133ae5f8b47ce908db8a6008d61245220e5ef4"
+    },
+    {
+      "path": "compiled/165/HudSpritePatch.cs",
+      "sha256": "a50399af6007f7092d70555641396c49f44ea3f32feca41e35f27bca31e6eda5"
+    },
+    {
+      "path": "compiled/166/IntroPatch.cs",
+      "sha256": "cd430173539fa85ff81e8a3dee801b0dae0f9dc1f07deddd87d1a62c1db5a821"
+    },
+    {
+      "path": "compiled/167/JoinGameButtonPatch.cs",
+      "sha256": "af3f50b07ee2f0e226a60f8f61e2c1a59fea8a7a3189ddd0e60055f0419876bc"
+    },
+    {
+      "path": "compiled/168/JoystickBlockPatch.cs",
+      "sha256": "60f9bceea6aa1d0da01de3b3e999940cc2b5583f61538ddc7cbd9513d0affd8d"
+    },
+    {
+      "path": "compiled/169/LadderPatch.cs",
+      "sha256": "0bdddef66dfee4503a479308550344a75384d2e0aec3e770b39edd9511a3f2b0"
+    },
+    {
+      "path": "compiled/170/LobbyPatch.cs",
+      "sha256": "2032de4fd7b3f39d22d97ba8e27a3c6950e7005790c755925c24132abacc7c48"
+    },
+    {
+      "path": "compiled/171/LobbyViewSettingsPanePatch.cs",
+      "sha256": "9a3600bb9e0f61384875f7574b72ff7f2c26bc3d64f07290abbed4f4912daf70"
+    },
+    {
+      "path": "compiled/172/MainMenuManagerPatch.cs",
+      "sha256": "8205a5d39b257e2ed326de72154267d2e1b73fafc869082faed7cb9d42ef0c38"
+    },
+    {
+      "path": "compiled/173/MapPickerMenuPatch.cs",
+      "sha256": "058351b6fbd4bb803eadc3c021203a05e3693d263dae2beedf2b4ca44825b0c8"
+    },
+    {
+      "path": "compiled/174/MatchInfoGuidePatch.cs",
+      "sha256": "638976ea2647bf8730475e4740633c63d0ae69d0483f75ce4268e0425e04a76c"
+    },
+    {
+      "path": "compiled/175/MeetingHudPatch.cs",
+      "sha256": "cb957b1da4571cbf4f7b4b4aa87e728b79118c31db8da2fce83c3815bd6f440c"
+    },
+    {
+      "path": "compiled/176/MovingPlatformBehaviourPatch.cs",
+      "sha256": "a1854a9168ed409f5e03d607c81cd3c16c7afadfecacd6d181a6d8aa6a05d4dd"
+    },
+    {
+      "path": "compiled/177/NoBlackoutPatch.cs",
+      "sha256": "23436b6ac1546492b1d7ac4cf05f944b41a6db64184ef237d781a4f7bc48d259"
+    },
+    {
+      "path": "compiled/178/NotificationPopperPatch.cs",
+      "sha256": "5f777eed1262ac98aa2ddf5bdc6a607b8dcc92d72bbaa92af2d4c3eb7cc9eb04"
+    },
+    {
+      "path": "compiled/179/OnGameStartedPatch.cs",
+      "sha256": "179fafe46d23257909ad3a728b21202ac392deb363be025811f05b520935ca84"
+    },
+    {
+      "path": "compiled/180/OneWayShadowsPatch.cs",
+      "sha256": "0aef9d36d6c44624e90f17580344d784fbc55f371811eb67e0ab7c500c5fcbd4"
+    },
+    {
+      "path": "compiled/181/OutroPatch.cs",
+      "sha256": "6ff3ab2df111f7f907e907753a8f3a69da294ec5af37c518d1f75c4ea3ccbaef"
+    },
+    {
+      "path": "compiled/182/PetActionsPatch.cs",
+      "sha256": "9f5f09b2557f2089b2515dd6a9dd2668c012785d6e63918b3562f920c0082762"
+    },
+    {
+      "path": "compiled/183/PhantomRolePatch.cs",
+      "sha256": "bbb22a00133e7c6d8aee1fd3e0688ed4736873ce331336d59a9dd3022492bd26"
+    },
+    {
+      "path": "compiled/184/PlayerControlPatch.cs",
+      "sha256": "8e2ad4e5229d26bc0ba0cf5926500db7a0ab6e586f19dcfec13c18d24320db86"
+    },
+    {
+      "path": "compiled/185/PlayerJoinAndLeftPatch.cs",
+      "sha256": "6e5ebce67772f0ee7339ce9e4a2576513797e885411848d70f82e1efb814638c"
+    },
+    {
+      "path": "compiled/186/RandomSpawnPatch.cs",
+      "sha256": "4ab8fee284744d61d8cd893b807440f05b8804043095695c9f97a56c42c945a9"
+    },
+    {
+      "path": "compiled/187/RecomputeTaskPatch.cs",
+      "sha256": "e74a1a1b8ac276bdf0c32b6421e988c59c507555d278f5784ed81a7bf36fb19f"
+    },
+    {
+      "path": "compiled/188/SabotageButtonPatch.cs",
+      "sha256": "dc6273ca3b4ca1a89515e00950edeee92c631cc796c0e1bccd0926d44698d143"
+    },
+    {
+      "path": "compiled/189/SabotageSystemPatch.cs",
+      "sha256": "73b1993f781ffc2d6447671baeb8e56f99304a59062be36be1ce0c9de23ce9ef"
+    },
+    {
+      "path": "compiled/190/ServerDropdownPatch.cs",
+      "sha256": "aac261a8734a8b09aaf085e7d98c4c73f39398382a7a28357462f3c4f27e056d"
+    },
+    {
+      "path": "compiled/191/ServerVersionPatch.cs",
+      "sha256": "7d9a895ce6de666830ca60fc301063ab0d9da4e779bddc8a50455c0fd7156285"
+    },
+    {
+      "path": "compiled/192/ShipStatusPatch.cs",
+      "sha256": "f7d6e1d047123027eb82265f8093d1915cbd8da7e6d36db3d5e0c5091bf3bf2a"
+    },
+    {
+      "path": "compiled/193/ShowHostMeetingPatch.cs",
+      "sha256": "f48b4cb860c24d77e693375645665d12d87e0b4727197c3581f3eead1d6ddc88"
+    },
+    {
+      "path": "compiled/194/TaskAdderPatch.cs",
+      "sha256": "7f54978bc5c11692f503c8c4e838445c648275c54502ced9fb52b28935ed8003"
+    },
+    {
+      "path": "compiled/195/TaskAssignPatch.cs",
+      "sha256": "8847bf391eb1f21d3de521b19c89c0b73ea0fbe153a9a3f6014cbc14b2bec4d2"
+    },
+    {
+      "path": "compiled/196/TextBoxPatch.cs",
+      "sha256": "e59f067875c39419517bf43ad9b83c70ebaffdfdcfcb5698bd9d2cd4d3381bfd"
+    },
+    {
+      "path": "compiled/197/TmpAwakePatch.cs",
+      "sha256": "bb2ab6fec7ef007d40dc12e57a0b65e04fd860f01112987ac26068b3db75fcb0"
+    },
+    {
+      "path": "compiled/198/UsablesPatch.cs",
+      "sha256": "4bd20223a7a381c0122d31a1e73975b894b1db0aa3b131c984604f9012ef6def"
+    },
+    {
+      "path": "compiled/199/VoteBanSystemPatch.cs",
+      "sha256": "c74b9e3f15924bc12163cf4abe46c0f6b1dde3b18fac94cd1b49d6623952117e"
+    },
+    {
+      "path": "compiled/200/Agent.cs",
+      "sha256": "a54704c3641abf2f8d92c4a43e8c79481d0263d6d5ce19106b1597d54bd9e0b7"
+    },
+    {
+      "path": "compiled/201/Dasher.cs",
+      "sha256": "27ddb167ff7a1371d1f437d5de3231b457bde2826c55e813dc8d3a4446fc0047"
+    },
+    {
+      "path": "compiled/202/Detector.cs",
+      "sha256": "7e32a6d5310855487dd64848c60eef9d26a1fe6c34da8811b7fe38772fc2d287"
+    },
+    {
+      "path": "compiled/203/Disguiser.cs",
+      "sha256": "b20fa11a154f406bf11a140911529650079d5f56284f1766b70cb4aea8921f2a"
+    },
+    {
+      "path": "compiled/204/Fox.cs",
+      "sha256": "47e52d1bd45b94385d546a262ef118a4d16e8ed1531e5c2ed6d2f89cd7488eb4"
+    },
+    {
+      "path": "compiled/205/Hider.cs",
+      "sha256": "2f16fdf42c6196d144c72c49e1f45653d78896d643a25c393dadc44d86e1189f"
+    },
+    {
+      "path": "compiled/206/IHideAndSeekRole.cs",
+      "sha256": "0b0470c57f148fc4afbece87dbaa803d02633068f48e689fbc8a28c97413aa89"
+    },
+    {
+      "path": "compiled/207/Jet.cs",
+      "sha256": "1a3cf7ed85e57d9e27b33dd8beb298363d38de36fcb0af20c2de33983ea02267"
+    },
+    {
+      "path": "compiled/208/Jumper.cs",
+      "sha256": "7af1cf460ab0637ad04a221c671deeb529f5d695dce41cc4b696743edb1bec0a"
+    },
+    {
+      "path": "compiled/209/Locator.cs",
+      "sha256": "d59cee367212078d42a2bedc85fa8c03371ca400395a7bdca2bdbdcbc1c084d0"
+    },
+    {
+      "path": "compiled/210/Seeker.cs",
+      "sha256": "9d44fe1e5cdd0f92ab963555c2cad2e200d3478457b045982841fc6955610cf3"
+    },
+    {
+      "path": "compiled/211/Taskinator.cs",
+      "sha256": "1b1af001c43b798851e949f5306f6599be1f0f72c1ce6ed564b0de4204e95f4d"
+    },
+    {
+      "path": "compiled/212/Troll.cs",
+      "sha256": "6da851ae18b50209ca06f982ecb86ed6c0f78868547e16c647b5e22f4b77da4a"
+    },
+    {
+      "path": "compiled/213/Venter.cs",
+      "sha256": "cdb85bd7aa2e70f66eb95904c76769f2f947d43b4b1ca0204477c03566470602"
+    },
+    {
+      "path": "compiled/214/IVanillaSettingHolder.cs",
+      "sha256": "54c01bcab5c1d462f33d0680e41bcb9257553d5a609450b52a4fb929018aa1a5"
+    },
+    {
+      "path": "compiled/215/RoleBase.cs",
+      "sha256": "40aeb1bc6aecca50ede20cfb688ba1020619c036717513bc200bca04dd5f738f"
+    },
+    {
+      "path": "compiled/216/Absorber.cs",
+      "sha256": "eb6c0a3974fa153637d023d0c1f9fba3670f7e2fea45e1e015037e4c4bbc41e3"
+    },
+    {
+      "path": "compiled/217/Allergic.cs",
+      "sha256": "5b2e5dd4ea59fc81c1074140e79fccfb1d904a94a914549d1343880d1cb89c48"
+    },
+    {
+      "path": "compiled/218/Anchor.cs",
+      "sha256": "64e9eb085c888857fccc2e6d77267ca785d6950d2042f2a76f392d0303d13a7e"
+    },
+    {
+      "path": "compiled/219/AntiTP.cs",
+      "sha256": "3ae608662bd68b6f3382b56d34ae592ce4c20eb406b3e03b34b0693f7a14319d"
+    },
+    {
+      "path": "compiled/220/Antidote.cs",
+      "sha256": "1b81bf0df47fb69dd433f0313388cae3ea82687d96f35e08bfe84f91af38069c"
+    },
+    {
+      "path": "compiled/221/Asthmatic.cs",
+      "sha256": "9bbb35d80ec010fe2a54defaf6da1b90d322b286cbd16fcd1b1529755cddbb81"
+    },
+    {
+      "path": "compiled/222/Autopsy.cs",
+      "sha256": "2279d7686edf4f18208daa3ea73e421ba6ba5004f00195df87266398eb5e1669"
+    },
+    {
+      "path": "compiled/223/Avenger.cs",
+      "sha256": "8973a68c0cbe9284c2ab823cd33cc7a97f746b1541b71521e7cfec714c13c7f2"
+    },
+    {
+      "path": "compiled/224/Bait.cs",
+      "sha256": "607e87e8e78a9b2f2e2c5bc778516c53a309c1c152b46993c720ec379915bc03"
+    },
+    {
+      "path": "compiled/225/BananaMan.cs",
+      "sha256": "9bbb6fc156dea9eb0fc16010c79a93ca4416e02d9e1d68a0d73c12a9b83d2c2f"
+    },
+    {
+      "path": "compiled/226/Beartrap.cs",
+      "sha256": "75f960e7d9efe9593255711fcf62dfd32007decacfb5629752514a3017f052f2"
+    },
+    {
+      "path": "compiled/227/Bewilder.cs",
+      "sha256": "711a652b7273b23aea7bd8ec8141ff312aae59328b099c439d8d8ae52732211e"
+    },
+    {
+      "path": "compiled/228/Blessed.cs",
+      "sha256": "11ac93d14334f46cb620a2808c6f567d2330f3c5c1a391b9911c4066daf5bf88"
+    },
+    {
+      "path": "compiled/229/Blind.cs",
+      "sha256": "aae17fba62cc6612970097f34e30df2963f67cb51b0110023f24074470b04ba9"
+    },
+    {
+      "path": "compiled/230/Blocked.cs",
+      "sha256": "5b2ba0d0771de03b7f917bee4f358c5e00133afddeab96b1aa47710d9de368d5"
+    },
+    {
+      "path": "compiled/231/Busy.cs",
+      "sha256": "4a5778a44643f8fbd75fbd81ce4336bacc5e750cd99de5310d6bfd7152581ed3"
+    },
+    {
+      "path": "compiled/232/Clumsy.cs",
+      "sha256": "adff7cad7a832a52ba5a6a64e637e6a68a0405a25c6a5603700006a685f7c087"
+    },
+    {
+      "path": "compiled/233/Committed.cs",
+      "sha256": "5bd314a93467354eeeae390da9cfc1b655003d849275f8b9fbe9b55090482b6b"
+    },
+    {
+      "path": "compiled/234/Compelled.cs",
+      "sha256": "0ab5a5d2fd9d9d0a64060746da5e99b83c3f65a2061fa5ca1c6f77300f0a589a"
+    },
+    {
+      "path": "compiled/235/Composter.cs",
+      "sha256": "508ee3cbd677c9a4659e1dcb74b4cf2344fe03e6f242e2d2509c861a7a39a60c"
+    },
+    {
+      "path": "compiled/236/Constricted.cs",
+      "sha256": "4f9381a17c99d869c535516f57bf41ce84191946c30b864e8ee834f51955df08"
+    },
+    {
+      "path": "compiled/237/Deadlined.cs",
+      "sha256": "d0f796455f57ce53f9a0a532000f8c9f9fb22d0e61c2da8769f9329836a1fb41"
+    },
+    {
+      "path": "compiled/238/Disco.cs",
+      "sha256": "72f5640513fab8f34edbd1c39bc77f3bbbef122a9ff565095d84a73d4effe0d3"
+    },
+    {
+      "path": "compiled/239/Diseased.cs",
+      "sha256": "15d0e316711a82c1a37ece42189946ecf73231a8361ec63178d8ddc04d1e78c8"
+    },
+    {
+      "path": "compiled/240/Disregarded.cs",
+      "sha256": "0503f799f9752da4807badebca1eb7bb78228c6307a556a64ebdce54ea09166e"
+    },
+    {
+      "path": "compiled/241/Dizzy.cs",
+      "sha256": "1387a99c7d23fbfa91649e3398d627038ed8ad43948e2d6c046b2a5759684acf"
+    },
+    {
+      "path": "compiled/242/DoubleShot.cs",
+      "sha256": "6a522939a3858807fc1acd908d8d1b1f78984bbae43f919b0042eda594ba4a77"
+    },
+    {
+      "path": "compiled/243/Dynamo.cs",
+      "sha256": "bd9ef7d0b1792b1616cd5fa1436e4ad13b447720bad0c8ddcac18114e131312e"
+    },
+    {
+      "path": "compiled/244/Energetic.cs",
+      "sha256": "2d144f6fd86fa76cb2a1dc64254f1edd6faee327af3977e59df272a1b381f580"
+    },
+    {
+      "path": "compiled/245/Entombed.cs",
+      "sha256": "19d189064e21b99a34a0c1e0a23767ef362a2a37e9eafda0ba7f1522870e2090"
+    },
+    {
+      "path": "compiled/246/Flash.cs",
+      "sha256": "992d058b271744b74cc4e885a3431719c0c5384bad4bb78bd494e630729c40f0"
+    },
+    {
+      "path": "compiled/247/Focused.cs",
+      "sha256": "00561ea7170bdf34f784c8ff7d198a9ad46fd56f37f901e39f993bc72cb05878"
+    },
+    {
+      "path": "compiled/248/Fool.cs",
+      "sha256": "27aa79e7d8175aeff3569681fac0d0692475cea1911aab57611efbc35b851d56"
+    },
+    {
+      "path": "compiled/249/Fragile.cs",
+      "sha256": "32ae5e8e932f6c816d78a7cdf548dfed9f04cc524fac771d3ac14aaf7313ba77"
+    },
+    {
+      "path": "compiled/250/Giant.cs",
+      "sha256": "3e9beaec6c1ca59674915d65cda133512c7c14e5864346141e8975a53182cefa"
+    },
+    {
+      "path": "compiled/251/Glow.cs",
+      "sha256": "0e064d66ce86954013df54ff7c305f02bb22c1ab48332401f697522930201d91"
+    },
+    {
+      "path": "compiled/252/Gravestone.cs",
+      "sha256": "431ed3ba3df419b509b6545fb3a271810d20e08738653396ea7b7339f81688af"
+    },
+    {
+      "path": "compiled/253/Guesser.cs",
+      "sha256": "142a3437d21be2199e6b814ea3fa3d7f6b80bf5c22de99a86d48070915a32c24"
+    },
+    {
+      "path": "compiled/254/Haste.cs",
+      "sha256": "2183f6e13971163bd2062bbfc495a4634e4d984ceb1392ccf4347b11f9a76ce8"
+    },
+    {
+      "path": "compiled/255/Hidden.cs",
+      "sha256": "84c074dd9f1efab3b5a57c5d346806e11e7b9b178d12659ba47beafc137ba395"
+    },
+    {
+      "path": "compiled/256/Introvert.cs",
+      "sha256": "5ea64543b101a5e5ed49ee0f59c3e15f076beb817e224a0ba78029206ee1a658"
+    },
+    {
+      "path": "compiled/257/Lazy.cs",
+      "sha256": "ccc0e3d88ef00736777e7f461ce6a0582c027b816b8a06485898e510069e7cf6"
+    },
+    {
+      "path": "compiled/258/Listener.cs",
+      "sha256": "c05b5503bee5af9137ced6e46dde3eacfb7ee64aaabb6dc53d8bc186da683771"
+    },
+    {
+      "path": "compiled/259/Looter.cs",
+      "sha256": "0859a797ae94fb3effe591554b0c156fdc63994823e3eae6dd71c3d423b9c951"
+    },
+    {
+      "path": "compiled/260/Lovers.cs",
+      "sha256": "4e8c220a56727125e0d99366db70914e4ee34f6d317318d2c83a72973598c292"
+    },
+    {
+      "path": "compiled/261/Loyal.cs",
+      "sha256": "fdbad19b3b350ccb3f8916ce4ac7cdb090a2bf54abd8aab542b181253589458e"
+    },
+    {
+      "path": "compiled/262/Lucky.cs",
+      "sha256": "34a64ce4040a9d1e7097e6c391b1f0a2db8524f7aa353a54530f14ed81b75491"
+    },
+    {
+      "path": "compiled/263/Magnet.cs",
+      "sha256": "a59ec4b10ee684a7b0549f00558c60a1be6578b94d5860e9b89a81967c996eef"
+    },
+    {
+      "path": "compiled/264/Messenger.cs",
+      "sha256": "0af70b67f204cb3613c6d4a4a506fb6571a57c7f5c8d9b0f34b0bd432bc87da5"
+    },
+    {
+      "path": "compiled/265/Mischievous.cs",
+      "sha256": "583f0352a44ab60e06a253ae549ae7121afb308df4f43f8fbc222fde7ad701d4"
+    },
+    {
+      "path": "compiled/266/Necroview.cs",
+      "sha256": "535e2db931db3cc74fd402b25356b5739c17f9f4214924f5745c923acfecbae2"
+    },
+    {
+      "path": "compiled/267/Oblivious.cs",
+      "sha256": "29a302f02de7b600f5f86cf7d136844a63eb5df86f94535e40937d5fce051793"
+    },
+    {
+      "path": "compiled/268/Onbound.cs",
+      "sha256": "84b43546a34c0be8ab3d022569d874ec619afc8f8275b4788e13947de0afdc21"
+    },
+    {
+      "path": "compiled/269/Priority.cs",
+      "sha256": "137570a0e5a4cfeca94d9daa1052d915c4710f3f4e612be5bfdef4a598df9952"
+    },
+    {
+      "path": "compiled/270/Rascal.cs",
+      "sha256": "50851d23df82aedb0ed4e725113ea074239bc221b3026dd624db5caf5bc9213c"
+    },
+    {
+      "path": "compiled/271/Reach.cs",
+      "sha256": "b65f4dd04d5c3d645961083661961d8fdd81d315c20e136f46bc2cda464cb2e9"
+    },
+    {
+      "path": "compiled/272/Reroll.cs",
+      "sha256": "9bb18e1ea9a7755c13da64539fb020bf9e7e9bbdcf01bed77c6df3e1e20b3c1f"
+    },
+    {
+      "path": "compiled/273/Rookie.cs",
+      "sha256": "c11070a34220b0cf71d1e891d4def24b4e026d21639c1021dfb40a47b7427bc6"
+    },
+    {
+      "path": "compiled/274/Schizophrenic.cs",
+      "sha256": "d360c0d41a38812908945c4cbe7725a3f3c8264a6b74a2434eaa3023647f326b"
+    },
+    {
+      "path": "compiled/275/Seer.cs",
+      "sha256": "9261fec43aeb0ba17029a773d2b85d876451ac268f92f02b653e0dfcc640de8a"
+    },
+    {
+      "path": "compiled/276/Shy.cs",
+      "sha256": "5e79a2b4ad66bca39d77ea410937ad2c1d882bea27f6fb23485d6989af4f3c78"
+    },
+    {
+      "path": "compiled/277/Sleep.cs",
+      "sha256": "dbe619a392fece67bf0bfea45405f64923f7ee34f227cd8a992c0a93d62b36de"
+    },
+    {
+      "path": "compiled/278/Sleuth.cs",
+      "sha256": "a4c758144568663a756e3c1ad737a6091c9b6de318ccea85072bc4c65818b8a5"
+    },
+    {
+      "path": "compiled/279/Sonar.cs",
+      "sha256": "ef4ea3c353d9c667d055f5696fd513b48093bc9bfc74fb7167f804acf30d2106"
+    },
+    {
+      "path": "compiled/280/Spurt.cs",
+      "sha256": "76cb266c30b57cee0bd13926a79816b75057373b202ef6b85cd679268698cc8e"
+    },
+    {
+      "path": "compiled/281/Stained.cs",
+      "sha256": "3bbdcb73b543037216e5bac025e0aad40cb5a5e871746f6a69b27489c375f82a"
+    },
+    {
+      "path": "compiled/282/Sunglasses.cs",
+      "sha256": "42c3bb671639a7c8dc1e44cf2c5a43ab7cafed7a0b7e4c9b5fd367adc24aebf1"
+    },
+    {
+      "path": "compiled/283/Talkative.cs",
+      "sha256": "6a115f35903c9dd77b3448ce5cc322587375c64fbdc7878066a8591557391c58"
+    },
+    {
+      "path": "compiled/284/Tiebreaker.cs",
+      "sha256": "04609ee3560ea7ff9fb4f9458c487076edbdb555e774301a481a313bee59eedd"
+    },
+    {
+      "path": "compiled/285/Torch.cs",
+      "sha256": "9a5966a074eae6537be8f6b43656c5c4d5f91b912b14b532dab78de9a54c4204"
+    },
+    {
+      "path": "compiled/286/Trainee.cs",
+      "sha256": "2c3430bfccaf548b3f24b6e971c3c92f251019ff426909d5af51cc9e64c9d3cb"
+    },
+    {
+      "path": "compiled/287/Transfer.cs",
+      "sha256": "4f24375d8df95b61f29f088011e863719b015cb8d1a146580ee10d4132e74bd3"
+    },
+    {
+      "path": "compiled/288/Truant.cs",
+      "sha256": "3461e71fea985b013dd680728a9dbc345deda7de919ade6c8d50d5f678be968a"
+    },
+    {
+      "path": "compiled/289/Unbound.cs",
+      "sha256": "356d01462b4337fc00b1eda5d2c98d66891e1f944159c52515dd9c7f33db9b25"
+    },
+    {
+      "path": "compiled/290/Unlucky.cs",
+      "sha256": "05cac5e20c1c8becd9ab6398c2349efb832fea9a38d2dcf1fa042c6a2e29450e"
+    },
+    {
+      "path": "compiled/291/Urgent.cs",
+      "sha256": "48ba74ea6d2b7d2cef66aee35d0a44d69c4664fe707fedca230274dcf00184ba"
+    },
+    {
+      "path": "compiled/292/Watcher.cs",
+      "sha256": "48a290e55d12b6294c669d63fbd0efc7409af078578ab34cf3a81bdd62a7986d"
+    },
+    {
+      "path": "compiled/293/YouTuber.cs",
+      "sha256": "b2ee34f526a4199d367edbb4ea8a7a04fefb5df1421747718015760c9e58eb29"
+    },
+    {
+      "path": "compiled/294/Bloodlust.cs",
+      "sha256": "5068db59f55f471ce6027dc27776bcdfb2ec0ff21000ee6b3022772c574477d4"
+    },
+    {
+      "path": "compiled/295/Examiner.cs",
+      "sha256": "64849164d3c55b6ca27e79e4291453dcf4c706eff46eb3cfd27e6045fa0c9414"
+    },
+    {
+      "path": "compiled/296/Finder.cs",
+      "sha256": "1905611839f1edf61fd087ce840ee50e17661237bd4b7b5819d4ca0822f9da57"
+    },
+    {
+      "path": "compiled/297/Nimble.cs",
+      "sha256": "55afc65efbdafccd2f12d35d272b2d06d8810f2b99aa59792b444ed80d17e326"
+    },
+    {
+      "path": "compiled/298/Noisy.cs",
+      "sha256": "0685a581378d74590148858ea32fe7e5d1c42e78694ac2de8d7fac589ba92a10"
+    },
+    {
+      "path": "compiled/299/Physicist.cs",
+      "sha256": "bc698805388369b638ad339d5845558523c8f48eee899f18583df4c270a31e49"
+    },
+    {
+      "path": "compiled/300/Stressed.cs",
+      "sha256": "d54d4789ee4333cc46ed1e959274f16e8355e137817dc8579d9bd9bcb71c8c07"
+    },
+    {
+      "path": "compiled/301/TaskMaster.cs",
+      "sha256": "f09fd7056fc9a0e12c2cbf04fbc65703a9ba4253d3a194e51f6a567105299a16"
+    },
+    {
+      "path": "compiled/302/Workhorse.cs",
+      "sha256": "f66e943d63ce7715c4c0a0abe6729d08d9c53e6e647b341f678ddd5b70e2307f"
+    },
+    {
+      "path": "compiled/303/IAddon.cs",
+      "sha256": "6cf387cc7f37901a4c110624745252601a033d88a8f9353bccd36073612882d3"
+    },
+    {
+      "path": "compiled/304/Aide.cs",
+      "sha256": "ff97abf6fa3a80ee7b0f30c68f4179202d27b1f77c8d8cb16ded930035d4138b"
+    },
+    {
+      "path": "compiled/305/Bluetooth.cs",
+      "sha256": "f53fbbc051180e04efb14268ef7f2e52de26691c4f584c985d6d627b421e11ed"
+    },
+    {
+      "path": "compiled/306/Circumvent.cs",
+      "sha256": "ce4d21674057fb9d7c381fda937278a121ce34ec59760bac8d24f4f3d2a40021"
+    },
+    {
+      "path": "compiled/307/Concealer.cs",
+      "sha256": "5ec362eacca2a0a6121e0636d7d50eda6377305d5f603f7c847e23defebaaffb"
+    },
+    {
+      "path": "compiled/308/Damocles.cs",
+      "sha256": "35431ee5d7a078a03e5e0068dc9446d191d124eb0a67f5dbfd38bbda1947a8e1"
+    },
+    {
+      "path": "compiled/309/DeadlyQuota.cs",
+      "sha256": "6adcc1672d589672efd5d6d1b9c3d305683c36e353284171df996f89d73093b9"
+    },
+    {
+      "path": "compiled/310/Egoist.cs",
+      "sha256": "3b595333d97f87ba679a247624aa8cf4e6071a2a762cb62a008ce4102f35da37"
+    },
+    {
+      "path": "compiled/311/LastImpostor.cs",
+      "sha256": "feb7d359daeaa421c1a201363ce7b8d83a04a1569507a187285533d729007a6e"
+    },
+    {
+      "path": "compiled/312/Madmate.cs",
+      "sha256": "ceb2a5f06695f4ab94936bbc0e5732ed0b6acca291ab871d848c82d5899baa7b"
+    },
+    {
+      "path": "compiled/313/Mare.cs",
+      "sha256": "f943992a7139b7fdfb04978fb49fc688d36da2df94709749ff91bcc64455d3d0"
+    },
+    {
+      "path": "compiled/314/Mimic.cs",
+      "sha256": "68144cc49972e768a7f6c6ca27dda077d95fd4febe19d9c1dbeb2770c1dab03e"
+    },
+    {
+      "path": "compiled/315/Stealer.cs",
+      "sha256": "c663cc094f08ba91aac3f5b234bf32349c67409e5112662516fff68c9107ac2b"
+    },
+    {
+      "path": "compiled/316/Swift.cs",
+      "sha256": "2cb295d5f20307e40a85ab658e35eb7c675582dd6fb5b26ac5ece2ff9782185f"
+    },
+    {
+      "path": "compiled/317/Taskcounter.cs",
+      "sha256": "ede0fa18e0c972cbb082668aa4b68b768454d004795c503f47f6c0b36cc254b3"
+    },
+    {
+      "path": "compiled/318/Tired.cs",
+      "sha256": "18211213f87ba5cb4973fc6c6660202eb60bd3f3c933c281fe73cc7d8de66b53"
+    },
+    {
+      "path": "compiled/319/Underdog.cs",
+      "sha256": "772c6c6068efcb48eee71d893ab7243f5c379761fe705993edfdbd97cf6e9075"
+    },
+    {
+      "path": "compiled/320/Venom.cs",
+      "sha256": "6d123e28788747fd7e264056db57e1b29ebf25af42e5a6c61490c5cd1479af84"
+    },
+    {
+      "path": "compiled/321/Augur.cs",
+      "sha256": "fee9e46d318d6c6ef7e99e3c659334732529c23bfb77697839c53e02f09dbff6"
+    },
+    {
+      "path": "compiled/322/Banshee.cs",
+      "sha256": "d73807572ad8fcd87ddfa248fd22fce8a705f875bdf7f7895f78300461984822"
+    },
+    {
+      "path": "compiled/323/CovenBase.cs",
+      "sha256": "ecf8c4e9218ece2e5fe086d86540dcacfbc384d6c5d78e86389c710bb7ce1053"
+    },
+    {
+      "path": "compiled/324/CovenLeader.cs",
+      "sha256": "10f2f9034d8c09004f18e4ad0a76afb74f62e0ac53a88195a3227bb2db6b87fc"
+    },
+    {
+      "path": "compiled/325/CovenMember.cs",
+      "sha256": "020347c053d228f9c62cc46ce53dbdef3ebb14c9279d287b6d84bf9a1e3100c5"
+    },
+    {
+      "path": "compiled/326/Dreamweaver.cs",
+      "sha256": "0539262b40c0c821f38f60e8b807d16e2b87bc67fda0d24051ac775cb018d6aa"
+    },
+    {
+      "path": "compiled/327/Empress.cs",
+      "sha256": "8c57b95bbf8c039c280a6aec4e0ce620ec79a9ba307b44a3f5df3d6cea95e492"
+    },
+    {
+      "path": "compiled/328/Enchanter.cs",
+      "sha256": "532294826da9766297ca05a7ddd0f5eab19f8f620dcec4fadbaf7a57768fda45"
+    },
+    {
+      "path": "compiled/329/Goddess.cs",
+      "sha256": "a0eec552bf71c60bff6efd80286584e2a34de3228c37bf5a5e2a220a4fad8b00"
+    },
+    {
+      "path": "compiled/330/Illusionist.cs",
+      "sha256": "6330a5fb8e4b5154165794de2eccec9e07ff768101e00992550e67adfe759c81"
+    },
+    {
+      "path": "compiled/331/MoonDancer.cs",
+      "sha256": "a3d1e935b08f4949c4b682942532bea22d6f64ada1629086ee83a71bd36dc639"
+    },
+    {
+      "path": "compiled/332/Poache.cs",
+      "sha256": "45be4af963256f4eb6477bca7c5fec8ff2b835219ddcba746c100c307d3cfafe"
+    },
+    {
+      "path": "compiled/333/PotionMaster.cs",
+      "sha256": "047d8dcaa79ec8bccb48ebd352834d5b963e7682eeae37c0808486dfa0bc438a"
+    },
+    {
+      "path": "compiled/334/Reaper.cs",
+      "sha256": "d1d15b9ace384561278ab5045fcca9930a8b7124dad18b33e05634c294c7c6ca"
+    },
+    {
+      "path": "compiled/335/Shadow.cs",
+      "sha256": "73382494294b7f2dedcf874ae875710f412b96c37161e68b2828841a8ef276c3"
+    },
+    {
+      "path": "compiled/336/Siren.cs",
+      "sha256": "318917a67c0cedffa3731676a6599750062db9314b15d6365b9664993e0c8851"
+    },
+    {
+      "path": "compiled/337/SpellCaster.cs",
+      "sha256": "4bc3dd9ac4a4a81d821394ccc744666c28b6ee9b3cd6fc731e4a8ed31db4f02a"
+    },
+    {
+      "path": "compiled/338/Summoner.cs",
+      "sha256": "33b87c791a4df28444f707b3974ec366c79c8a47094435c0a5bc58eb3ea5496e"
+    },
+    {
+      "path": "compiled/339/Timelord.cs",
+      "sha256": "21d7bc89d02c511b7b65e82700dc2c431e7c9fda64c622f2b375f59b597d2469"
+    },
+    {
+      "path": "compiled/340/VoodooMaster.cs",
+      "sha256": "ea6425129406f7c06419fb3eab442d78cd6c0e26686f39d11d85d4e256b50398"
+    },
+    {
+      "path": "compiled/341/Wyrd.cs",
+      "sha256": "a3c5de029acc0e1304de278dd729a00a7d6de8ef663dbfae0d3d75156f099b4f"
+    },
+    {
+      "path": "compiled/342/Ankylosaurus.cs",
+      "sha256": "2b9cb846bfd37eaa6928a816457dfd7bb5c471b4b2308fe1656fb742eae1464f"
+    },
+    {
+      "path": "compiled/343/Car.cs",
+      "sha256": "26ddde8b9b52290defd7f0daea8beb9233776ced1ee070a1f104eb32ea9352dc"
+    },
+    {
+      "path": "compiled/344/Dad.cs",
+      "sha256": "bcce2d68ba9c4aea4e625c550c40beae78d35fcbec40ffe83e0376e4fb4c25c5"
+    },
+    {
+      "path": "compiled/345/Goose.cs",
+      "sha256": "b17f8055e225765d4c8dc8ad8f94c098c1f9329b7a97e58f9de5065523fce02e"
+    },
+    {
+      "path": "compiled/346/Randomizer.cs",
+      "sha256": "ee4e4fd82cc5b9e5a66bfb6dd0f2b947e23b5ac219d6d617304fcff95d25ab42"
+    },
+    {
+      "path": "compiled/347/ToiletMaster.cs",
+      "sha256": "e14a807fa8a7d9fe87fc4dfdc6ac343a9699939959fd476aaf0d393d8f49abf6"
+    },
+    {
+      "path": "compiled/348/Tornado.cs",
+      "sha256": "d687701530d6cfc90b326ab91ac50a6ed1eddae759e4ee500ff0f13dbd20345f"
+    },
+    {
+      "path": "compiled/349/Tree.cs",
+      "sha256": "2ca8461bd22ceb93aae97cbcdd280bfd7a71ae75a4d18621d555aa7e784e1af1"
+    },
+    {
+      "path": "compiled/350/Analyst.cs",
+      "sha256": "e19a95fd6caa0511494152b16df6d25336f9eb268a7466fe3e61fa417f8b2dac"
+    },
+    {
+      "path": "compiled/351/Captain.cs",
+      "sha256": "cf4eb47a3fc900eaf97b48626dd01a6099232651dcc987fff458fccba234cff1"
+    },
+    {
+      "path": "compiled/352/Catcher.cs",
+      "sha256": "805386d79f697d69accfc2f2f6cbe0034597ec39277e19b7d87465be70fbdb3a"
+    },
+    {
+      "path": "compiled/353/Chameleon.cs",
+      "sha256": "c724776e91c0ee8b24f597cf2c92bd1c7519d72cbfdf4254f550b9d3562e3440"
+    },
+    {
+      "path": "compiled/354/Clairvoyant.cs",
+      "sha256": "f54b5eee99c90920b52fa726d849aab4b4dbd4cf52f9c6d22237e7f6156b9981"
+    },
+    {
+      "path": "compiled/355/Coroner.cs",
+      "sha256": "739276adb5ae6dd53888c3584486588e2c99be47803fcb572de4989700eca9d1"
+    },
+    {
+      "path": "compiled/356/Doctor.cs",
+      "sha256": "6a89b09ab10d910bc45f5e7f533dfe61de1133e474d49896918ed4741efba6cb"
+    },
+    {
+      "path": "compiled/357/DoubleAgent.cs",
+      "sha256": "1f1b05937d6c6f166707685acbbebee7588aaebac83e63fb13d0614f07dd8c19"
+    },
+    {
+      "path": "compiled/358/Druid.cs",
+      "sha256": "c6690fdaa86456d58604ac5165388a711006127672dee8df657f2c451fa28120"
+    },
+    {
+      "path": "compiled/359/Enigma.cs",
+      "sha256": "59dfb1b0e6efb240b53ddbc9604b5084c2bfc931be39d6f75f7e9a17d28bbdd3"
+    },
+    {
+      "path": "compiled/360/Forensic.cs",
+      "sha256": "215872f6430134df6be707f68c6ec2c7964d8c466d2773b9ac1c0126b2785bd9"
+    },
+    {
+      "path": "compiled/361/FortuneTeller.cs",
+      "sha256": "be3a7646b666c481f4177a00e8f660bc86c477dded45d8016989aa8ba7a5202c"
+    },
+    {
+      "path": "compiled/362/Hacker.cs",
+      "sha256": "fac035b509a535938639fb5922fd28a59bf3a42421a0c92da0fc82dca2e85f37"
+    },
+    {
+      "path": "compiled/363/Ignitor.cs",
+      "sha256": "0309101238c1ad3af2212b298355107614d2e085ff8ed0554fea724dcc57b017"
+    },
+    {
+      "path": "compiled/364/Imitator.cs",
+      "sha256": "5bd354d6c87f0425d3fbe27e9e8dcb61c3595ac42e3cc01c89c4bbf87352280e"
+    },
+    {
+      "path": "compiled/365/Inquirer.cs",
+      "sha256": "a882c4143c07126a3854aededb39264e6e4ea34a791858e9919b92510116bf58"
+    },
+    {
+      "path": "compiled/366/Inquisitor.cs",
+      "sha256": "8405e3379cbd01883d531e0685cc43d7e6929b31b5cdf1e69e585d77248b0740"
+    },
+    {
+      "path": "compiled/367/Insight.cs",
+      "sha256": "e5757df1fcf1ff635574cd73c07130a2fd2baafa20e31abd99602ab725c789f2"
+    },
+    {
+      "path": "compiled/368/Inspector.cs",
+      "sha256": "605b191f24b283ca126a97726a48159f05bd09540338f0e262bdf7b926573e8c"
+    },
+    {
+      "path": "compiled/369/Investigator.cs",
+      "sha256": "faa184836284abc697d670bd77f31f7ceea88bc8093351d573cc923d1d8bf77b"
+    },
+    {
+      "path": "compiled/370/Leery.cs",
+      "sha256": "501508da773383c8f2526033d8112b6cd6e68be0d9a545fef9d483c4ea03b716"
+    },
+    {
+      "path": "compiled/371/Lighter.cs",
+      "sha256": "2db302c5cb20599cbfa0d537fccb79653d5b6626bd8aed6e2a4bde1b79a7264c"
+    },
+    {
+      "path": "compiled/372/Lookout.cs",
+      "sha256": "e31bb931702f54b2203fafa841e59803d6d32f500ab3e3455256f0569e4d55ce"
+    },
+    {
+      "path": "compiled/373/Markseeker.cs",
+      "sha256": "59297a7b09bb7714706e767e91e0b5303cc054f261af02455be4fc2a17a128e3"
+    },
+    {
+      "path": "compiled/374/Medium.cs",
+      "sha256": "237e34b8e094f2c463e139a67913f98baf6f01ac9324624e052aeb162966e05d"
+    },
+    {
+      "path": "compiled/375/MeetingManager.cs",
+      "sha256": "53d3ce8dbcc28c570478552a591424e75262fff393078d5323d1bd99568fcc52"
+    },
+    {
+      "path": "compiled/376/Mortician.cs",
+      "sha256": "10f12e7b41f03793fd0b09091547033c91ef431e18bc5b03b602dda1d4664e44"
+    },
+    {
+      "path": "compiled/377/Observer.cs",
+      "sha256": "3d247b360378fcb0a45091ea0ac304a536cd8ef0e0176b6d73102d9cacd1310e"
+    },
+    {
+      "path": "compiled/378/Oracle.cs",
+      "sha256": "c228f693fe87f31786cfc011a29ebb8824070a65d0751aea35bd9e169976d4b5"
+    },
+    {
+      "path": "compiled/379/Perceiver.cs",
+      "sha256": "309a6664cb537d2c6b92ffc235e01c3278d4122569eb71a7d9db5a2eb759deea"
+    },
+    {
+      "path": "compiled/380/Psychic.cs",
+      "sha256": "98a038821cafd6ef9bfff6aee305311d7c22052d68d3b54553cd8f026b7fd118"
+    },
+    {
+      "path": "compiled/381/Rabbit.cs",
+      "sha256": "a3e28fccd05ae4378227b76af6ae8e8815b0cbac2a3ad9bc470bf618bbc6713f"
+    },
+    {
+      "path": "compiled/382/Revenant.cs",
+      "sha256": "3f8f20e220797a9404c6221dd0f70f32e91b936699e7f827fdeb8973cf9f8f4e"
+    },
+    {
+      "path": "compiled/383/Scout.cs",
+      "sha256": "04e2e4182058e9d7b0141f10185b4e9be5f79e1d8903f26822a5da1a7ea93674"
+    },
+    {
+      "path": "compiled/384/Sensor.cs",
+      "sha256": "e49b11d1e080de0babb3651acee6809ae2729ae457fc2e7c2af681a74d6e829f"
+    },
+    {
+      "path": "compiled/385/Sentry.cs",
+      "sha256": "570df37ab709f0af30609c1e502ca0548e7821e4159e6c63802f1151de8c3861"
+    },
+    {
+      "path": "compiled/386/Shiftguard.cs",
+      "sha256": "f6292fedab1d6ad23a291d38ceb10740cee5a29895f3effb90c3266c0817fa8c"
+    },
+    {
+      "path": "compiled/387/Snitch.cs",
+      "sha256": "be57874b2d515354ed9b8ec7e94b732f58248db9c0ed120eeeb84924c25e0067"
+    },
+    {
+      "path": "compiled/388/Socialite.cs",
+      "sha256": "9c65bd5be33b859850169ce7cdb3a36c8e00a7c9202c6f284bfcdf99798529e1"
+    },
+    {
+      "path": "compiled/389/Soothsayer.cs",
+      "sha256": "0376c7d806594399840db5cff5bb86f3633e8b1297fcd9a020aee5bd9d22d34a"
+    },
+    {
+      "path": "compiled/390/Spiritualist.cs",
+      "sha256": "1a1884a9e0eb52e76dde9553c2a2d64729532d080f7f0519776575339191025b"
+    },
+    {
+      "path": "compiled/391/Spy.cs",
+      "sha256": "89f8ef4d9be37071140c405c932ddf6e2358543d1d3ef8a5a59d3368ff52c579"
+    },
+    {
+      "path": "compiled/392/TaskManager.cs",
+      "sha256": "530e0387b666d8c04f1744837df6244e42d59a23333fd7d6a130e7895c5a8f13"
+    },
+    {
+      "path": "compiled/393/Telecommunication.cs",
+      "sha256": "282766012dbba68bc88bf3595887391ad0352c6e41410b7999092e80106294ca"
+    },
+    {
+      "path": "compiled/394/Unshifter.cs",
+      "sha256": "b7426ad3c2aadb6453c1a8f23c36cdbad6b036a6bbba74256cc9b6e6b0ca86f0"
+    },
+    {
+      "path": "compiled/395/Whisperer.cs",
+      "sha256": "057543cdc9861d54eef1c608f35363cf7aaaba308beb327e0ef0749d71097d6e"
+    },
+    {
+      "path": "compiled/396/Witness.cs",
+      "sha256": "80ec6337ad82e5c06d011dff6d33030c8179c1e93f9ce06304f7e06379d17461"
+    },
+    {
+      "path": "compiled/397/Drainer.cs",
+      "sha256": "b0225aaba0ef32114f89005c271941713e9014a959bd1525ed05b9782dff4ae8"
+    },
+    {
+      "path": "compiled/398/NiceGuesser.cs",
+      "sha256": "5b72385698a8cbf9864a9091ba63e8d31755eac86b5a462ac9829afd1cc2ebb7"
+    },
+    {
+      "path": "compiled/399/Prosecutor.cs",
+      "sha256": "fe03e2f97c28ef933fd435f293ec7c3264d18ce672659ac805b608ce6f2f572f"
+    },
+    {
+      "path": "compiled/400/Retributionist.cs",
+      "sha256": "695e9619f7bd854d81363e4d88c85ce7178eb2c53d7711f36b49f5a70e567b8b"
+    },
+    {
+      "path": "compiled/401/Sentinel.cs",
+      "sha256": "cbaff050c6a8b2041a9716351d3e07d29895d96449401af7145499b38489cedd"
+    },
+    {
+      "path": "compiled/402/Sheriff.cs",
+      "sha256": "850ba06272f4352f467a842b0032754c2038acd00e5d67aed4de3bbe12243ed9"
+    },
+    {
+      "path": "compiled/403/Veteran.cs",
+      "sha256": "0a46a048821cbda20832e7d0b27be1474e50c9c647ad5a1e8a8424c866f34155"
+    },
+    {
+      "path": "compiled/404/Vigilante.cs",
+      "sha256": "883ca9f11fa78823c2f0695a03e71a4330ee6e647fe100cd5c4741feea3f78bb"
+    },
+    {
+      "path": "compiled/405/Addict.cs",
+      "sha256": "8b3f9935c239ee92ecea490eccf5e669dd91d4930c4e7c8617ada708246698b8"
+    },
+    {
+      "path": "compiled/406/CameraMan.cs",
+      "sha256": "6621d2803999a712433efaac77efee868a59b0153907e216f3376bee4a8a49af"
+    },
+    {
+      "path": "compiled/407/Carrier.cs",
+      "sha256": "3fcf1a94f46a9f4da2201f901aba647c9d880ea3b273e3c1aa46c54aac5cf4e4"
+    },
+    {
+      "path": "compiled/408/Demolitionist.cs",
+      "sha256": "a76154121c17dc8f2e08d88fa2557ea794b194ce3a8fda7dbb6a11333b34fc4d"
+    },
+    {
+      "path": "compiled/409/Evader.cs",
+      "sha256": "8c41f97353cf1a0ce9624a6974cac9c0d49d4b59c1fc586fbc71aa09c056f2de"
+    },
+    {
+      "path": "compiled/410/Express.cs",
+      "sha256": "d64be9c07ccbf445707d533ec32f18cf291394928d35352d998223479bea17d9"
+    },
+    {
+      "path": "compiled/411/Journalist.cs",
+      "sha256": "b86fbc863910b4ecafa95b12fc49451e78d49b73574e0affd303160c327f6c14"
+    },
+    {
+      "path": "compiled/412/LazyGuy.cs",
+      "sha256": "f2b0cc883b7c23d102c0a24ff7fd3a24774a2f41ecc59791ad00aa53738ed102"
+    },
+    {
+      "path": "compiled/413/Luckey.cs",
+      "sha256": "57eef1e01eab76cf9cd94b7ed14660690868f63fe442d39d179b09acd761d9ba"
+    },
+    {
+      "path": "compiled/414/Mole.cs",
+      "sha256": "d482af25632599b19c74daca51b2766bd646a5117902aba14745c9b68e277782"
+    },
+    {
+      "path": "compiled/415/Nightmare.cs",
+      "sha256": "ef3a9c78cf320d66499bec96aa943a1e2513b60f4d879d21e6b13105d3d9fe05"
+    },
+    {
+      "path": "compiled/416/Paranoid.cs",
+      "sha256": "f5e1e3d87c5f627a9a9d35f4a84bad51a5158f8ec94afc8ee300dacbd500f2ba"
+    },
+    {
+      "path": "compiled/417/PortalMaker.cs",
+      "sha256": "467a4375ca6dd2f8c70e8cc46b77e2a6ede262a55870a90b392bf509b457fdd2"
+    },
+    {
+      "path": "compiled/418/Ricochet.cs",
+      "sha256": "ad187bc179cc3bc7962879c21cd9187c837ce7cbb32ca796305431b41f845b91"
+    },
+    {
+      "path": "compiled/419/Safeguard.cs",
+      "sha256": "c8d9d9f9a7d2672d888e3595287d2ae8f2e4d95dd4ae13d93896bf0d85848def"
+    },
+    {
+      "path": "compiled/420/SuperStar.cs",
+      "sha256": "f20ddc561d810058880bed0f3f1a43451508872e4d8dabaf0217de45da0c62b5"
+    },
+    {
+      "path": "compiled/421/Tar.cs",
+      "sha256": "c1a08e99ebade343645035ceafb342ecb0d5ce38c65d6108933951ff78cbdd4a"
+    },
+    {
+      "path": "compiled/422/Tether.cs",
+      "sha256": "dcb2e7f205b88f7442b6abef2766251424646ce71f72bdf9a0385e13ba4ebdae"
+    },
+    {
+      "path": "compiled/423/Tracefinder.cs",
+      "sha256": "8c6976dff93aec2247157570deda54dc78ab4d7a4f85b98747b37549395aaf22"
+    },
+    {
+      "path": "compiled/424/Transmitter.cs",
+      "sha256": "f55cae83d69244d9d3edbe5aa441097adddee89fa1ab5a463e972bdcb2f1f7dd"
+    },
+    {
+      "path": "compiled/425/Tunneler.cs",
+      "sha256": "fc20a480b170a9903e5016b376668f8f2e23d539fd465ca419663310c4fe7836"
+    },
+    {
+      "path": "compiled/426/Vacuum.cs",
+      "sha256": "cf9d52fbb86e5517d6458382482f929a08c7398ead7fa2b913a14ad2a82de9cc"
+    },
+    {
+      "path": "compiled/427/Adrenaline.cs",
+      "sha256": "c76916ec62c33034d3840640d2a61f24eb323978477451a9a631886c946d79af"
+    },
+    {
+      "path": "compiled/428/Adventurer.cs",
+      "sha256": "290c8ad9919fc26ab18f30303fbbb88f8a38f0918efd9377c39afc091ad9f75c"
+    },
+    {
+      "path": "compiled/429/Alchemist.cs",
+      "sha256": "d63e49fd657746235887a2e76a2556556e97db7730ab5331047907bd9a947311"
+    },
+    {
+      "path": "compiled/430/Astral.cs",
+      "sha256": "4a4f641bbb7efc4f54429e79991633c42b6c444ee74b32032e646c382f7ea72f"
+    },
+    {
+      "path": "compiled/431/CopyCat.cs",
+      "sha256": "e62cfa15216730cb3ee6c25cc204665d2420bf5b1da19933eaf6f3f9f86a6c2f"
+    },
+    {
+      "path": "compiled/432/Decryptor.cs",
+      "sha256": "88f33280a6facafb1f0fdd25cbee4baf4186b7b80a8f62a18b8ec0f7d79b238f"
+    },
+    {
+      "path": "compiled/433/Detour.cs",
+      "sha256": "98cf48c18fcd2760421fc6cbd8398b3a4021935137a007dc335315657daa7a95"
+    },
+    {
+      "path": "compiled/434/Dictator.cs",
+      "sha256": "b25d7753ee148f2aff5207557983e6ba07ac1e521b6e7f16c66708198e746436"
+    },
+    {
+      "path": "compiled/435/Guardian.cs",
+      "sha256": "dd05f072419bf585048471a99303881f3e3c33dd412b79a25a0963ef0f3f1617"
+    },
+    {
+      "path": "compiled/436/Marshall.cs",
+      "sha256": "1e39eb529e3534c8c66fc476e58faf6eb5d96aa660bb8aebd7a21f64b82da769"
+    },
+    {
+      "path": "compiled/437/Mayor.cs",
+      "sha256": "f42e02df049f9cba5c5d413fb9933d03cb7b4c3e83b7af3ebdc4c1e639fed524"
+    },
+    {
+      "path": "compiled/438/NiceEraser.cs",
+      "sha256": "16bbbde3cc3391c9505834b778b487368bf1bdf9024bf4cb29626dd09b7d674f"
+    },
+    {
+      "path": "compiled/439/Oxyman.cs",
+      "sha256": "81b0afce499e3439081d76ef202928d36811c99028ee3d27c014bc6bc3854dcb"
+    },
+    {
+      "path": "compiled/440/President.cs",
+      "sha256": "1aa034342d863faa76bf5b717d9034d011753a1f4f3c4c4009820b939bdd3396"
+    },
+    {
+      "path": "compiled/441/Speedrunner.cs",
+      "sha256": "e39f56332a133353e5797a083019338de93bf4981cc21de0445d75af3a6ba7c8"
+    },
+    {
+      "path": "compiled/442/Survivor.cs",
+      "sha256": "2f78100e2d569d1f925176aa55ab8753e7b792dc48d7ea1f82eab97fcfad41e6"
+    },
+    {
+      "path": "compiled/443/Swapper.cs",
+      "sha256": "9022e90172acc346d7da9dd1d2d1c3ecd8a9326f7b06081d17689d50c22e646b"
+    },
+    {
+      "path": "compiled/444/Telekinetic.cs",
+      "sha256": "fa6b9f6adb290503b91e510f0ef0b38cbb037e87f97c2652e4ac1dd69e50a498"
+    },
+    {
+      "path": "compiled/445/Aid.cs",
+      "sha256": "25057d8e000528c5cadf43109bccc106cd2dde54a66caeb8e08c529e79001059"
+    },
+    {
+      "path": "compiled/446/Altruist.cs",
+      "sha256": "c1d5c4b8a299457a7f9e166f88a48afb7c5d551c4439a0d3300c6965298d4630"
+    },
+    {
+      "path": "compiled/447/Autocrat.cs",
+      "sha256": "18ccc68dd6d46279086fec42f6fd01994c9600f5db47289adb82238f01d22d47"
+    },
+    {
+      "path": "compiled/448/Bane.cs",
+      "sha256": "2319c8e05bcf4e2f03e8759ed794fcd5b3c0a99f0f0963f24aa8dad7ce0f6ae6"
+    },
+    {
+      "path": "compiled/449/Battery.cs",
+      "sha256": "f43e71896368e8d7348d79de4caabad1da246e9d8fcca9607edc92a491d726e8"
+    },
+    {
+      "path": "compiled/450/Beacon.cs",
+      "sha256": "d1e88cf94f61ec8d7a610c04d30b554d41b2a3ce6a10152dc8a77d3ebb958e56"
+    },
+    {
+      "path": "compiled/451/Benefactor.cs",
+      "sha256": "566b42b79713b8e568e65d5dbc421d51c519a57af7515f244b760cf2f9907275"
+    },
+    {
+      "path": "compiled/452/Bestower.cs",
+      "sha256": "ecebb59ba5d48ee0e9dc1a042f27e8035a6b2a56a9692cd05969a09026dc0f0b"
+    },
+    {
+      "path": "compiled/453/Bodyguard.cs",
+      "sha256": "96636d63ece8879553399510355c9b5c163ac4a6a000aeb56bb3c976c8fc9ec3"
+    },
+    {
+      "path": "compiled/454/Bouncer.cs",
+      "sha256": "d4cdf42c5cdfb710a51144b8c128417be8e6687a8e423ef59b421584caa3dc80"
+    },
+    {
+      "path": "compiled/455/Chef.cs",
+      "sha256": "e641902b68233238548c3d3a1642006c89a7c7c334f152021d2c73735312a250"
+    },
+    {
+      "path": "compiled/456/Cleanser.cs",
+      "sha256": "43790b62e52d9972cf1e1dce8d371a9fcf15c7455a8d1e5f49d84bbcc77aea3d"
+    },
+    {
+      "path": "compiled/457/Convener.cs",
+      "sha256": "e5754bed845294c304356656a8ad4e91f6bcbfb7d0807922a63831f116376620"
+    },
+    {
+      "path": "compiled/458/Crusader.cs",
+      "sha256": "d301f2918465aa03fc54c08b8f2764cd2ce8671c0d823b9f8ad05e7684ec53cd"
+    },
+    {
+      "path": "compiled/459/Deputy.cs",
+      "sha256": "ba6a34cf1c3fd670ca2aae062199a1e8273410f74c236e529ba6ba71174f8ab3"
+    },
+    {
+      "path": "compiled/460/DonutDelivery.cs",
+      "sha256": "922d2671c0b3a593ca753fdd892e714bb12a1f3e641af97d8e96e3efa6cdc756"
+    },
+    {
+      "path": "compiled/461/Doorjammer.cs",
+      "sha256": "086a5436cadd9ce9ee0643a1b8ba60fd0f155ee38145718411ddd4b355c0b264"
+    },
+    {
+      "path": "compiled/462/Electric.cs",
+      "sha256": "07a8b06cd4186036bbcd6eb1e42da5c2ea2cfc0179353545b6288a98bdb6e53e"
+    },
+    {
+      "path": "compiled/463/Escort.cs",
+      "sha256": "5badf0074d62aa2dea0de675050cda645123149f01bd9fc593459bcbbfb43783"
+    },
+    {
+      "path": "compiled/464/Farmer.cs",
+      "sha256": "6eb50fef23e73abbd6a957ebf5186c00b3cac35d9fe19efb486f8cfd0a74c259"
+    },
+    {
+      "path": "compiled/465/Gardener.cs",
+      "sha256": "ba43d7574a0477e947fb1315524f3588655dfebdddc16d7233c3123567a9509a"
+    },
+    {
+      "path": "compiled/466/Gaulois.cs",
+      "sha256": "3338e02e1c99111270748c2586249c33a09e7d1c60e3c5a0f33c21ad3685b091"
+    },
+    {
+      "path": "compiled/467/Grappler.cs",
+      "sha256": "e8c8b6065d88f1595a73fea41f53b45024d052b9364d572c07996d920f765839"
+    },
+    {
+      "path": "compiled/468/Grenadier.cs",
+      "sha256": "815d76a76cdf173515dfa6651fc68cb23bcff80383fc8836988dc72dcd3d90ac"
+    },
+    {
+      "path": "compiled/469/Helper.cs",
+      "sha256": "6e5888780e0e183ee6380876bc1af75e2c1b7aeed0e8e46eb50f9bf6dd8a8a5b"
+    },
+    {
+      "path": "compiled/470/Jailor.cs",
+      "sha256": "265fea8580b12376137c109f9201485326ec73aefc5c9852f749fa47082a6349"
+    },
+    {
+      "path": "compiled/471/Mathematician.cs",
+      "sha256": "beb806a22a268a836aeb706e078c0506ed8528ef328008fec915c7bbf7e8efe4"
+    },
+    {
+      "path": "compiled/472/Mechanic.cs",
+      "sha256": "241035375f4a28270d1f928ae09e539368894918c93291acecbf7f933c49ecc8"
+    },
+    {
+      "path": "compiled/473/Medic.cs",
+      "sha256": "372a264553a4bd8c56184b83a888a3f359d8bddae5d17e45010008fc92b79833"
+    },
+    {
+      "path": "compiled/474/Merchant.cs",
+      "sha256": "a1a756995af2747e4da358f9bc370474802e254943a87ff034246aaa49230538"
+    },
+    {
+      "path": "compiled/475/Monarch.cs",
+      "sha256": "73a37a043179d21ca78e350fd579c03dc75c67dbc74044b1b5d015429832370f"
+    },
+    {
+      "path": "compiled/476/Negotiator.cs",
+      "sha256": "4dd87e7e456e58c0d721373b849d49d1af99b32986271cab1a6a6e2fb28c8667"
+    },
+    {
+      "path": "compiled/477/Operative.cs",
+      "sha256": "ebb958e58930b2fd37c244f84a6939c5063e2fe343d495228cb7e7c66e63eaa6"
+    },
+    {
+      "path": "compiled/478/Pacifist.cs",
+      "sha256": "f78e228e0b077a0fff3d6d4c2daf44bfbf22d3725dd3ff59fb74a5223dd74398"
+    },
+    {
+      "path": "compiled/479/Rhapsode.cs",
+      "sha256": "a67c983e1f23f2d8ddf6c50a7d9be594da512d2f790464d0183b38074c2a649b"
+    },
+    {
+      "path": "compiled/480/Scanner.cs",
+      "sha256": "1b77e7ecbea2b9a20244010eaa6ab2a7c56a528c5b5fdfa7432f96dc122e1c71"
+    },
+    {
+      "path": "compiled/481/SecurityGuard.cs",
+      "sha256": "0ea2e1f74c979573c4550667ed8abdb51da043d7853c8a8d382d1cbf17af0e82"
+    },
+    {
+      "path": "compiled/482/SpeedBooster.cs",
+      "sha256": "ff6f78243bc34abcc9262d2007ac6fd83cc313ab3e84339f4291e4a5a33169bd"
+    },
+    {
+      "path": "compiled/483/TimeManager.cs",
+      "sha256": "5a9cf9197e2b75a9b30aa054f5266ce9e042cfc883bfbc4c8504d22601a956e7"
+    },
+    {
+      "path": "compiled/484/TimeMaster.cs",
+      "sha256": "d4df8d2bec2e1349ea10ab8559ab47d2642ec8042c86a526dc9f18472be49bb6"
+    },
+    {
+      "path": "compiled/485/Transporter.cs",
+      "sha256": "eaad3b56b6ff2861df2d787f6a8cb7173c9d64e1655df628770c1db0bb93212a"
+    },
+    {
+      "path": "compiled/486/Ventguard.cs",
+      "sha256": "a6c1be4826f3b8886c75fc17921cd349a67c5a6f8eb173fc1f358ede97883038"
+    },
+    {
+      "path": "compiled/487/Wizard.cs",
+      "sha256": "3cfc4f1020ca6bcb14ced56a2e1ea584f686dcb8ab91926d9f6f366d533d0ae2"
+    },
+    {
+      "path": "compiled/488/CrewmateVanillaRoles.cs",
+      "sha256": "06edbbe6dfb817507726454b72148dde7139a2305c985c188c838fb49037e78b"
+    },
+    {
+      "path": "compiled/489/Bloodmoon.cs",
+      "sha256": "9cbcd143ac2d499e0535e6b194ddcf8db70278d871a799b50e04da12ed24acf1"
+    },
+    {
+      "path": "compiled/490/Facilitator.cs",
+      "sha256": "d3dbdbac289900c60e862184d046206b779b1cf39ef7326492fc2f2598064683"
+    },
+    {
+      "path": "compiled/491/GA.cs",
+      "sha256": "02d65f5a5190b05d3e2484a5f9a7cd6176a57a005c31fdac9ffc81cb94f0bec0"
+    },
+    {
+      "path": "compiled/492/Haunter.cs",
+      "sha256": "56689147eee6568a2f9db16a2454955cdd3ede471d8012353ff06f80304a8e03"
+    },
+    {
+      "path": "compiled/493/IGhostRole.cs",
+      "sha256": "def6023fbe29a4d83fd0d36ab8ca45d316ae0c0acd7b3b8337d111bbd2d70f9b"
+    },
+    {
+      "path": "compiled/494/MeetingAngel.cs",
+      "sha256": "4e37b1e5b33864a1d673ef3eeb9b7c15cdeed5af06cf78fac684a4495f84c56c"
+    },
+    {
+      "path": "compiled/495/Minion.cs",
+      "sha256": "56e1d239f00abfd2941ddfae3f1bf31377aecffb134138eacd0d81a8929d3eb0"
+    },
+    {
+      "path": "compiled/496/Phantasm.cs",
+      "sha256": "52b6c182be38b80cea77a6f82d1b3ad2126ab52bf08a8ea59ac74dd06badbf71"
+    },
+    {
+      "path": "compiled/497/Shade.cs",
+      "sha256": "bae8f3aa9301d12432c3801e54de068c1ca3672d813fb58b86a19f204f4e7958"
+    },
+    {
+      "path": "compiled/498/Warden.cs",
+      "sha256": "f613c95a8c507e3f0f9baf294d0da1e3a2504bb71c7fc1083e182f9ed86a22a5"
+    },
+    {
+      "path": "compiled/499/Ambusher.cs",
+      "sha256": "0632907ab4c5b0dd4f673a332e58b3433ac083baffe5f9256ad56696a8766296"
+    },
+    {
+      "path": "compiled/500/Anonymous.cs",
+      "sha256": "79c0792ad592b7e6b91e21c9b71b9af1873d0f29d73f28dc5e77bc8680269fd1"
+    },
+    {
+      "path": "compiled/501/Duellist.cs",
+      "sha256": "e83d3e16cd3f126d805dd41d1245ef38c66bc41c5d974a8f82b1b275906980fe"
+    },
+    {
+      "path": "compiled/502/Echo.cs",
+      "sha256": "e9e7fe588fae23002b3bc5388ea8c58dbef54b7b6db0c93dee769ba657749d3a"
+    },
+    {
+      "path": "compiled/503/Escapist.cs",
+      "sha256": "2bf28ca23bb27d4018a337259bf101d25865831542c4884ba9151685784cc89e"
+    },
+    {
+      "path": "compiled/504/Exclusionary.cs",
+      "sha256": "8a57e3a9dbad09b60033da6620b467b2dbec9b8a75f29c1b582485dc858f1085"
+    },
+    {
+      "path": "compiled/505/Fabricator.cs",
+      "sha256": "e7020160cdec897132eb6d8a7844cecef286653a11ba3c68ad59c75e507ea53f"
+    },
+    {
+      "path": "compiled/506/Fakeshifter.cs",
+      "sha256": "63e0bafe3546ea35308c7596f7ab4bb4e87ecdd588f1b6ba58bb61d0f69d1698"
+    },
+    {
+      "path": "compiled/507/Forger.cs",
+      "sha256": "8a4c25bb19bf9f3602af391df8ac019ef6d1f7f48a05df6a426d5ea0067e115b"
+    },
+    {
+      "path": "compiled/508/Hangman.cs",
+      "sha256": "8e5181ad7d28d7e37d46cf9946723e87d03a61dd6bd357b94ba7930379fbdb86"
+    },
+    {
+      "path": "compiled/509/Kidnapper.cs",
+      "sha256": "11e45464e79205d7491b57c663c36fd34d50a6d06de4ebbfa528c95728a01f28"
+    },
+    {
+      "path": "compiled/510/Lightning.cs",
+      "sha256": "db715794c539f16679e273e403bbd856405833c99e648ca0659ca701f5932e47"
+    },
+    {
+      "path": "compiled/511/Mastermind.cs",
+      "sha256": "dba7f40e2df8dbb0e3409764d33dec02efd4539534d742285da77c26d4ee3497"
+    },
+    {
+      "path": "compiled/512/Miner.cs",
+      "sha256": "b36451f8bf406b5664ebed2610765d5497eeebd6afdd1cbed2ff5d2fd7b3e6fe"
+    },
+    {
+      "path": "compiled/513/Morphling.cs",
+      "sha256": "1ed0c11bef867923921c68a6b5b9f31ba6f1ac92129fe7e8f22a4ab6d0a7099d"
+    },
+    {
+      "path": "compiled/514/Penguin.cs",
+      "sha256": "bef63386d7b386877d9b5aea96e076264131b04dcb832201bcdeb4f5c4f5a430"
+    },
+    {
+      "path": "compiled/515/Postponer.cs",
+      "sha256": "ef75bd05a9bf49ad2b626a36a0666df4a68295749a482dd2ecb94a78516c6ec2"
+    },
+    {
+      "path": "compiled/516/Puppeteer.cs",
+      "sha256": "891f8a009106d0fa3215e4949784f079bd45454db2ae388bea9b62e5787655a9"
+    },
+    {
+      "path": "compiled/517/RiftMaker.cs",
+      "sha256": "763c4232e987b07050429d84d453a3fca4f7b7487d02fbaff82cf99b318d3315"
+    },
+    {
+      "path": "compiled/518/Scavenger.cs",
+      "sha256": "a2a1935b77cda4d5ef1a14be50c674bec0744ba4af08536bdc5442018df1679f"
+    },
+    {
+      "path": "compiled/519/SoulCatcher.cs",
+      "sha256": "5a6db24ebafcdc2244979067ccbe3a0c29ef9a1ef7e38dca772186f49ba70aba"
+    },
+    {
+      "path": "compiled/520/Stasis.cs",
+      "sha256": "35a5c763ff3c5fc492c4591d338ab25856cb74310798a1aab1a6e96071037d2b"
+    },
+    {
+      "path": "compiled/521/Stealth.cs",
+      "sha256": "482020b5fc009d9aaa58964a512720fbda4fba85eba9f3b5a785faf2bb6fae51"
+    },
+    {
+      "path": "compiled/522/Swiftclaw.cs",
+      "sha256": "5ca1c62a364962631fe7c9cd6ca5cef5e431a2c92497a9bc8e4e14977ac845b7"
+    },
+    {
+      "path": "compiled/523/Swooper.cs",
+      "sha256": "24c942ff8215487dfdafaa819ead0040a21ce191e3b339979dedc59d562a4479"
+    },
+    {
+      "path": "compiled/524/Transposer.cs",
+      "sha256": "195e2e4cdbafa1ec6be41ccca38c26908c3b88f3db67209aa4eb21ad04406a60"
+    },
+    {
+      "path": "compiled/525/Trickster.cs",
+      "sha256": "01d24627faa3540010dbb90742ef5f7a16dca1c7510004f12493c100d8c4f480"
+    },
+    {
+      "path": "compiled/526/Undertaker.cs",
+      "sha256": "9fef3934741ca0dce5de9ad4325d5b91b58399aa9341db0214e018d1cf608136"
+    },
+    {
+      "path": "compiled/527/Vampire.cs",
+      "sha256": "ce576efeb46677457265ab808933a03130b6e7c984f66e9caf03a12422fb1ed4"
+    },
+    {
+      "path": "compiled/528/Venerer.cs",
+      "sha256": "b4676d3b795ffbae52bb22a572000a3abbb495e5a11c5b9590ee2564855aae5f"
+    },
+    {
+      "path": "compiled/529/Warlock.cs",
+      "sha256": "3f881816365e0ef0b8a1dbc13700a8c7eab6e874fe5e187477be84c8dba4eecc"
+    },
+    {
+      "path": "compiled/530/Abyssbringer.cs",
+      "sha256": "f1a685ad8a9a6509d15c9dfd20635bd575fa0b625db8ebda1803811d244832af"
+    },
+    {
+      "path": "compiled/531/Arrogance.cs",
+      "sha256": "69d82884a92cd98c3e7191d4b750d5d8a05b7440886d66cfa7443c3813228c0d"
+    },
+    {
+      "path": "compiled/532/Assumer.cs",
+      "sha256": "abdfb6b52743687a3857390c48f20baa2932fac5fa941da4dd2e3962871175cb"
+    },
+    {
+      "path": "compiled/533/Augmenter.cs",
+      "sha256": "3014060e1a38a051348cd369a92507937b6676927692e2907183469b8a91d597"
+    },
+    {
+      "path": "compiled/534/Bard.cs",
+      "sha256": "5c16f21d311cc3b68f92cbe2e9a0f6b0085ead190fab6c645464b963a705aa80"
+    },
+    {
+      "path": "compiled/535/Bomber.cs",
+      "sha256": "26ab3d45258c4ce429573bf294585dbe8815888886218d5447e6af0492d8f0f4"
+    },
+    {
+      "path": "compiled/536/BountyHunter.cs",
+      "sha256": "5a12fa10b7db40413cd52d78484b8fdaa8a4099fb829aa96880171f2e5d72c3a"
+    },
+    {
+      "path": "compiled/537/Butcher.cs",
+      "sha256": "4ef7ad98dc954f384274f2b721460dd8fceab22c5f5dadc9c0e10186b399d174"
+    },
+    {
+      "path": "compiled/538/Cantankerous.cs",
+      "sha256": "3df18fda19d8a58fb11f4fbfbd559c0a96ee9e35f2153d6319858efc9d33fa5c"
+    },
+    {
+      "path": "compiled/539/Chronomancer.cs",
+      "sha256": "c42716a9556cdf1d204d3d01c09144906e47e043bed22dcdbf87940f38cc607a"
+    },
+    {
+      "path": "compiled/540/Councillor.cs",
+      "sha256": "ecc27388e3eeee4c17d98f00fb6a41ad711165d4e6ed1274c584f67755fae731"
+    },
+    {
+      "path": "compiled/541/EvilGuesser.cs",
+      "sha256": "89c8f98a199c3be74ce351fec9ca0365399843b61484e5f2022353de1690117e"
+    },
+    {
+      "path": "compiled/542/Fireworker.cs",
+      "sha256": "124ea0710e900980270fd9fccd082634dda2dc91f0bf67360c2bafde7900f51c"
+    },
+    {
+      "path": "compiled/543/Greedy.cs",
+      "sha256": "f912aca997d9cf4abefd8ccf953ac4e381f5f8e834dd7a322e0b4c861913e42b"
+    },
+    {
+      "path": "compiled/544/Hitman.cs",
+      "sha256": "a9dacd17938d2335a23bc32f512e3d87bee2fad3c0a8e81ba6057a4af0f23e4a"
+    },
+    {
+      "path": "compiled/545/Inhibitor.cs",
+      "sha256": "767aa8315ef801cc8effbb425c52aa268f636faec2a3ed9b28f0314871dafae2"
+    },
+    {
+      "path": "compiled/546/Kamikaze.cs",
+      "sha256": "b80cf5898e9ae30385d9bb6da12aae41fbbdff524b03056eedf1d2d9d644b36c"
+    },
+    {
+      "path": "compiled/547/KillingMachine.cs",
+      "sha256": "ba86ec6c5400a539208ee3899f640076d148d2f22558a70f83644e22d5e866f5"
+    },
+    {
+      "path": "compiled/548/Lurker.cs",
+      "sha256": "f0adad21a344999d83107707b1c6afc4c5342f4166dc8cf2e6c2e5f23280e52f"
+    },
+    {
+      "path": "compiled/549/Mafioso.cs",
+      "sha256": "13d846f09f6634c3e84b52bacab18b329ea74d8515056245503680f32b4018ea"
+    },
+    {
+      "path": "compiled/550/Mercenary.cs",
+      "sha256": "b63f4804dbe687511c43adbdee1b03d519077fe8c14d43eda6702ec9e25fd5d4"
+    },
+    {
+      "path": "compiled/551/Nemesis.cs",
+      "sha256": "b06b957928b2cf0dd5a3ce32da6b0033d4ef8466894bc36694a86479a6efe358"
+    },
+    {
+      "path": "compiled/552/Ninja.cs",
+      "sha256": "1dc54abf3f4959f66ce1fa032acdf127f1f589a6b3edebcd791b7aa534e27dc1"
+    },
+    {
+      "path": "compiled/553/Overheat.cs",
+      "sha256": "49d0253de58e068dd52e7a291dfeb187b4905f56550367610704720561adcce4"
+    },
+    {
+      "path": "compiled/554/Psychopath.cs",
+      "sha256": "0387fb1c5cc9204f4ec843250022fa69c4a1cdc4b3561103fafc5bed3358c9b8"
+    },
+    {
+      "path": "compiled/555/QuickShooter.cs",
+      "sha256": "3851a708b539f34d45efe944f04087646cea92fcfcd002f2196dec2310e2845c"
+    },
+    {
+      "path": "compiled/556/Saboteur.cs",
+      "sha256": "5fd4b680aff724cc0203e361944159384df29b5dc32cd55c20173b72effa0b16"
+    },
+    {
+      "path": "compiled/557/Sapper.cs",
+      "sha256": "eb604f501764bb7b5a299b6bfb4d05f6fe259007b16b9b141f2d09af8801b8fc"
+    },
+    {
+      "path": "compiled/558/Sniper.cs",
+      "sha256": "3542a2019ec130f8769c4f27bea8f457547b6825fc3ffa790581b238165de69b"
+    },
+    {
+      "path": "compiled/559/Trapster.cs",
+      "sha256": "cefd94eda6a5011269ac5a36cafb3c137f2b9742c61dacaf1638025e6293ab07"
+    },
+    {
+      "path": "compiled/560/Wasp.cs",
+      "sha256": "ef31768ec96bb0b738ca423660a9951e9d7974e8531146ff71ffa325f83fb7d6"
+    },
+    {
+      "path": "compiled/561/Wiper.cs",
+      "sha256": "52a83d721ff6649e37207ac0e1ce6a2a0c01165cd5721047138d07e54c0c7a12"
+    },
+    {
+      "path": "compiled/562/Witch.cs",
+      "sha256": "23cb96c60beb8d21e6faf3d72589f2bdd12b1827593dcd776a79054b8f71a9e3"
+    },
+    {
+      "path": "compiled/563/Zombie.cs",
+      "sha256": "a2f2a91ce8b7d88fdbea97b862818e812c4fc432b4f29ab63a083fe3f1650197"
+    },
+    {
+      "path": "compiled/564/Crewpostor.cs",
+      "sha256": "fa1b7d12888262a072f08e57509a38d3cfc6519d463b7a6b2dcdd78f5164fd6b"
+    },
+    {
+      "path": "compiled/565/Hypocrite.cs",
+      "sha256": "ce00c0eb543679c2b0f9fa5f9e3edc6d44c37448569b3fca115e1c520baba289"
+    },
+    {
+      "path": "compiled/566/Parasite.cs",
+      "sha256": "f058a409b196cd884427e0f6d28287b62091e02f35d0cd900846eccccdba06be"
+    },
+    {
+      "path": "compiled/567/Renegade.cs",
+      "sha256": "e140e33d5e0365b4f13c24edcc07fb3d5edab228e7f1a751fae68682b3bd3b38"
+    },
+    {
+      "path": "compiled/568/AntiAdminer.cs",
+      "sha256": "088244191cb9a435033335c2b7a18c4921f2c493ed6bea9e616cdee763ce22f6"
+    },
+    {
+      "path": "compiled/569/Changeling.cs",
+      "sha256": "bdc014590a2d56c8768b9f45c4871d6cae008addd31b1d8d4e4ddf7dc0e65252"
+    },
+    {
+      "path": "compiled/570/Consigliere.cs",
+      "sha256": "888c9f26aad3e9bf05917a8e6ef80a3c238350e86342b02491838013ddf93f34"
+    },
+    {
+      "path": "compiled/571/CursedWolf.cs",
+      "sha256": "489e4c27121277eab0012948a71e1eadff40e7d1a6347ba8b3c7cd6ee60591f5"
+    },
+    {
+      "path": "compiled/572/EvilTracker.cs",
+      "sha256": "3e613f1ba414f9009a8ebc9bcf972f6a10337921e4dd692a8207ecfb449de85c"
+    },
+    {
+      "path": "compiled/573/Exorcist.cs",
+      "sha256": "d935579596aaab01722e1976d1f8a207ed385a6d685a144d3b4ff7ac06437bd8"
+    },
+    {
+      "path": "compiled/574/Frightener.cs",
+      "sha256": "349d9f1bb1bd50dd2fb6d70fb5271567d5f26789eadb290ca2e6b6d108985704"
+    },
+    {
+      "path": "compiled/575/Gambler.cs",
+      "sha256": "b5c25c8f669462a5bea826a9e7bb237e875b7179dff648c00c3abdcf50716314"
+    },
+    {
+      "path": "compiled/576/Generator.cs",
+      "sha256": "4d901c20ab6afbf1be6e4d90f835703ea5e2dbc4d51264b901db94c74bee1cfb"
+    },
+    {
+      "path": "compiled/577/Loner.cs",
+      "sha256": "0a75c21ba3fe4c6e01902182c4cd4691ed0bf9f7f099ea2736bb81ceb7f0bc4c"
+    },
+    {
+      "path": "compiled/578/Obstructer.cs",
+      "sha256": "f75479ab1e167272dab513547ffb38ad0961eec1a7e7fd9b3c0257a4ed33e160"
+    },
+    {
+      "path": "compiled/579/Visionary.cs",
+      "sha256": "1811873d256521dacfef4ab7000215a7eff21a42218db5382eb66559b5a044cb"
+    },
+    {
+      "path": "compiled/580/Wildling.cs",
+      "sha256": "6f155cdef36a955f04e7020cbc1cea17b1eddc2c7390ed0a543bcf7e6ae8fc9a"
+    },
+    {
+      "path": "compiled/581/Blackmailer.cs",
+      "sha256": "61f096f6ed242c04200e13c3e1dd1b0745f3532c4d7e2743dbde65e1f56a766f"
+    },
+    {
+      "path": "compiled/582/Camouflager.cs",
+      "sha256": "330a41a5d5e7c6d7defee1ff7ab1180f66e1a7a1e932ca52ac7031828ae7faa2"
+    },
+    {
+      "path": "compiled/583/Capitalist.cs",
+      "sha256": "e59880037e69a64ce28d90a61a17132ad97d8bba9f4fb966a880bdd8d56a1ace"
+    },
+    {
+      "path": "compiled/584/Catalyst.cs",
+      "sha256": "21e686e050c0e628c633db43dc06b908181d1f6d0299881c6702dc33fc456c1d"
+    },
+    {
+      "path": "compiled/585/Centralizer.cs",
+      "sha256": "132bf738360d48a9b719ecba764797d7a8dddc6adc575842ed752564e2ffdb3a"
+    },
+    {
+      "path": "compiled/586/Chainbinder.cs",
+      "sha256": "557e2a132980fb015c3b2b8f703951f32d7225e5508a92ac4c8d721b0898ecd1"
+    },
+    {
+      "path": "compiled/587/Cleaner.cs",
+      "sha256": "0e9b6b8ed4e6157890b200a7234fadc2d889af212182f907b7f786a9defad14c"
+    },
+    {
+      "path": "compiled/588/ClockBlocker.cs",
+      "sha256": "1ac319ed3788d59f46179021cf6d0f0af6ccae5c11353234e273ad04853eac04"
+    },
+    {
+      "path": "compiled/589/Commander.cs",
+      "sha256": "8e244c6253676a22d6ae993d212475a07bece13c0a48b204f0ec159fbd043195"
+    },
+    {
+      "path": "compiled/590/Consort.cs",
+      "sha256": "3f9586f9e0f7ac57133006ade3690fc279e4171c4a6d65c10333fe07a5d49d26"
+    },
+    {
+      "path": "compiled/591/Dazzler.cs",
+      "sha256": "c4a5b271f42e3804c053f3bf9312eb09613fdfa7edf07059202a893fc29dceea"
+    },
+    {
+      "path": "compiled/592/Deathpact.cs",
+      "sha256": "0c83a291d9eb5a68a6a9fd4f3a2f2567d0c934db4d8aca3cd5de4f960c6cc28c"
+    },
+    {
+      "path": "compiled/593/Devourer.cs",
+      "sha256": "7590433634ae871a2a6c37ea52dcaeb8e79760b4f96654f92cad080ccdd0c072"
+    },
+    {
+      "path": "compiled/594/Disperser.cs",
+      "sha256": "471eb04536f5f77285525d82790172fbb85be23007263c554826ae4af4890c57"
+    },
+    {
+      "path": "compiled/595/EvilEraser.cs",
+      "sha256": "0143ccd28089bf0e38733738809ec68c209c4db862da98ddaf7804e42b0c6e2e"
+    },
+    {
+      "path": "compiled/596/Framer.cs",
+      "sha256": "c196f38ada45afd227a1219000cd9a0b751689721fa6ddd141ec45b9c0658060"
+    },
+    {
+      "path": "compiled/597/Freezer.cs",
+      "sha256": "4933cf499ce8d1bb9002702de61959ed155635eb29341e9463833b1471309f5a"
+    },
+    {
+      "path": "compiled/598/Gangster.cs",
+      "sha256": "77aeed24ee5bbf53e3f0a70b2f65eb11dfbb91a3975665e18b38d4e03747f38e"
+    },
+    {
+      "path": "compiled/599/Gatekeeper.cs",
+      "sha256": "577979e7e7fd2d05cf01a2ea700774048ec23a0fdf92a16e3bcc489fc9c68147"
+    },
+    {
+      "path": "compiled/600/Godfather.cs",
+      "sha256": "8d0aa51592d1e927d0d6b2caa9929be2f4cec20df77646c1eb39978258c4160a"
+    },
+    {
+      "path": "compiled/601/Hypnotist.cs",
+      "sha256": "72c85a3b5ef3f15b4997f2ecd9b32f490cb6ac4292d4b6fff5653543f426e024"
+    },
+    {
+      "path": "compiled/602/Librarian.cs",
+      "sha256": "8e7e0ea4e51defa7c74738da69a2c40d1dc6bd427c5541326113c323d95887cc"
+    },
+    {
+      "path": "compiled/603/Nullifier.cs",
+      "sha256": "9379c2e2f6183355678ad212743c117f198673a89b106bbc3d73056f7b9ec50e"
+    },
+    {
+      "path": "compiled/604/Occultist.cs",
+      "sha256": "be59443452d3a79c1c2f185b9c4314fc07027365442d1731e0ae3b310b3ceaf7"
+    },
+    {
+      "path": "compiled/605/Perplexer.cs",
+      "sha256": "b064e1d500769a53a863618a3836c2ab9076a83d7518380ab84208c19070bf0e"
+    },
+    {
+      "path": "compiled/606/Silencer.cs",
+      "sha256": "7cb92eaf3be0fa07eea2a2db8877bccf794074bbb1e43acceb7cf671fd8a9836"
+    },
+    {
+      "path": "compiled/607/Swapster.cs",
+      "sha256": "c1cd7922e4735310ef01217729e199c847a2ffbfdee7e7593d9f3633b6e5b9e8"
+    },
+    {
+      "path": "compiled/608/TimeThief.cs",
+      "sha256": "2ba5ff2002f0624bafd5c84ff860b4492614a50a107ff3c7dc391d71fa4e6dd3"
+    },
+    {
+      "path": "compiled/609/Twister.cs",
+      "sha256": "9273a62c57e4a6ea4ea37aa25789763260dbfed7b3c6c795508fefedea46e8bc"
+    },
+    {
+      "path": "compiled/610/Tyrant.cs",
+      "sha256": "6dd2c7df429c6e89094e8fd01887724295ba9b55e9e7ecfae1ede7e0181e22fb"
+    },
+    {
+      "path": "compiled/611/Ventriloquist.cs",
+      "sha256": "7de72d83fcdf8dd5c8f74b5342b0833f8b38b4b75a1b5987d39e974b134301a8"
+    },
+    {
+      "path": "compiled/612/Vindicator.cs",
+      "sha256": "25463af45843b7b46c4a6dc74b75d4dd0ae2629bd51a75559670b4552e398745"
+    },
+    {
+      "path": "compiled/613/YinYanger.cs",
+      "sha256": "9ea03f7be3ae27bc418317f1810694f6251a3628d935ec02eab695a563b56eeb"
+    },
+    {
+      "path": "compiled/614/ImpostorVanillaRoles.cs",
+      "sha256": "d7b63edf2e68db8dd1621265fdb2a2f22e691f6bdf3473938cac04fc1c41d3a4"
+    },
+    {
+      "path": "compiled/615/PhantomEHR.cs",
+      "sha256": "5f6ceea8f86c4c6a47d8849b42167099c8eb074a4186ec7ce517d7bd5cd9f77a"
+    },
+    {
+      "path": "compiled/616/Amnesiac.cs",
+      "sha256": "5391e0b78ced7b013b2e4690279177c717c21f2bdb73c00374ebf2f55b9b3adc"
+    },
+    {
+      "path": "compiled/617/Backstabber.cs",
+      "sha256": "ae213e41532bfccc12714232de790cc33107d82a0c64e85196c503873e26ed7f"
+    },
+    {
+      "path": "compiled/618/Dealer.cs",
+      "sha256": "35b9b6ec0f83eb31964a84c0f43bd9e6ae975612d085023ae4e4bbb871bca88c"
+    },
+    {
+      "path": "compiled/619/Follower.cs",
+      "sha256": "f53ecaf574f92daeed2e4d4bdbcbff8f441ae7cba106fa31501d4c692abcb040"
+    },
+    {
+      "path": "compiled/620/Hater.cs",
+      "sha256": "f43f1e6e17331e1a8b7b2a9d95f1fe5f90cef9469481893940817e40c66b90a7"
+    },
+    {
+      "path": "compiled/621/Impartial.cs",
+      "sha256": "ca367a64f8726980dd593a8af65bd8a9cb66c13c098895d35e4c85bbcc40aed0"
+    },
+    {
+      "path": "compiled/622/Investor.cs",
+      "sha256": "5cbd086909ea953b2692a5d8a6023a527372c7fe13bf3ce59b73dea9dd0b6342"
+    },
+    {
+      "path": "compiled/623/Lawyer.cs",
+      "sha256": "f0376b2e8b7e1f219ec53365012f49112293f317425bacd2ca118a14b187f3d7"
+    },
+    {
+      "path": "compiled/624/Maverick.cs",
+      "sha256": "72441145e0048900479202f23e50225157e0fe4557ba69fce2f01aa46cd9ec19"
+    },
+    {
+      "path": "compiled/625/NecroGuesser.cs",
+      "sha256": "d7c6280c9673edcb0845d265dd5a88ead670fbb044ea4dfde1927fe5a4847387"
+    },
+    {
+      "path": "compiled/626/Opportunist.cs",
+      "sha256": "f98da0211e3a68307d76145d572825f09f77a4ffdd8ab2ec56925f1b9f405933"
+    },
+    {
+      "path": "compiled/627/Pawn.cs",
+      "sha256": "322e1e447a9c9d43a5e6641cfcc3f33492c85beb84c4893d5c9b7cf6988a4004"
+    },
+    {
+      "path": "compiled/628/Postman.cs",
+      "sha256": "a52b3e60b5eb274d675fa92ebc25e215bc5c9d4fed8a2ff4b39ec8f3b3fe9179"
+    },
+    {
+      "path": "compiled/629/Predator.cs",
+      "sha256": "620a30e26cc8a6fa65a15d7b8cb863ea9e7cd9be14175bd41f67c2b93bc374fe"
+    },
+    {
+      "path": "compiled/630/Provocateur.cs",
+      "sha256": "9a888d0c4adae33932f9162f7635eb6d737900192db9528f793273579fa39232"
+    },
+    {
+      "path": "compiled/631/Pursuer.cs",
+      "sha256": "7dbe6cb49992d99318063c74b44830daaea3987cdf2e6a4f55a0af5ebccb9dc3"
+    },
+    {
+      "path": "compiled/632/Revolutionist.cs",
+      "sha256": "01a97d389b1ebd6c7e94c04eb1073cd17bba7da710008d0856f0086c0b8aa08e"
+    },
+    {
+      "path": "compiled/633/Romantic.cs",
+      "sha256": "b9eee241defb2be795ea128b6f5b04f868df88c25c5ead0f009b1197e6883c09"
+    },
+    {
+      "path": "compiled/634/RoomRusher.cs",
+      "sha256": "aa13ec6e43a7f03e0f2c0c7aff18f8debca19bcda5d17d5f8297302fe53c628b"
+    },
+    {
+      "path": "compiled/635/SchrodingersCat.cs",
+      "sha256": "8defc87e687d293446412f3f917c589edf61970ed3f4dfd7cb884f5364105bb8"
+    },
+    {
+      "path": "compiled/636/Shifter.cs",
+      "sha256": "7dbc0590e5d61cfa3404e5dc135451d75592fe990a155de733cfb4b1b2f833b0"
+    },
+    {
+      "path": "compiled/637/SoulHunter.cs",
+      "sha256": "4bcca58e1ef697da2efa34ba8b0f5c68522153270b34c54a7e94164012dcacc8"
+    },
+    {
+      "path": "compiled/638/Specter.cs",
+      "sha256": "301722b895e92d3aab5056a73645592bbdea79412298ff2affc1fbebe6308276"
+    },
+    {
+      "path": "compiled/639/Tank.cs",
+      "sha256": "060818186b116321a1592e458ba15c59aa40e33cddad3383280d98583bf83ef3"
+    },
+    {
+      "path": "compiled/640/Technician.cs",
+      "sha256": "3d79df220bba3bdb1c9d908a00d73249d13b563b342adacb6d2216fc7393579f"
+    },
+    {
+      "path": "compiled/641/Arsonist.cs",
+      "sha256": "4b812da76fdbeff601b2a157d1c10261aa1dd57878cf7e4df29e263ef46a9ace"
+    },
+    {
+      "path": "compiled/642/Collector.cs",
+      "sha256": "91fc62042cc602060fe53de2406f372fb84d1d03f4ae45af8565edc38d8cf071"
+    },
+    {
+      "path": "compiled/643/Doomsayer.cs",
+      "sha256": "c464a16fa3b04a0f935d8db77899caacfccddc0af9264781981765b29a4075ff"
+    },
+    {
+      "path": "compiled/644/Executioner.cs",
+      "sha256": "7e3f7d91b7d81020a7c1918951a6cf0c708726e81d040535036457430ab0a1e5"
+    },
+    {
+      "path": "compiled/645/Gaslighter.cs",
+      "sha256": "187c44aa1b475a1184b5ad2e1c510787c80b2b98e5a212c1bdcbf3d2b4d64d7f"
+    },
+    {
+      "path": "compiled/646/God.cs",
+      "sha256": "e0c4b9d95bec0ab0d5b1fc367a8a9fc41ccc5d600dd5814a11b5aff6d7c14d3a"
+    },
+    {
+      "path": "compiled/647/Innocent.cs",
+      "sha256": "3ee3a20edaf8f3248397a2d0b89452a43a57e48d4ef0d509e44b562a855aa065"
+    },
+    {
+      "path": "compiled/648/Jester.cs",
+      "sha256": "585a1f1d28142abe65c9921160849d668797f3ee0ab9eff9993599abd35c525c"
+    },
+    {
+      "path": "compiled/649/Terrorist.cs",
+      "sha256": "374121b008c66544c71197e8b3535b1c4d366fa69c00e6246115a97811ad367c"
+    },
+    {
+      "path": "compiled/650/Thief.cs",
+      "sha256": "f3c13a61e4feee5a1132aa44774d5b8c64c68400e31a2cb0fe2c537c5c1e28ca"
+    },
+    {
+      "path": "compiled/651/Vector.cs",
+      "sha256": "a0e570b266fc267eb3b02723a41ea520f5db56fccfb22ca1257b7c961b2fa2c9"
+    },
+    {
+      "path": "compiled/652/Vulture.cs",
+      "sha256": "2405acf6133c2f52fee711bd30451fd58b9f5aa1718de170fbeee527244f61e2"
+    },
+    {
+      "path": "compiled/653/Workaholic.cs",
+      "sha256": "915c9e3453f3b08bc5ccb0cded6004e579b4661b6731732438dc411fc36df2d9"
+    },
+    {
+      "path": "compiled/654/Accumulator.cs",
+      "sha256": "d42cce60a585542882d0e376bcb96bf0fe182c86df85a4aaf9bc8fd1532a9b5e"
+    },
+    {
+      "path": "compiled/655/Agitator.cs",
+      "sha256": "554df1820c2e64e74aa394c9590f1694bdc85a84d8fbe3007c817303348a4a0f"
+    },
+    {
+      "path": "compiled/656/Amogus.cs",
+      "sha256": "4601c10ee5420772e1db47fd3b885f9d006a9a311fa4ddb880a529bebf053971"
+    },
+    {
+      "path": "compiled/657/Bandit.cs",
+      "sha256": "4fb59e7908f64389df08f35ce359450d1d5140f87b0701ef0a8b2cae82b5d634"
+    },
+    {
+      "path": "compiled/658/Bargainer.cs",
+      "sha256": "efeeb755be96febc2624eafa743bba40edbea93fe19272a1219bc7912794a352"
+    },
+    {
+      "path": "compiled/659/Beehive.cs",
+      "sha256": "30f6245164001890d105206eff9ef2cca40e50b0610ae69b7b86ac122d7fc7ce"
+    },
+    {
+      "path": "compiled/660/Berserker.cs",
+      "sha256": "206689e410d17af45f356a3a72f9cf4c7b999b2aeb8ff1e0270dc4a01f8fc9c7"
+    },
+    {
+      "path": "compiled/661/Blockade.cs",
+      "sha256": "e1dc37db18795d2954ba842385a7913a813d19258f1272c569b9df9e52b508b8"
+    },
+    {
+      "path": "compiled/662/BloodKnight.cs",
+      "sha256": "f2526470ed6b4b4d481986451226cdce5845d90646f3d2977e60715438d72c68"
+    },
+    {
+      "path": "compiled/663/Bubble.cs",
+      "sha256": "dc9389857bf8fad08362ac5cb138c64e354e445cb2e1f8f0c3e17fa7436c372d"
+    },
+    {
+      "path": "compiled/664/Chemist.cs",
+      "sha256": "f757fd06191a390539d757db17899fb9fc6ba8af5dc8edb173fc212b0f867ba1"
+    },
+    {
+      "path": "compiled/665/Cherokious.cs",
+      "sha256": "b12d83bef7f1a198930ec1d6259abdfd22bc84b1cc62040b825f3b1d17f2eeee"
+    },
+    {
+      "path": "compiled/666/Cultist.cs",
+      "sha256": "d062b70e7b4cfa5b9691827ddd17442c88676479b8997edcf80053be10adde88"
+    },
+    {
+      "path": "compiled/667/Demon.cs",
+      "sha256": "e816149585a3c0721342e149a352496cd21bdf98859da1b7eab07fb6136752fb"
+    },
+    {
+      "path": "compiled/668/Doppelganger.cs",
+      "sha256": "3bc0dee4f286234610dc02e1046a7b6e961c140e2edb36dabc0f6cc9e4944da9"
+    },
+    {
+      "path": "compiled/669/Duality.cs",
+      "sha256": "c5cbf10133922dcee8dfe17be09a3cd0025e0223e4bf9a7bc3063c1a7fbd3d1d"
+    },
+    {
+      "path": "compiled/670/Eclipse.cs",
+      "sha256": "91cab53303fa90999859bc36fba7b0fce3a4e1f3ce1b5ec82b7eb7d4009b8b01"
+    },
+    {
+      "path": "compiled/671/Enderman.cs",
+      "sha256": "cc874fe4d9180d1c1e62d7d4f48eb6d31acacaa63b6ccc13475a0ab19c04d18e"
+    },
+    {
+      "path": "compiled/672/Evolver.cs",
+      "sha256": "e8adbfc8fa192bc225dec1c41ba9aaf78dac6e23f149b1d02e35f41f6c6e0acd"
+    },
+    {
+      "path": "compiled/673/Explosivist.cs",
+      "sha256": "954a8eadca29ecb56e306da90a7f4099d8c2f3c64c6da9d4879b7028861dbc44"
+    },
+    {
+      "path": "compiled/674/Glitch.cs",
+      "sha256": "1d3d3c3fa78a7758e898037e7766b35f392206b74b33e626568b9a2b280e5488"
+    },
+    {
+      "path": "compiled/675/HeadHunter.cs",
+      "sha256": "1796c1015ad46d1b21507f761cdf1a21686415372c2c8f5c72e1ce14b51dd144"
+    },
+    {
+      "path": "compiled/676/HexMaster.cs",
+      "sha256": "ab601631a8a8c02373c6bfe8dc9d287af2c421a3b96f5be56a9ead2921f84bcc"
+    },
+    {
+      "path": "compiled/677/Hookshot.cs",
+      "sha256": "04467daa88777408d779afb7c9edb52d7224b88567f4cf0a5c14b57f7e6929b8"
+    },
+    {
+      "path": "compiled/678/Infection.cs",
+      "sha256": "ac455f819bb8d2deb4407a84174cf36dae1d08483d56c4170ef665c767233232"
+    },
+    {
+      "path": "compiled/679/Jackal.cs",
+      "sha256": "eb3091ee2c8a856bf85880500733e74f6df9f0152bb19728fa12f247520c39b6"
+    },
+    {
+      "path": "compiled/680/Jackpot.cs",
+      "sha256": "051feb819dacb1d0ae201eade30be840fae9c0f37c12dbcf1e2b6879494ce81b"
+    },
+    {
+      "path": "compiled/681/Jinx.cs",
+      "sha256": "bc9472c40438846ba650ed707d394eb5bdbfca1b9f4025b8aa8700be6f3a1451"
+    },
+    {
+      "path": "compiled/682/Juggernaut.cs",
+      "sha256": "35ee65758ee593edbabe2a3ff3d9b8a56dddbe15d128487e3a27e6a332c2e6a9"
+    },
+    {
+      "path": "compiled/683/Magician.cs",
+      "sha256": "b78a8adf00c41c49fc331cf942120edaab27517e084b03fc418b9216f09afe01"
+    },
+    {
+      "path": "compiled/684/Medusa.cs",
+      "sha256": "943364f5a81592f91f5f2bc2ebf6368fedfb676631e097bb30a971635062a20a"
+    },
+    {
+      "path": "compiled/685/Mycologist.cs",
+      "sha256": "764d024b65937317fff7728629f36347f993bc2763ee216b56ff3eed362c30b1"
+    },
+    {
+      "path": "compiled/686/Necromancer.cs",
+      "sha256": "bbdbe06bd8ab2e993a2b8359d9c5933743d050c779b3f86cb917a3f70f46dbca"
+    },
+    {
+      "path": "compiled/687/Nonplus.cs",
+      "sha256": "cbea7afa24a8fd0f0aca7a2d3b382590d28f10e4f47f657cfd936ae1eccd6b80"
+    },
+    {
+      "path": "compiled/688/NoteKiller.cs",
+      "sha256": "0a1d68e0ca7bfcdf011b221edfcc853d9717f50e349445b00fc0529950af3988"
+    },
+    {
+      "path": "compiled/689/Patroller.cs",
+      "sha256": "7d273311e72e43944f0710091a4f8af8e1c9e57462d95398f16a3336bb68a5d6"
+    },
+    {
+      "path": "compiled/690/Pelican.cs",
+      "sha256": "f9efd79b615e59ef0d1193048bcb9a4de8f36ea6e17b204fc0ff2b55ec767ebf"
+    },
+    {
+      "path": "compiled/691/Pickpocket.cs",
+      "sha256": "adf4dfd938e9f77d3dac2e5614d23c183e8468016a09fbc1ff444fc1eb8f8304"
+    },
+    {
+      "path": "compiled/692/PlagueBearer.cs",
+      "sha256": "da61e4338ec442f1700bf70852bf514522f016425069c8946ca455c48022d259"
+    },
+    {
+      "path": "compiled/693/Poisoner.cs",
+      "sha256": "4f3424a791d1bc73c296d3726f33ad8291ec1d750d2730064520224829af591f"
+    },
+    {
+      "path": "compiled/694/Pulse.cs",
+      "sha256": "7935f8df0673219330819479c2c15df409f1681822ea7ecf43fc3a9f052ccb7c"
+    },
+    {
+      "path": "compiled/695/Pyromaniac.cs",
+      "sha256": "025918fabacc56e5fd84a28e5a1870d969da3314b912bff355a1c70760b665cf"
+    },
+    {
+      "path": "compiled/696/Quarry.cs",
+      "sha256": "0fd6a89b1446f140a41ccfccfacf711c5a7ea880994abd9747fb6be343c36952"
+    },
+    {
+      "path": "compiled/697/QuizMaster.cs",
+      "sha256": "0c6b5969d9a84f0436f7ca815752eb5dafeb5596969d11d24ff4a4fd24a833c2"
+    },
+    {
+      "path": "compiled/698/Reckless.cs",
+      "sha256": "a6159a7b802bfa9f50a5ffe079a7b3710819818071034b6bebe126ec52ad401c"
+    },
+    {
+      "path": "compiled/699/Ritualist.cs",
+      "sha256": "5ba35c0b8961ce415e7a94406cb6ed83e596b7fc79fef03be36ec02617d821ff"
+    },
+    {
+      "path": "compiled/700/Rogue.cs",
+      "sha256": "a00ee92a4d4ccd58ec43ef8bc785f30d50ec9a7483874401f71714af8fd6abd0"
+    },
+    {
+      "path": "compiled/701/RouleteGrandeur.cs",
+      "sha256": "4cda244c22f061324123fbbfeb40dda1704aee549884ea70c1d435e8bb041070"
+    },
+    {
+      "path": "compiled/702/Samurai.cs",
+      "sha256": "eb844ec8320243f8edc60dabb009f75338a2ced255f665dddef95f682e0d150f"
+    },
+    {
+      "path": "compiled/703/SerialKiller.cs",
+      "sha256": "0e5068c6beb9210f660556c84a9a025f4f64cef309e2a9b7c60b7587f7d84268"
+    },
+    {
+      "path": "compiled/704/Sharpshooter.cs",
+      "sha256": "8b46d71d58b14ffb18baa5ab4044333465e70ebb57d0dffba194a7d7212e58fe"
+    },
+    {
+      "path": "compiled/705/Simon.cs",
+      "sha256": "42982e352085de77d6cf4542068c3bd2b450c8c8c49f023dec4105386cc6847b"
+    },
+    {
+      "path": "compiled/706/Slenderman.cs",
+      "sha256": "3bda1db894888cf52cd2b72fd1d03f72ada8eba2005318cdd39bdcb0a93f95b5"
+    },
+    {
+      "path": "compiled/707/SoulCollector.cs",
+      "sha256": "8c47c7626c2779e5762d8a73e3eb39a460d63f1d9ee194117bd8bd5b69231f9d"
+    },
+    {
+      "path": "compiled/708/Spider.cs",
+      "sha256": "24eb6e5ea646ca2d05a2fa24b7f04e6056d7b0ae52b32810ecaa83a42ab20904"
+    },
+    {
+      "path": "compiled/709/Spiritcaller.cs",
+      "sha256": "24f9d530cb5eccbc5765017546ab4afa85e233c52f3ca5bce4848c7fdaad19f3"
+    },
+    {
+      "path": "compiled/710/Sprayer.cs",
+      "sha256": "b43e5e195098c5cdb6bd92f564b926d64e7e9cbf5719f6edb40f6aa3c13e7e04"
+    },
+    {
+      "path": "compiled/711/Stalker.cs",
+      "sha256": "b4d650a1a988a1ffba27dd0339bf5a730ccbe31461df19643f5a4d4f5914e609"
+    },
+    {
+      "path": "compiled/712/Sunnyboy.cs",
+      "sha256": "3635ee67f227931901c28e17732c496d46340ef3a558c9e13f97118dc25cfbb7"
+    },
+    {
+      "path": "compiled/713/Thanos.cs",
+      "sha256": "e566cf9cdbe84dc19ce02500c51c51a6c0fbb8227f0fa19d9144352ee6775722"
+    },
+    {
+      "path": "compiled/714/Tiger.cs",
+      "sha256": "7ebb2569b1d5015c87aa61a62778e988896036082c6a31ac4e84edf9d179c6c9"
+    },
+    {
+      "path": "compiled/715/Traitor.cs",
+      "sha256": "60faab83848406ca889df8c8ed19e2ae3bf068ae21d5548925bc71da11454d71"
+    },
+    {
+      "path": "compiled/716/Tremor.cs",
+      "sha256": "ddc149be08a99507234e443fd12cb55c3dd91165ff45ea5126c7b6e4b284cf2a"
+    },
+    {
+      "path": "compiled/717/Vengeance.cs",
+      "sha256": "5849509681d2b6434abaa07b692ad2c3b4371439a7bc2f8a3a89db36494f6d98"
+    },
+    {
+      "path": "compiled/718/Virus.cs",
+      "sha256": "8bfb5940def1176448dcd3d28bd3a05a26403afd5685c65ae5fe4a05c660d87f"
+    },
+    {
+      "path": "compiled/719/Vortex.cs",
+      "sha256": "7eca0de2ee8f15d186a05476e9755c2737b8187ef77710341b1f4d72b696b8e9"
+    },
+    {
+      "path": "compiled/720/WeaponMaster.cs",
+      "sha256": "d5d7359675c6859e5281af5ad772bacb74e810a9c4dbfc76bd6b5ca26acbd61e"
+    },
+    {
+      "path": "compiled/721/Weatherman.cs",
+      "sha256": "5f2124f57527cff812718f3f0b2ca982123517dafe772a00fd032c1b8f82fb5f"
+    },
+    {
+      "path": "compiled/722/Werewolf.cs",
+      "sha256": "ec49440193c9f9234ae294853f4c120d7cc905bfb9488d56308675d5b1c56f39"
+    },
+    {
+      "path": "compiled/723/Wraith.cs",
+      "sha256": "f571a02a28fc3f3565df13919ec35c49720a6fa0103f3a1a8b8c2afb50e39bd1"
+    },
+    {
+      "path": "compiled/724/Auditor.cs",
+      "sha256": "ccaf709ce0815215a35951d8518aa1f70aa3db502ce190430efb70edbb8ad2c8"
+    },
+    {
+      "path": "compiled/725/Clerk.cs",
+      "sha256": "40e514401397f63f4e6c7b596af8c70c6a8e7d5ae959c9803dc4f1a152637c30"
+    },
+    {
+      "path": "compiled/726/Curser.cs",
+      "sha256": "9301b459d3ce1e88d07b6b9630d8d4b7ae70a56594610d896af018433f3544e0"
+    },
+    {
+      "path": "compiled/727/Magistrate.cs",
+      "sha256": "b6c958a23f93fb50d8173179e9b7afe9e51c1bc5d7723ec689fa0a6358cb8b29"
+    },
+    {
+      "path": "compiled/728/Seamstress.cs",
+      "sha256": "80847ee426988063070ea4de4d248a8fe32436d0120ccf948d16358092567f4c"
+    },
+    {
+      "path": "compiled/729/Spirit.cs",
+      "sha256": "ee4ee4fb754639ba66c0f2b328731fdeedaf8a179cd9c41bb78927aea5a49a9f"
+    },
+    {
+      "path": "compiled/730/Starspawn.cs",
+      "sha256": "c22e8c7948ef85698ce8f762237b6796ea56ffeb07c01a58646de4bc238a1cd4"
+    },
+    {
+      "path": "compiled/731/VanillaRole.cs",
+      "sha256": "7297e3c8f6a623f6e2ad749d526b14e647ebee3a1c747ea7ba098b947662b574"
+    },
+    {
+      "path": "compiled/732/EHRAotRegistry.g.cs",
+      "sha256": "8ba615829b43a7c6d3a7545a33e28cbf4ec3a939a4a0c6398099c763e7b3f22a"
+    },
+    {
+      "path": "compiled/733/EHRSourceBootstrap.g.cs",
+      "sha256": "d24e0f5f538b7a77d4f5f8f30b8eb498e8c4a7a07eac7e2d713bf0a4b9e13f07"
+    },
+    {
+      "path": "compiled/734/EHRStaticPatchCatalog.g.cs",
+      "sha256": "83f91487b7b17f5d161c171ba0e56ce46c05bcf98d23d162f0f3fce3093fa9da"
+    },
+    {
+      "path": "compiled/735/StaticPatchRuntime.cs",
+      "sha256": "5c4834ab761c12ad7d13e7ce5613e00277d3bf9a788612cfb277638cc9d353be"
+    },
+    {
+      "path": "compiled/736/NativeValues.cs",
+      "sha256": "6bdd9c3e8845acd5ff9d251ec856b5d337640aa927404d5a05d5ec85eee01923"
+    },
+    {
+      "path": "compiled/737/LiveObjects.cs",
+      "sha256": "03dfdb653e98ad7eb357dbb946680489edfe0d6826b118a6ee7e0e3d91e9a0d9"
+    },
+    {
+      "path": "compiled/738/LiveDictionaries.cs",
+      "sha256": "4031a9aa9dde1b89ccf8fa182b1f981ff3e6506313a55d76dacde3703f5b1f6c"
+    },
+    {
+      "path": "compiled/739/ManagedPredicates.cs",
+      "sha256": "24e54032045cc66a0bd0524b530a01d530d86ccbecd071aa87e5cc14eaf36708"
+    },
+    {
+      "path": "compiled/740/LiveSequenceBuffers.cs",
+      "sha256": "1f760d73f8b8bc8711701b7242322140644b60ff0768b4efe6993c80703351de"
+    },
+    {
+      "path": "compiled/741/NativeTypeNames.cs",
+      "sha256": "a6f9f6996773494387259fbb53376f7664f9ab0bc1aed013e29c1dd20ae47313"
+    },
+    {
+      "path": "compiled/742/NativeMethods.cs",
+      "sha256": "18ddcf42990177ae390d48633a49d715433913182c90b8fa4f89d91c22953086"
+    },
+    {
+      "path": "compiled/743/NativeConstructors.cs",
+      "sha256": "542b7078b77f480b840379a35d870cdcd067c80ca24b303a4a4f843e93ffbc4e"
+    },
+    {
+      "path": "compiled/744/NativeGenericMethods.cs",
+      "sha256": "45d6f89c101a7d5eab9de92cd213e800a2298a369667000fb9975b74448749ff"
+    },
+    {
+      "path": "compiled/745/NativeReflectedCalls.cs",
+      "sha256": "cfe151d20cddeba9cebca71507af1602b29676e736b38152526782055fb20d38"
+    },
+    {
+      "path": "compiled/746/NativeParams.cs",
+      "sha256": "df397bcb4f4eaad733a8dace41fd85f4ba7a57c0d94d5781cb6cf1a25480c62b"
+    },
+    {
+      "path": "compiled/747/NativeEngineColors.cs",
+      "sha256": "bc6634dd8eda0c4044685aca17095abae25511160274ba9ebb44ef02026fd416"
+    },
+    {
+      "path": "compiled/748/LiveSets.cs",
+      "sha256": "295c34873126cc135ec2db4bc93e4fc8f8b444e870896b81638ecd71fae5baec"
+    },
+    {
+      "path": "compiled/749/ActionRuntime.cs",
+      "sha256": "a6440c1a2866ff1a8e02f27b1c77a9d1617fd487045e02da9619f914b2874da5"
+    },
+    {
+      "path": "compiled/750/SourceAliases.g.cs",
+      "sha256": "999645529e1f2d19ba76eb94a08c8788ce31cc5596147262e256da2447ee0cd9"
+    },
+    {
+      "path": "compiled/751/LiveAsyncHandles.cs",
+      "sha256": "f236877cf1d1b8e5e9cb19daac9168d1c4bc35bd5fa40cd485a91ba7212f9e89"
+    },
+    {
+      "path": "compiled/752/TypedActionRuntime.cs",
+      "sha256": "c197f1caaa0c4c7ea02847b89726714715c4a970bf02c281c1d11c37a32b5240"
+    },
+    {
+      "path": "compiled/753/LiveSystemTypes.cs",
+      "sha256": "7041123e8ca8031b9a3d558b95eb598e367cfae6bfdb735749ceea23615ad34a"
+    },
+    {
+      "path": "compiled/754/NativeSourceHost.cs",
+      "sha256": "eff922c591ed597436378ebd381d614acf21cbdc59dda255df17a4012431fc2f"
+    },
+    {
+      "path": "compiled/755/SourceCompatibility.cs",
+      "sha256": "bd4cf5f1cf34592a4ddb44b0821a59347d6394ad7815964c121a0a4a5509c5c5"
+    },
+    {
+      "path": "compiled/756/SourceHostSelfTest.cs",
+      "sha256": "3346cbfb89f6c47be724439d03232a69d0ca635786d5b78fed512ee37797de4c"
+    },
+    {
+      "path": "compiled/757/SourcePluginHost.cs",
+      "sha256": "ebc953fbe8f9118b2381e2ffacdeeecdac6b25af51480fc171c38928116da089"
+    },
+    {
+      "path": "compiled/758/EHRSourceJsonContext.cs",
+      "sha256": "944d75c3b0b2ce81444dc775974eeab5f672f3363dfb554881edb357d730c14d"
+    },
+    {
+      "path": "compiled/759/OriginalRuntime.cs",
+      "sha256": "c205661cf7d539eeb2630185c7bc4d3ab8863727aaabfb8b001e49811750bf05"
+    },
+    {
+      "path": "compiled/760/NativeStateMachineView.cs",
+      "sha256": "4cce707e1768c09860f1acd5b3691768d724e18e48540da567f3ae4776844bba"
+    },
+    {
+      "path": "compiled/761/NativePatchRuntime.cs",
+      "sha256": "39cd8ce1334ae4a4f70b3abdaf698927f5a772be591f4c108de7f5f7cd25aa23"
+    },
+    {
+      "path": "compiled/762/NativePatchCatalog.g.cs",
+      "sha256": "1ef1407fc995b46e41c41b8257991730fa372d07721c0711f565502af019880f"
+    },
+    {
+      "path": "compiled/763/SourceComponentCatalog.g.cs",
+      "sha256": "e145784bdb9a3015da66cbdb6a48c2d7012c69d1c9dfdb80601e80cd7c414fb8"
+    },
+    {
+      "path": "compiled/764/SourceComponentFacades.cs",
+      "sha256": "480677645f1bc6e99ff37685943251b00a6f9bf3631da000c5ac9aa8aedb3332"
+    },
+    {
+      "path": "compiled/765/SourceComponentRuntime.cs",
+      "sha256": "a32f1d7ae97a2b44c016e1daca258e7cb8d28877290c914f329aee0554d4d89e"
+    },
+    {
+      "path": "compiled/766/SourceStateRegistry.cs",
+      "sha256": "0e3cd23558a344c6c35334eaaa956663ff4145fb025cd11466b781aa351c7438"
+    },
+    {
+      "path": "compiled/767/SourceComponentConstruction.cs",
+      "sha256": "b72e29a105335fb3efd8d6296538b63599faf656047be76d6a33ccd3065e5a08"
+    },
+    {
+      "path": "compiled/768/SourceLifecycleProbe.cs",
+      "sha256": "e376325401871f8c431ac6b60f0e4f2c9b8e47f45c86447cb28767890baf2038"
+    },
+    {
+      "path": "compiled/769/NativeCallbackScope.cs",
+      "sha256": "c1ac10473ff741c590da4f1cbad0f07071ca3a23d0c15ba926afd4b707278797"
+    },
+    {
+      "path": "compiled/770/SourceSceneEvents.cs",
+      "sha256": "2df2dcf2bc708c3337aacbffa3b5c02188c424f8e05a57a63509b9048abcb18f"
+    },
+    {
+      "path": "compiled/771/NativeTouchGUI.cs",
+      "sha256": "fa5b39def1cbae214b7801774ce5363f453b4c142c0393958e3a9cc8a4437976"
+    },
+    {
+      "path": "compiled/772/ComplexDelegateRuntime.cs",
+      "sha256": "56f961223b492b424fa9f83ee35b7ad8d15ccf3793b08cd1acaf7099726bef9f"
+    },
+    {
+      "path": "compiled/773/SourceSignedUpdates.cs",
+      "sha256": "8e5ad261000ba725262524843af278f0f7265c0c0d97bccb016631d8f6add14d"
+    },
+    {
+      "path": "compiled/774/NativeSignedUpdates.cs",
+      "sha256": "a1be73de55be44338959d23a92220ce32f3695b11e617bb55fd421b49175dc06"
+    },
+    {
+      "path": "compiled/775/SourcePatchOwner.cs",
+      "sha256": "6dcdaa5e4f5132e76c3c7d416696feb3c0569dd7cee49b314dd3b8a0945c7428"
+    },
+    {
+      "path": "compiled/776/EHRSourceApplication.cs",
+      "sha256": "f7abcc5a08565867273597cdd4f65b0cefe56ed0ca63df5c23127d0c0ca6c2fa"
+    },
+    {
+      "path": "compiled/777/NativePatchTargets.cs",
+      "sha256": "5d1a016521887b66abea5e8fc093fb79881d6e6011127e639770d426e22c65cf"
+    },
+    {
+      "path": "compiled/778/ProductionCoroutines.cs",
+      "sha256": "dcd6fee171764608d37bc7c8a73de433aeadee714de7351f2f58f16b91625fce"
+    },
+    {
+      "path": "compiled/779/EHRSourceAccountPolicy.cs",
+      "sha256": "6b599f0b1dfd0e89adbfc14698027981ed66bc375087ee73cdf1edf59d50c7e5"
+    },
+    {
+      "path": "compiled/780/EHRProtectedLobbyDirectoryOption.cs",
+      "sha256": "a42ba328faf04fbb44a37d70df48191793d7a67ae584201d324c8ee9d1a61f1e"
+    },
+    {
+      "path": "compiled/781/EHRPortableJsonContext.cs",
+      "sha256": "2f98b7e96ae7cd473b7c9c5bb1ed6035d06fa98c2e2ca9a50588229f87987f90"
+    },
+    {
+      "path": "compiled/782/EHRPortableJsonSelfTest.cs",
+      "sha256": "4ace6342ec8d2284e6793f01f580e3da6a110f70bb37905a24120c4d69d1b28b"
+    },
+    {
+      "path": "compiled/783/NativePatchSignature.cs",
+      "sha256": "3a4f31e87abf6445a6bbc0529dc30cb6120d001262be1d58cf665a35ce0a4a92"
+    },
+    {
+      "path": "compiled/784/HtmlColorCompatibility.cs",
+      "sha256": "7e40a4b07839f2f6ed4b0294c093c32477d48730329ae88ba6342ebd28df4aff"
+    },
+    {
+      "path": "compiled/785/SourceUnityAction.cs",
+      "sha256": "84466d105d2cc608d88c713bd07761f7eade9d4c64edd2591f4d6e12866abbb0"
+    },
+    {
+      "path": "compiled/786/PcmWaveData.cs",
+      "sha256": "98e3f8cfeb40c670ce07148f415d8811e430b960e2dfbb7f0d448736afaba1d3"
+    },
+    {
+      "path": "compiled/787/SourceAudioDataProbe.cs",
+      "sha256": "231cba93b3e776100f190c4b6cb1a7bc4073f779331e56b4accad25034adeeff"
+    },
+    {
+      "path": "compiled/788/SourceMutedSoundProbe.cs",
+      "sha256": "833c4b06660596f3c849c0d378e94449c9f897368d735e9e983b21bc1e9c888a"
+    },
+    {
+      "path": "compiled/789/OwnedSoundFiles.cs",
+      "sha256": "dd68a5df99ad66cc1f3e267c94bf3ae06f5210048da2859ec580ab3fcc44dffc"
+    },
+    {
+      "path": "compiled/790/SourceAudioPlayback.cs",
+      "sha256": "fc1cec3beddbc4eabc88e54965dbb1ec7ed5d1e39d6d78b8bb1ae94463835c1d"
+    },
+    {
+      "path": "compiled/791/SourceAudioNames.cs",
+      "sha256": "5bbac6d0b0efb82a81d2227889fd53a4a3707845f0e1a04c15abc6071b582207"
+    },
+    {
+      "path": "compiled/792/IOSTouchShortcutState.cs",
+      "sha256": "248c2ee1b8f854c1cfdaa5e95049083528502358e4412089f1b1396ce85ab5eb"
+    },
+    {
+      "path": "compiled/793/IOSTouchShortcuts.cs",
+      "sha256": "183c0f693ee839f59b53fc9bbb01c35b20ea77e5149be70a7f0d5f5723e26931"
+    },
+    {
+      "path": "compiled/794/IOSTouchShortcutSelfTest.cs",
+      "sha256": "8fd94a9c7a82204138f33af6fcc2a1d2cc0ab8b696971b225e1c172ad3833301"
+    },
+    {
+      "path": "compiled/795/IOSTouchControlFailureGate.cs",
+      "sha256": "55a0082cc34c21b70ae280ad2fc57416e783690e41a5596013bd44e3e97e2bd5"
+    }
+  ],
+  "resources": [
+    {
+      "upstreamPath": "Resources/Config/BanWords/English.txt",
+      "logicalName": "EHR.Resources.Config.BanWords.English.txt",
+      "sha256": "2218d8724ff7d1001907c8ab454c68b1bbf2ee6039ef7b35e36f7ff676483ceb"
+    },
+    {
+      "upstreamPath": "Resources/Config/BanWords/Russian.txt",
+      "logicalName": "EHR.Resources.Config.BanWords.Russian.txt",
+      "sha256": "485021d0c6c22429b8b72b3262e506b839f40672ea255ee9f362a900abd8fb5c"
+    },
+    {
+      "upstreamPath": "Resources/Config/BanWords/SChinese.txt",
+      "logicalName": "EHR.Resources.Config.BanWords.SChinese.txt",
+      "sha256": "c2519529050aa8bf11dc4102355c1cf757f498083a6082c2d86ab4e5bafa1825"
+    },
+    {
+      "upstreamPath": "Resources/Config/DenyName.txt",
+      "logicalName": "EHR.Resources.Config.DenyName.txt",
+      "sha256": "2bf33bbafc6daddf3849a704c6dc24ce41eaa7a97c40b5953d2c11d5c4b451d9"
+    },
+    {
+      "upstreamPath": "Resources/Config/EACList.txt",
+      "logicalName": "EHR.Resources.Config.EACList.txt",
+      "sha256": "68c6addf85744c9c0b86c51fb6fe75a59b4beb4e27129d3a578692cb97b10f59"
+    },
+    {
+      "upstreamPath": "Resources/Config/template/Brazilian.txt",
+      "logicalName": "EHR.Resources.Config.template.Brazilian.txt",
+      "sha256": "9ec19c89c2dd379b8065dbcb827c86a22f28f9fb8724d1cc78cdacf5d103c65b"
+    },
+    {
+      "upstreamPath": "Resources/Config/template/English.txt",
+      "logicalName": "EHR.Resources.Config.template.English.txt",
+      "sha256": "1ac3f696192c1814fa3c1c4d6ace3aefec9ebbf7138cbd02a5590ea1a67adebb"
+    },
+    {
+      "upstreamPath": "Resources/Config/template/Russian.txt",
+      "logicalName": "EHR.Resources.Config.template.Russian.txt",
+      "sha256": "e3f22db11e5d795ebdbe4e814cda014152af27fb783359713d0cfa7aa8cdac0a"
+    },
+    {
+      "upstreamPath": "Resources/Config/template/SChinese.txt",
+      "logicalName": "EHR.Resources.Config.template.SChinese.txt",
+      "sha256": "727bf253c2507c01731227b1ba2d8652bc991dc9479e928c0b0051ea49f4d843"
+    },
+    {
+      "upstreamPath": "Resources/Config/template/TChinese.txt",
+      "logicalName": "EHR.Resources.Config.template.TChinese.txt",
+      "sha256": "50fb73ad179505421885491782e73257547e1ba8b2514fc35cc21125d1410308"
+    },
+    {
+      "upstreamPath": "Resources/Fonts/Barlow-Bold.ttf",
+      "logicalName": "EHR.Resources.Fonts.Barlow-Bold.ttf",
+      "sha256": "984a0f81f4b34352fdf463d201091f9be8e5f6be66277779ddec6d3644d77ecf"
+    },
+    {
+      "upstreamPath": "Resources/Fonts/Barlow-BoldItalic.ttf",
+      "logicalName": "EHR.Resources.Fonts.Barlow-BoldItalic.ttf",
+      "sha256": "924426ca24b4b0606774f19ae152f0ebb3dd0314fa4153a60cc7bcbdadf53979"
+    },
+    {
+      "upstreamPath": "Resources/Fonts/Barlow-Regular.ttf",
+      "logicalName": "EHR.Resources.Fonts.Barlow-Regular.ttf",
+      "sha256": "77fb1ac54d2ceb980e3ebdfa7a9d0f64e85a66e4fdfb7f914a7b0aa08fb33a5d"
+    },
+    {
+      "upstreamPath": "Resources/Fonts/Barlow-SemiBold.ttf",
+      "logicalName": "EHR.Resources.Fonts.Barlow-SemiBold.ttf",
+      "sha256": "07ea3ff2743cf6716122a520c5e6f1aed0e75c079bc3b75e512fbf1a85caef9b"
+    },
+    {
+      "upstreamPath": "Resources/Fonts/LiberationSans-Bold.ttf",
+      "logicalName": "EHR.Resources.Fonts.LiberationSans-Bold.ttf",
+      "sha256": "d723d5a272970aedf296ef6fc628180df6074bce7769701ea9e0d222c052668c"
+    },
+    {
+      "upstreamPath": "Resources/Fonts/LiberationSans-BoldItalic.ttf",
+      "logicalName": "EHR.Resources.Fonts.LiberationSans-BoldItalic.ttf",
+      "sha256": "24b7cf0d06040c9a1b16efc528dc2966a407288938dfa169ee7fe584140a3393"
+    },
+    {
+      "upstreamPath": "Resources/Fonts/LiberationSans-Italic.ttf",
+      "logicalName": "EHR.Resources.Fonts.LiberationSans-Italic.ttf",
+      "sha256": "e27e6da1f5bbba630d635b8cc2916f84f195735865ea539687df962ae5a98e72"
+    },
+    {
+      "upstreamPath": "Resources/Fonts/LiberationSans-Regular.ttf",
+      "logicalName": "EHR.Resources.Fonts.LiberationSans-Regular.ttf",
+      "sha256": "e5b0af421ea2bfbc1ac8d251d647268087ae82786234c57f757d1f0b90fa8b49"
+    },
+    {
+      "upstreamPath": "Resources/Fonts/NotoSans-Arabic.ttf",
+      "logicalName": "EHR.Resources.Fonts.NotoSans-Arabic.ttf",
+      "sha256": "d3877dbb0b285118ccd2ec701e595a99343f84e90d8b40e8707dca11b4ab2ca9"
+    },
+    {
+      "upstreamPath": "Resources/Fonts/marisas-vcr-osd-mono-faithful-32x.ttf",
+      "logicalName": "EHR.Resources.Fonts.marisas-vcr-osd-mono-faithful-32x.ttf",
+      "sha256": "b891019b79f1f52e71418d50b60e07fadc4d985f6e067a731eb2e8861e8c08a8"
+    },
+    {
+      "upstreamPath": "Resources/Images/ActiveNextButton.png",
+      "logicalName": "EHR.Resources.Images.ActiveNextButton.png",
+      "sha256": "3dbe02ed77be9221b128e5bd19c590fa2123b2955228f7bbc2538b2e9b7c15e2"
+    },
+    {
+      "upstreamPath": "Resources/Images/CheckMarkBox.png",
+      "logicalName": "EHR.Resources.Images.CheckMarkBox.png",
+      "sha256": "769ec31235f1b071b9d184dfcc76fd92199288f0a7029315b4801dbe51ed6306"
+    },
+    {
+      "upstreamPath": "Resources/Images/CheckMarkOff.png",
+      "logicalName": "EHR.Resources.Images.CheckMarkOff.png",
+      "sha256": "c4418a23ce27b5bf66dc1b3ddc5803a3cb53e85ae8d228d01358007d8ee35693"
+    },
+    {
+      "upstreamPath": "Resources/Images/Checkmark.png",
+      "logicalName": "EHR.Resources.Images.Checkmark.png",
+      "sha256": "852c88c2ca618c4c576505a1eb3a1d82007d56b284a8f1d68e37b058369de66c"
+    },
+    {
+      "upstreamPath": "Resources/Images/DarkKeyboard.png",
+      "logicalName": "EHR.Resources.Images.DarkKeyboard.png",
+      "sha256": "1528511486f9141a9b21406b4d7ea414246053c7090d10f99bc75c2ec5381e87"
+    },
+    {
+      "upstreamPath": "Resources/Images/DarkQuickChat.png",
+      "logicalName": "EHR.Resources.Images.DarkQuickChat.png",
+      "sha256": "5e5f7d3fa63d690aea99fe34c83ffb209e026d1d5b4dc3e50461d8c612ab0cf9"
+    },
+    {
+      "upstreamPath": "Resources/Images/DarkReport.png",
+      "logicalName": "EHR.Resources.Images.DarkReport.png",
+      "sha256": "33a3b7a3037bcbc935cdd08968e251975c6fc9550ac0be2b813080cb5e35b410"
+    },
+    {
+      "upstreamPath": "Resources/Images/DefaultPlate.png",
+      "logicalName": "EHR.Resources.Images.DefaultPlate.png",
+      "sha256": "72439d4581695503354309c4c0f884e7f66df0729ef61b5133e6160458fe3d7b"
+    },
+    {
+      "upstreamPath": "Resources/Images/DleksBanner-Icon.png",
+      "logicalName": "EHR.Resources.Images.DleksBanner-Icon.png",
+      "sha256": "1d5c346e1487bc7364f3db730eddbc0547414075f81f9e2ef4d5ae5f05d3ebcd"
+    },
+    {
+      "upstreamPath": "Resources/Images/DleksBanner-Wordart.png",
+      "logicalName": "EHR.Resources.Images.DleksBanner-Wordart.png",
+      "sha256": "60442a4246762d8f5ec88d920bd3066615839c6aa87fd4a505013915276f07e8"
+    },
+    {
+      "upstreamPath": "Resources/Images/DleksBanner.png",
+      "logicalName": "EHR.Resources.Images.DleksBanner.png",
+      "sha256": "7728acd57c126951a84dc95dfa4bb9035fd603e3bed2601a22f106ec0b6a1be3"
+    },
+    {
+      "upstreamPath": "Resources/Images/EHR-Icon.png",
+      "logicalName": "EHR.Resources.Images.EHR-Icon.png",
+      "sha256": "e755b633bba746381b8ee2bc710f153553489c9a27bed87f2efa0c0ac62549c7"
+    },
+    {
+      "upstreamPath": "Resources/Images/EasterBG.jpg",
+      "logicalName": "EHR.Resources.Images.EasterBG.jpg",
+      "sha256": "00c2329abf59c68d7268fa39c073ad86cfd9def51ab6962cdd1a252ea0dfecc4"
+    },
+    {
+      "upstreamPath": "Resources/Images/InactiveNextButton.png",
+      "logicalName": "EHR.Resources.Images.InactiveNextButton.png",
+      "sha256": "3159a012d19fb6c2fa4acf14124d602e3d26b8cc3772caed72484e9f8a236913"
+    },
+    {
+      "upstreamPath": "Resources/Images/LobbyPaint.png",
+      "logicalName": "EHR.Resources.Images.LobbyPaint.png",
+      "sha256": "d55e80e1ceda1f9a6674c9d525676368025a8bc573d856121e7b683511355e1c"
+    },
+    {
+      "upstreamPath": "Resources/Images/LobbyTimerBG.png",
+      "logicalName": "EHR.Resources.Images.LobbyTimerBG.png",
+      "sha256": "12351662c6d6d1184e57f4fcfc07fa115058c3672456223e2ac9fdd385cd61a0"
+    },
+    {
+      "upstreamPath": "Resources/Images/RightPanelCloseButton.png",
+      "logicalName": "EHR.Resources.Images.RightPanelCloseButton.png",
+      "sha256": "d4815633435e6e9af624d143c389d747c25c5acee5507dba6860a34676c1d514"
+    },
+    {
+      "upstreamPath": "Resources/Images/SearchIcon.png",
+      "logicalName": "EHR.Resources.Images.SearchIcon.png",
+      "sha256": "00e4e3f76fc42f0a841ee490d454a2fa06267815ed71a240abef7140b805337b"
+    },
+    {
+      "upstreamPath": "Resources/Images/SearchIconActive.png",
+      "logicalName": "EHR.Resources.Images.SearchIconActive.png",
+      "sha256": "a91b0c92a447d8d1a7ccde77074754bb229cd6b6be02b9fe313e7a67df14e181"
+    },
+    {
+      "upstreamPath": "Resources/Images/SearchIconHover.png",
+      "logicalName": "EHR.Resources.Images.SearchIconHover.png",
+      "sha256": "39794fe5433db3a0e5c7b8761eddede6b6041532dbfec1c586cbecee5e4475ab"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Action.png",
+      "logicalName": "EHR.Resources.Images.Skills.Action.png",
+      "sha256": "ebdf48eb16f6c532231a535443aae4ff2b46822d7455dc9de1c7ec615049be84"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Addict.png",
+      "logicalName": "EHR.Resources.Images.Skills.Addict.png",
+      "sha256": "600572b1bf71471ac1c4072a19f5045a3ba96f59389ec7ab1ebe223203be6e7a"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/AdventurerCraft.png",
+      "logicalName": "EHR.Resources.Images.Skills.AdventurerCraft.png",
+      "sha256": "6a0e2691874fedcef4b7e6b2548f96c1e41e1a30b6b288407614660e940fbd6f"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Altruist.png",
+      "logicalName": "EHR.Resources.Images.Skills.Altruist.png",
+      "sha256": "38d183cf418fee7d41986d249222bb96548c9cf58b03273a5ba20115de0dcb70"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Ambusher.png",
+      "logicalName": "EHR.Resources.Images.Skills.Ambusher.png",
+      "sha256": "acf216b4084ae37b9a6def5dc2f9d495b111d5440b7e206c4f4d9fad70183c96"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/AmnesiacKill.png",
+      "logicalName": "EHR.Resources.Images.Skills.AmnesiacKill.png",
+      "sha256": "d81ffae914c97b71e98b60a4e7ef2033c16d9226cb88a752f1bbf569a23df1de"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/AmnesiacReport.png",
+      "logicalName": "EHR.Resources.Images.Skills.AmnesiacReport.png",
+      "sha256": "b8d1acedc6f5633241c88d0636fb4b14ca5853232038e0ba8c395a4496bcb3a5"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Assassinate.png",
+      "logicalName": "EHR.Resources.Images.Skills.Assassinate.png",
+      "sha256": "6e7c0635f6778ba75d4e45fd45af30cdee5c7723b031e5bf2a106ed7fa850400"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Astral.png",
+      "logicalName": "EHR.Resources.Images.Skills.Astral.png",
+      "sha256": "62d016853dd68bd7340af98ad3f740dc9ac4d5b7514ace4ecc6357e46e0dc370"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Attack.png",
+      "logicalName": "EHR.Resources.Images.Skills.Attack.png",
+      "sha256": "29e8953836d6c62055725c7b4b20b9a53ca97813eab718506018fa7627a2ee42"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Bestower.png",
+      "logicalName": "EHR.Resources.Images.Skills.Bestower.png",
+      "sha256": "78a4f2dccf5579397df84b678f375e8c2c73506d32ffcc680fb69f670111016d"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Bite.png",
+      "logicalName": "EHR.Resources.Images.Skills.Bite.png",
+      "sha256": "dd238bb6fd6d1f032c39d13526a52a613ebb64730ea6bf2886466203c15c9e91"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Blackmail.png",
+      "logicalName": "EHR.Resources.Images.Skills.Blackmail.png",
+      "sha256": "585a8bce8cb604c3c881e8f2768d4e0e128cbfadbff55b6df1e9a46ede80a198"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Block.png",
+      "logicalName": "EHR.Resources.Images.Skills.Block.png",
+      "sha256": "9d70348115206b868e99582d92f1dabed23d4d19b8dfb910eb611c57e57f80b5"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/BlockSabo.png",
+      "logicalName": "EHR.Resources.Images.Skills.BlockSabo.png",
+      "sha256": "d9ea0b6218bd4ca566ae146e79ec8a86c59cb2a8409bf8c6facc986a39b397c9"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Bloodmoon.png",
+      "logicalName": "EHR.Resources.Images.Skills.Bloodmoon.png",
+      "sha256": "1a66dd6b19c637908b7b475033f926f806feef6d1e77b4e20dd6d9632f7dd6dc"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Bomb.png",
+      "logicalName": "EHR.Resources.Images.Skills.Bomb.png",
+      "sha256": "04ccda280afaf5a6e641e7d60b2227c8a2447e81e01818833b98126b18b11df7"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Camera Man.png",
+      "logicalName": "EHR.Resources.Images.Skills.Camera Man.png",
+      "sha256": "a168e45f5be1af3e19f14af1fb32179b544cac56eea7eebcfaa26123a0ab65ab"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Camo.png",
+      "logicalName": "EHR.Resources.Images.Skills.Camo.png",
+      "sha256": "7e6292dbde957af5384eb92325640cc95c6fcd10ba0806e78f4b05a99e451317"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Catcher.png",
+      "logicalName": "EHR.Resources.Images.Skills.Catcher.png",
+      "sha256": "00fe4c5deaf7eb558f4c561baefd117dc8f3db4883d12135a0adfa74408b52ed"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Chameleon.png",
+      "logicalName": "EHR.Resources.Images.Skills.Chameleon.png",
+      "sha256": "0c19d7d56436606aa895592d8e1a31c02596dd6f6204ed7ebd42a0da62c7a248"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Clean.png",
+      "logicalName": "EHR.Resources.Images.Skills.Clean.png",
+      "sha256": "99d926ae595b87050cd763e4b4bb61d4829bedb677c2a82fa9fde00b94999717"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Clerk.png",
+      "logicalName": "EHR.Resources.Images.Skills.Clerk.png",
+      "sha256": "4653b984d4a95022118b4e66e49048912edde62436006d5c55be15f06b7908c0"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Commander.png",
+      "logicalName": "EHR.Resources.Images.Skills.Commander.png",
+      "sha256": "86cc3bac47f8c75416ce8869d7ce6ee98576b7941a62cc1413eb4ead04b19062"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Convener.png",
+      "logicalName": "EHR.Resources.Images.Skills.Convener.png",
+      "sha256": "6d492ab754b148a2947210686bbe13fdb4988bd08fa75d8bb0488a44689d9a8f"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Copycat.png",
+      "logicalName": "EHR.Resources.Images.Skills.Copycat.png",
+      "sha256": "e973de9acd8eb4942b01371ffd49d2237542ded72f562926a1a908567ae60332"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Coroner.png",
+      "logicalName": "EHR.Resources.Images.Skills.Coroner.png",
+      "sha256": "00ec44de9dbca488ac6b323dfcba1e189ec7aaa885ae27f895f20d2961b4eee8"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Crusader.png",
+      "logicalName": "EHR.Resources.Images.Skills.Crusader.png",
+      "sha256": "f254d8a39389ac14c8b22437410287c9e4fc555a9018f0271cbf8bbbb8072113"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Curse.png",
+      "logicalName": "EHR.Resources.Images.Skills.Curse.png",
+      "sha256": "c5eeecf159fc970fbacc0d98a7e0a25b7e3ee87b181e695c5db0f730b17aa29f"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/CurseKill.png",
+      "logicalName": "EHR.Resources.Images.Skills.CurseKill.png",
+      "sha256": "b776024d9bdaa376692507c38168e541ea7d139a6fe3be69c88c0feeb9c1dc7f"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Dash.png",
+      "logicalName": "EHR.Resources.Images.Skills.Dash.png",
+      "sha256": "f16122d20c38218dfbd1cdb6c227cd02fb91b27fc6ef41e90f524f3db80b7441"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Deliver.png",
+      "logicalName": "EHR.Resources.Images.Skills.Deliver.png",
+      "sha256": "38cce0e231c736e6f3a0f7c9f532f74a8059646c13e0bae3bb1a9477d3e5efa8"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Disperse.png",
+      "logicalName": "EHR.Resources.Images.Skills.Disperse.png",
+      "sha256": "4e0d840a453244979151cbc86812616c556db45189d0fa9d442b1df498bb2af1"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Donut.png",
+      "logicalName": "EHR.Resources.Images.Skills.Donut.png",
+      "sha256": "dfeafda3b3562350164265818586cf5ed4c553764e04d5bbc9000e0fc0178220"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Doorjammer.png",
+      "logicalName": "EHR.Resources.Images.Skills.Doorjammer.png",
+      "sha256": "3c0e14852f497b20e52bd13e341e7cbbef91939b915238e4fb74b8a44b6e4b2e"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Douse.png",
+      "logicalName": "EHR.Resources.Images.Skills.Douse.png",
+      "sha256": "d255476addaedecb38a05fbd4b3bfdf9e5aff8b3936e3706e61cf4bc388c8b8e"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Drag.png",
+      "logicalName": "EHR.Resources.Images.Skills.Drag.png",
+      "sha256": "38ac0fef543d5418fb639ac8d948245bf9356c927e688be8afcfc81c2ff186ad"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Drainer.png",
+      "logicalName": "EHR.Resources.Images.Skills.Drainer.png",
+      "sha256": "1241f7cae2559d2089033c697dc30aa0de557a9868c460af92e174b5e6b6e620"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Dreamweave.png",
+      "logicalName": "EHR.Resources.Images.Skills.Dreamweave.png",
+      "sha256": "612d9f94ffede9b5e78163fca0670254af63161404bfd41c8e4d1e9e502da11f"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Drink.png",
+      "logicalName": "EHR.Resources.Images.Skills.Drink.png",
+      "sha256": "7cadbfa9fcfadd009377f1cf8dabf398e76df088cca861cecf1d9afbac0a1269"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Druid.png",
+      "logicalName": "EHR.Resources.Images.Skills.Druid.png",
+      "sha256": "3e565974ab241a3bb13801250240528d93d277962f965540858aaa7f489d3311"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Eat.png",
+      "logicalName": "EHR.Resources.Images.Skills.Eat.png",
+      "sha256": "9f78c0e21f420df1b9ae4d30b0e74af1f1ab11272759e0960e65af237833fc1d"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/EmergencyButton.png",
+      "logicalName": "EHR.Resources.Images.Skills.EmergencyButton.png",
+      "sha256": "e5bba588d0e623efcdd480d4162715030bfb2c16f34f1ece03710e7387f82891"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Erase.png",
+      "logicalName": "EHR.Resources.Images.Skills.Erase.png",
+      "sha256": "171011d104e086ec57bb0ac608438ae26938dc3528fb1cbb10bab81efd8ea16a"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/EvilNearby.png",
+      "logicalName": "EHR.Resources.Images.Skills.EvilNearby.png",
+      "sha256": "63337d9a8b66c91020a00cf374352c572eaeecddb8b80cf4ccd069c70e515813"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Examine.png",
+      "logicalName": "EHR.Resources.Images.Skills.Examine.png",
+      "sha256": "98aae887859a208976a1c226edd1cd44ec650734991c5fa460aa817be93240dd"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/ExamineBody.png",
+      "logicalName": "EHR.Resources.Images.Skills.ExamineBody.png",
+      "sha256": "ca9addbbbb60820480ad2c3338e85818a63a41bfb7be24232e7a51ece3eae8fc"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/ExorcistIcon.png",
+      "logicalName": "EHR.Resources.Images.Skills.ExorcistIcon.png",
+      "sha256": "b2812c32a3b6e559479a3af7a03ae9eb2ee82eb8b1b8b53340075e4a48528814"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Facilitator.png",
+      "logicalName": "EHR.Resources.Images.Skills.Facilitator.png",
+      "sha256": "2eb0b81f5748208655544f4c2b9c8d2e9a5d8a3f20a567a29f4bd4892689f387"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Fakeshift.png",
+      "logicalName": "EHR.Resources.Images.Skills.Fakeshift.png",
+      "sha256": "364eb00d0e8e3fb814a6877ee11ac39a057cea6c8f58c52d27937e5a0a4b112b"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Farmer.png",
+      "logicalName": "EHR.Resources.Images.Skills.Farmer.png",
+      "sha256": "b3c981050b0e99c7e5728f148949f9a176a273100c51f60f3c8d646735c6db13"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/FireworkD.png",
+      "logicalName": "EHR.Resources.Images.Skills.FireworkD.png",
+      "sha256": "309b816a83ca5fae140a704c12bc679815bc3cd753cf1ebbd1bae268d3e8e00c"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/FireworkP.png",
+      "logicalName": "EHR.Resources.Images.Skills.FireworkP.png",
+      "sha256": "be229dde36837d5afbe3e91843bbe3d536a88f94ebe0573d39e9b0ed1e7061de"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/ForgerIcon.png",
+      "logicalName": "EHR.Resources.Images.Skills.ForgerIcon.png",
+      "sha256": "42a98aa152d112ea40800904a2f4ed5f3b7c2e956a339a17d7caac0868988374"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Gardener.png",
+      "logicalName": "EHR.Resources.Images.Skills.Gardener.png",
+      "sha256": "a163d48156c1798bfa97675640891fd85d5077b9db609107cdaaf96657f7296f"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Gaulois.png",
+      "logicalName": "EHR.Resources.Images.Skills.Gaulois.png",
+      "sha256": "f5819b5f701f782e80f17edbd3d95be7767b9d51674ad698c50c8e88cadba988"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/GlitchHack.png",
+      "logicalName": "EHR.Resources.Images.Skills.GlitchHack.png",
+      "sha256": "9dc829f485e06f8abc8e65f5847d34ccb8339eacb969f0c597df603352e22cec"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/GlitchMimic.png",
+      "logicalName": "EHR.Resources.Images.Skills.GlitchMimic.png",
+      "sha256": "1a72a547932a8c607170eadcd345c5cb8acca65818233f3b3df5dec61eee15c1"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Grenadier.png",
+      "logicalName": "EHR.Resources.Images.Skills.Grenadier.png",
+      "sha256": "78f8e842f98940b3b9c892aa5de01f4ff1bc6f2e7f588f0be82e3fe428238be4"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/GuessPlate.png",
+      "logicalName": "EHR.Resources.Images.Skills.GuessPlate.png",
+      "sha256": "2ce497544ff21656406ae2472815d0614b2848781bbe9843e0b8941a8c71a339"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/GuessPlateKPD.png",
+      "logicalName": "EHR.Resources.Images.Skills.GuessPlateKPD.png",
+      "sha256": "b01ed453f95faff43a031040a207ed9977a35354e776c66d79965a2abc162279"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Hack.png",
+      "logicalName": "EHR.Resources.Images.Skills.Hack.png",
+      "sha256": "153d208ba6ceb94a33dcc220130688fab3679bcdcdfc9db7732d8398f5f2104f"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Handcuff.png",
+      "logicalName": "EHR.Resources.Images.Skills.Handcuff.png",
+      "sha256": "3f4f8b0e78dcc393fb87d0e32392d7842ec98d078e9cabb61416076d7bfcbe29"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Hangman.png",
+      "logicalName": "EHR.Resources.Images.Skills.Hangman.png",
+      "sha256": "65ae5bfd4cc9e2375816693aae217a2245a7139adf842f430d57a1b0163ab4b1"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Ignite.png",
+      "logicalName": "EHR.Resources.Images.Skills.Ignite.png",
+      "sha256": "3cc73e7c1166612bcf50f71266864e7a3c1eaa8c5fd6a56e5d6dd2995af80dce"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Imitate.png",
+      "logicalName": "EHR.Resources.Images.Skills.Imitate.png",
+      "sha256": "a455d6180e305a81940603b5094b6a86db3720bf35f636e569a25e2ae843fa5f"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/InspectorIcon.png",
+      "logicalName": "EHR.Resources.Images.Skills.InspectorIcon.png",
+      "sha256": "9eca78d8394c3e8a3886b948d69196f513ba2efe9fad135dc9e075148f6338e1"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Jail.png",
+      "logicalName": "EHR.Resources.Images.Skills.Jail.png",
+      "sha256": "d320ef3bcc1c220fadd7be8454ffcdb6354df0a162c5133cb3eae8de6edd616d"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/JesterVent.png",
+      "logicalName": "EHR.Resources.Images.Skills.JesterVent.png",
+      "sha256": "f4e3eaec91de7ba6201947d0be28013840c9cdb9c3c820f09a8cbfd5c4397d26"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/JudgeIcon.png",
+      "logicalName": "EHR.Resources.Images.Skills.JudgeIcon.png",
+      "sha256": "92e10bd6808ef452cdb737b757ec38027c91372577e944475b1708caf08542c8"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Kill.png",
+      "logicalName": "EHR.Resources.Images.Skills.Kill.png",
+      "sha256": "05e6a2f5a579d4b3f8c3dff3e5171a2d358c534430ca7ddd51d0145803395f0c"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Lighter.png",
+      "logicalName": "EHR.Resources.Images.Skills.Lighter.png",
+      "sha256": "1d61245e7cb6ca7557b25a788b855f06a43e1f6c4ef4c32e1580e1d4f71bbb08"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Mark.png",
+      "logicalName": "EHR.Resources.Images.Skills.Mark.png",
+      "sha256": "4f230d89bcdf7ecaf72b16fa9c74b6304659bb571cbc58c1d66c5f63c297fd4f"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Mechanic.png",
+      "logicalName": "EHR.Resources.Images.Skills.Mechanic.png",
+      "sha256": "18833aae96f3b2006d5bf58ca763ee5207bd568420074f612ff0dff41f86f861"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/MeetingAngel.png",
+      "logicalName": "EHR.Resources.Images.Skills.MeetingAngel.png",
+      "sha256": "0ff781b864bc670ade0a2de2b107a1545743bf8ce0e593c5d80aa9dbe69ca0c4"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/MeetingKillButton.png",
+      "logicalName": "EHR.Resources.Images.Skills.MeetingKillButton.png",
+      "sha256": "0aa89315f6b802fba262a7a1c8def6eb53c99780681272301adc1273daea41dc"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Mine.png",
+      "logicalName": "EHR.Resources.Images.Skills.Mine.png",
+      "sha256": "8119eca1b1cadd017c76a71435554259cd5bfc26c554be527763de2a9450fbf7"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Minion.png",
+      "logicalName": "EHR.Resources.Images.Skills.Minion.png",
+      "sha256": "2e5cbfb06ce3383bd2fbdab0ae3bf18b54bb8d3386a8336fba2e5e543d35e869"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Mole.png",
+      "logicalName": "EHR.Resources.Images.Skills.Mole.png",
+      "sha256": "424504ba7ed12b3bb4ee7529dc861a230b6759cc6bac57865d5a00b388af9b8a"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Oxyman.png",
+      "logicalName": "EHR.Resources.Images.Skills.Oxyman.png",
+      "sha256": "fa220791fcbfee3e9c633a9bc7ab336c4cd0f85f447e8593efd6b88ac9d55ae6"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Pacifist.png",
+      "logicalName": "EHR.Resources.Images.Skills.Pacifist.png",
+      "sha256": "0d5466d7a0502a4a6f92e7ef4ce723a1c1198d9ec5f46bd7f944834ff31fe894"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Paranoid.png",
+      "logicalName": "EHR.Resources.Images.Skills.Paranoid.png",
+      "sha256": "22470fd1d9a8067c178b54970a75ae4d1818e3f392382d9e382cac2f6ca7d1a5"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/PawnPromotion.png",
+      "logicalName": "EHR.Resources.Images.Skills.PawnPromotion.png",
+      "sha256": "c758eb563f394d137ca694bf95de38804a5f9edebe11fbb2e431ab5f28702a8d"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Perplexer.png",
+      "logicalName": "EHR.Resources.Images.Skills.Perplexer.png",
+      "sha256": "9dc24ce6bd18cae689af4b6f03cb908d757c205f16e54382380e246412161530"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/PetToSwap.png",
+      "logicalName": "EHR.Resources.Images.Skills.PetToSwap.png",
+      "sha256": "08ff99e75e095cf20c91c9bd3f7aedfdcd2307f1ec32a244cd3510a30e185dd1"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/PortalMaker.png",
+      "logicalName": "EHR.Resources.Images.Skills.PortalMaker.png",
+      "sha256": "5379973bb6cf3fb0b705465ddb1e8fa4e71f378f4217f4d05ec94aa3e9d1532e"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Pursuer.png",
+      "logicalName": "EHR.Resources.Images.Skills.Pursuer.png",
+      "sha256": "7b0ca52a338656a95802239834acf03828a1325515efcc598c20eca5c05ec144"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Puttpuer.png",
+      "logicalName": "EHR.Resources.Images.Skills.Puttpuer.png",
+      "sha256": "4fbda4da36ef0a13c5c62dd40c886947ddf68390c99071e8d0dc94790a6ef4d8"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Pyromaniac.png",
+      "logicalName": "EHR.Resources.Images.Skills.Pyromaniac.png",
+      "sha256": "ec0e6463352f7601a78b710d4c953ea60e23e410c468a29e7436bceccd9da01a"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Rhapsode.png",
+      "logicalName": "EHR.Resources.Images.Skills.Rhapsode.png",
+      "sha256": "6f7a49a554eb2a3963f96df104b212f127ea9090e3d601e65ac60ee8d3da57c4"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Rifle.png",
+      "logicalName": "EHR.Resources.Images.Skills.Rifle.png",
+      "sha256": "9825747b977ed1e3ff5ff116e8195e0ab621a76f95265164ea39685015f370f4"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Romance.png",
+      "logicalName": "EHR.Resources.Images.Skills.Romance.png",
+      "sha256": "39a3f8da9472401eb7ace7f7f0c9e440dc1967bfcf45fbcc7e92dfdfa421123e"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/RomanticKill.png",
+      "logicalName": "EHR.Resources.Images.Skills.RomanticKill.png",
+      "sha256": "e44a3321ac541384ceae022f4731309a510813a794f512cc95b1956b187e6521"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/RomanticProtect.png",
+      "logicalName": "EHR.Resources.Images.Skills.RomanticProtect.png",
+      "sha256": "a367ae9f4ebc15c97f732c1df26a09161869a4959f66f3bdfea4d04d4dfdbc88"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Scanner.png",
+      "logicalName": "EHR.Resources.Images.Skills.Scanner.png",
+      "sha256": "42de74d81d6993c7cc069e8be943b3867b28debbf86992ebb64055e773ea85f7"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Sentinel.png",
+      "logicalName": "EHR.Resources.Images.Skills.Sentinel.png",
+      "sha256": "2354ef0bcd1c7fcf4d9dd24fa10a63e7d6569dfbfb65f0d5b29438b5ced3943b"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Sentry.png",
+      "logicalName": "EHR.Resources.Images.Skills.Sentry.png",
+      "sha256": "805ffc9cb5275ea7e33b97f3c19730d048179fbdaa8558b36aa1376fee18769b"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Shade.png",
+      "logicalName": "EHR.Resources.Images.Skills.Shade.png",
+      "sha256": "624ba9aaba8fd48e9baae269f81bf5682c41a49a8a3c8a9c7263d9a5d41cf060"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Shield.png",
+      "logicalName": "EHR.Resources.Images.Skills.Shield.png",
+      "sha256": "d7383e08def95fe64190918eed36abf54c18f1ddbcea46493f9c82f075076323"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Shop.png",
+      "logicalName": "EHR.Resources.Images.Skills.Shop.png",
+      "sha256": "4625e53c4abcb552160541b0c9bac60946b74584450d55c62a1a4c4a9711edbc"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Sidekick.png",
+      "logicalName": "EHR.Resources.Images.Skills.Sidekick.png",
+      "sha256": "f4439708156ae505b172f58f47c2132889b452fc5ea15bcfd326f8e1ee3a061f"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Snowdown.png",
+      "logicalName": "EHR.Resources.Images.Skills.Snowdown.png",
+      "sha256": "f39ced12aae064d0a17ebc20107732e11c225db0a8f012954b46fa3c3897721f"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Soul.png",
+      "logicalName": "EHR.Resources.Images.Skills.Soul.png",
+      "sha256": "0c6735cebaa637ba9c5bfb2df1ba37a800e2e3c99eaeb37409de86c378674e2c"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/StarlightIcon.png",
+      "logicalName": "EHR.Resources.Images.Skills.StarlightIcon.png",
+      "sha256": "776eacf819a3004b64094fc66b82cf2d9074961d87a34c5b7f1d05b0ec8d86de"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/StarspawnShift.png",
+      "logicalName": "EHR.Resources.Images.Skills.StarspawnShift.png",
+      "sha256": "61cc008c84d48fd0c657698cc2e00d3cf9d4fa12011b64f75190fc98ce3d0906"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Subbus.png",
+      "logicalName": "EHR.Resources.Images.Skills.Subbus.png",
+      "sha256": "512bf270db266e18b966602d6dd8fd994cdb7481a63629a0fd580cead8375c14"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Suidce.png",
+      "logicalName": "EHR.Resources.Images.Skills.Suidce.png",
+      "sha256": "09c4ff1b6264132a8bcc9d98e2d37a2ea81b1cdca08be4321399ce946a6c77ed"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Summon.png",
+      "logicalName": "EHR.Resources.Images.Skills.Summon.png",
+      "sha256": "5bd9fafe92cb97ffb03db017ecf10411e790d08082afc33aed0e52b43b5bcbb1"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Swap.png",
+      "logicalName": "EHR.Resources.Images.Skills.Swap.png",
+      "sha256": "0330de5b4926c79aad2da344e17d86ada6e848004d1c44fcb37f040e066547f6"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/SwapNo.png",
+      "logicalName": "EHR.Resources.Images.Skills.SwapNo.png",
+      "sha256": "0330de5b4926c79aad2da344e17d86ada6e848004d1c44fcb37f040e066547f6"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/SwapYes.png",
+      "logicalName": "EHR.Resources.Images.Skills.SwapYes.png",
+      "sha256": "dca1bb8af23273bf734ff12ffcaa0e3e3006a878b66cd52f418ca9a320954c8b"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/TPToLoca.png",
+      "logicalName": "EHR.Resources.Images.Skills.TPToLoca.png",
+      "sha256": "9066f875e49716ae5ca8d6411dd921990dfe997e7d02010c6708956cc1a79560"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Tag.png",
+      "logicalName": "EHR.Resources.Images.Skills.Tag.png",
+      "sha256": "7b82881685d06408fe0b31593b4c681b94b6bdf386158d8d080283d5f3847f75"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Tar.png",
+      "logicalName": "EHR.Resources.Images.Skills.Tar.png",
+      "sha256": "f2931f1c5932bced0a2d1daca6f86e9d4b1cb12b7549970c01db8f409c61d38e"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/TargetIcon.png",
+      "logicalName": "EHR.Resources.Images.Skills.TargetIcon.png",
+      "sha256": "6837b2d1aac0a0a685d6518f52308a0aea5486a3307f1049755486c24457a633"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Template.png",
+      "logicalName": "EHR.Resources.Images.Skills.Template.png",
+      "sha256": "0c19d7d56436606aa895592d8e1a31c02596dd6f6204ed7ebd42a0da62c7a248"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/TimeMaster.png",
+      "logicalName": "EHR.Resources.Images.Skills.TimeMaster.png",
+      "sha256": "1d0f2f48ae2382fbf647efc28d6922d5827b019333df79356ea3149860d01fa0"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Timer.png",
+      "logicalName": "EHR.Resources.Images.Skills.Timer.png",
+      "sha256": "a1776910170a601a1bc4067900d66c88ba8e47c3b7e7265a3a9073df63435cbb"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/ToiLet.png",
+      "logicalName": "EHR.Resources.Images.Skills.ToiLet.png",
+      "sha256": "0490da0e3767e93d52c79f71907d4f6d17b2ad4559b553a349ebe7c95172843a"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Tornado.png",
+      "logicalName": "EHR.Resources.Images.Skills.Tornado.png",
+      "sha256": "ae8c96848d6ef880ce15806f824783530cd6ac02673aa53d667d70605847d8ee"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Track.png",
+      "logicalName": "EHR.Resources.Images.Skills.Track.png",
+      "sha256": "f5b2b1d61aeea54a657bc4409de90797197dbde1d07631c2f4466a32d453a1e5"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Track2.png",
+      "logicalName": "EHR.Resources.Images.Skills.Track2.png",
+      "sha256": "e13e2c869c7ac10d64a5055288ae9a20d227634f078df07b90143bfa9de6fcd2"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Transport.png",
+      "logicalName": "EHR.Resources.Images.Skills.Transport.png",
+      "sha256": "ed55ca5d5f078b2918f83fc85f0e52ec0d0ce9cd56856dceab583e7fae718b1f"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Tree.png",
+      "logicalName": "EHR.Resources.Images.Skills.Tree.png",
+      "sha256": "2cd4560ec401c82647b49b06a238690a93eb831d9dfc690e4c50c61190e2069d"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Up.png",
+      "logicalName": "EHR.Resources.Images.Skills.Up.png",
+      "sha256": "d9224874e7854e7c9cd17cfa8768f4b966043879281da91fb4fb4fb142a754fc"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Vacuum.png",
+      "logicalName": "EHR.Resources.Images.Skills.Vacuum.png",
+      "sha256": "e4f8fc6a10e92be63e3e4c06c68a4425608f9a15de9cfcdeeb4cdb5bcc6f4d85"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Veteran.png",
+      "logicalName": "EHR.Resources.Images.Skills.Veteran.png",
+      "sha256": "0a13e90d7bbf05478ec76ae21401f0e41504a7394783b6cc108dae4993aff633"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Vulture.png",
+      "logicalName": "EHR.Resources.Images.Skills.Vulture.png",
+      "sha256": "b9c47eb3dcf8075141c12fc185cae88d0fef4d2a80884a76db107a280d8f8152"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Wand.png",
+      "logicalName": "EHR.Resources.Images.Skills.Wand.png",
+      "sha256": "202d9ceb988764a870666d316a669763267131b1bfa3545b09b5738fce52604e"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Warden.png",
+      "logicalName": "EHR.Resources.Images.Skills.Warden.png",
+      "sha256": "6983e711c395fffa981c7c4e066ccf1096a338c39d4d8d5a06bec01b42e49d6d"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/Whisperer.png",
+      "logicalName": "EHR.Resources.Images.Skills.Whisperer.png",
+      "sha256": "8303495c6ac1d7001c6200a28870509cba8bc0b9833012a168c5615729de16f8"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/abscond.png",
+      "logicalName": "EHR.Resources.Images.Skills.abscond.png",
+      "sha256": "3341c2894e1499558843c4ef5cdb99d66135d498daed23821a7802586ad94ddb"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/bombshell.png",
+      "logicalName": "EHR.Resources.Images.Skills.bombshell.png",
+      "sha256": "fd235e773925aa41ba34b2aca3cec04c3568c242d2e80c1a40c34fdec2788ae2"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/invisible.png",
+      "logicalName": "EHR.Resources.Images.Skills.invisible.png",
+      "sha256": "c0a95def3dc7aac526b33c521c9db1d4388546cbe18ec2bc7b87a9ed775c3d6d"
+    },
+    {
+      "upstreamPath": "Resources/Images/Skills/prophecies.png",
+      "logicalName": "EHR.Resources.Images.Skills.prophecies.png",
+      "sha256": "1ed5aeef47723dbd50fe909f5208ac40427b1ae92e27ce2bb2a081d1e16324bb"
+    },
+    {
+      "upstreamPath": "Resources/Images/Submerged-Wordart.png",
+      "logicalName": "EHR.Resources.Images.Submerged-Wordart.png",
+      "sha256": "8fcef82d7ff8d20687e43db4a9609eb43d7df72db184b03376ff653f1dd7be6f"
+    },
+    {
+      "upstreamPath": "Resources/Images/SubmergedBanner.png",
+      "logicalName": "EHR.Resources.Images.SubmergedBanner.png",
+      "sha256": "30a5330c1760fce939f8f4bde5597b5ff685537e847d65d070932214dc4b050e"
+    },
+    {
+      "upstreamPath": "Resources/Images/WinterBG.jpg",
+      "logicalName": "EHR.Resources.Images.WinterBG.jpg",
+      "sha256": "556d00fbf1598919b8b8eb878dfdbde9be8e8ade4bc5fb5b651a1bf6f13f9e6e"
+    },
+    {
+      "upstreamPath": "Resources/Lang/ar_SA.json",
+      "logicalName": "EHR.Resources.Lang.ar_SA.json",
+      "sha256": "c2f82084426f89db904d9c31d9b324e4cadf3c7613893d19ee3fce312a6b87bc"
+    },
+    {
+      "upstreamPath": "Resources/Lang/be_BY.json",
+      "logicalName": "EHR.Resources.Lang.be_BY.json",
+      "sha256": "8369c6cf9a77405a229658b3b7c351ab33ab77542127102e2f0fd0f4c1d4122c"
+    },
+    {
+      "upstreamPath": "Resources/Lang/de_DE.json",
+      "logicalName": "EHR.Resources.Lang.de_DE.json",
+      "sha256": "4192f2181e9d33ccef58c1d9f9b31a6c7239cbcb415e5b54499711aee4a12bb6"
+    },
+    {
+      "upstreamPath": "Resources/Lang/el_GR.json",
+      "logicalName": "EHR.Resources.Lang.el_GR.json",
+      "sha256": "cb0213ceba4b49f820105db5dd7b79df2538e0a8b6395e57b4ce2dc5036f58d1"
+    },
+    {
+      "upstreamPath": "Resources/Lang/en_US.json",
+      "logicalName": "EHR.Resources.Lang.en_US.json",
+      "sha256": "9bbda4cdc8b63c8133b093d42bc433246890fa7b5264b2606581cfa743813e20"
+    },
+    {
+      "upstreamPath": "Resources/Lang/es_ES.json",
+      "logicalName": "EHR.Resources.Lang.es_ES.json",
+      "sha256": "a221b84a2aac1089c82cbd5a61b6e23997e387457e2bcefdde6d456801960ffa"
+    },
+    {
+      "upstreamPath": "Resources/Lang/fa_IR.json",
+      "logicalName": "EHR.Resources.Lang.fa_IR.json",
+      "sha256": "745f6505ec8f5d82164534bd5434a290dbbb60c539ce5599d3b3af7f863bbace"
+    },
+    {
+      "upstreamPath": "Resources/Lang/fr_FR.json",
+      "logicalName": "EHR.Resources.Lang.fr_FR.json",
+      "sha256": "d967d633dbb541bb0b8f61836b15bbb33064754cf7b38209ac9f0c06dacef29b"
+    },
+    {
+      "upstreamPath": "Resources/Lang/hr_HR.json",
+      "logicalName": "EHR.Resources.Lang.hr_HR.json",
+      "sha256": "290213a073951a8892a8b793396517d54d6fe0b357dbd64f2991375ad204f040"
+    },
+    {
+      "upstreamPath": "Resources/Lang/hu_HU.json",
+      "logicalName": "EHR.Resources.Lang.hu_HU.json",
+      "sha256": "b2568f2db8662d7058af883bc92ade00454e6cf1c1e19404ccd9e256ff45aeb5"
+    },
+    {
+      "upstreamPath": "Resources/Lang/id_ID.json",
+      "logicalName": "EHR.Resources.Lang.id_ID.json",
+      "sha256": "fa00ddee211b732fa6cfc373675a9088bd7d8a4a2f21ad2f36ef38aa9d66de24"
+    },
+    {
+      "upstreamPath": "Resources/Lang/it_IT.json",
+      "logicalName": "EHR.Resources.Lang.it_IT.json",
+      "sha256": "4c5d5ca4062f93d30b93e0cc6f7d92f5206d86de31a45f450a4fe63a5ae6da17"
+    },
+    {
+      "upstreamPath": "Resources/Lang/ja_JP.json",
+      "logicalName": "EHR.Resources.Lang.ja_JP.json",
+      "sha256": "89be8c5f9d53bb115bf2a68614adbc6ebf48db2138cc204af65d64a1ec11614e"
+    },
+    {
+      "upstreamPath": "Resources/Lang/ko_KR.json",
+      "logicalName": "EHR.Resources.Lang.ko_KR.json",
+      "sha256": "3fc01099844baf5af1002a0d843f6c2e22d0bbdb77576e52704f7bb43913cfb8"
+    },
+    {
+      "upstreamPath": "Resources/Lang/nl_NL.json",
+      "logicalName": "EHR.Resources.Lang.nl_NL.json",
+      "sha256": "58d434b9127f4191b1a1ded74a33661cf1cb9abc3d12dc173129443fd52c90e6"
+    },
+    {
+      "upstreamPath": "Resources/Lang/pl_PL.json",
+      "logicalName": "EHR.Resources.Lang.pl_PL.json",
+      "sha256": "ae11687823ecb3086798ea5b167212a15b87571ed3fca250d6b02c745d5db614"
+    },
+    {
+      "upstreamPath": "Resources/Lang/pt_BR.json",
+      "logicalName": "EHR.Resources.Lang.pt_BR.json",
+      "sha256": "60b83fee6ad04027ff27b0b48eff75dd2fa6c973521615052e6b42fa08bcc205"
+    },
+    {
+      "upstreamPath": "Resources/Lang/ro_RO.json",
+      "logicalName": "EHR.Resources.Lang.ro_RO.json",
+      "sha256": "cc19157d0dc2169831aa7c6c8f32918dfd92cbc94d4c645defa2a8469182b69d"
+    },
+    {
+      "upstreamPath": "Resources/Lang/ru_RU.json",
+      "logicalName": "EHR.Resources.Lang.ru_RU.json",
+      "sha256": "95dca212bc90faf8ef1350666559746b2684583173060f96b86f2f48500ae255"
+    },
+    {
+      "upstreamPath": "Resources/Lang/sk_SK.json",
+      "logicalName": "EHR.Resources.Lang.sk_SK.json",
+      "sha256": "e934e739710a15ec66e7ecf0b877e980db0c9b4de3ecc17b186f19abe9c68426"
+    },
+    {
+      "upstreamPath": "Resources/Lang/sr_CS.json",
+      "logicalName": "EHR.Resources.Lang.sr_CS.json",
+      "sha256": "ae69f1e74af6d4f38e5177b57b1817d3d77d2c5de01af1f4ecdbf4add16f2c63"
+    },
+    {
+      "upstreamPath": "Resources/Lang/sr_SP.json",
+      "logicalName": "EHR.Resources.Lang.sr_SP.json",
+      "sha256": "0b7d6d42f974678b98cb230d6f99ecab11c85eb9d433447cb4d100f4d9f14a8b"
+    },
+    {
+      "upstreamPath": "Resources/Lang/tr_TR.json",
+      "logicalName": "EHR.Resources.Lang.tr_TR.json",
+      "sha256": "500859680cc4993b4d9b54101213b65276e79d3dbd98b3143ee51260d71fbb7b"
+    },
+    {
+      "upstreamPath": "Resources/Lang/vi_VN.json",
+      "logicalName": "EHR.Resources.Lang.vi_VN.json",
+      "sha256": "b75f3bd5b0dc63908b5ea00153b324e1ae139d7e3e58d08a6763bfc96459a18a"
+    },
+    {
+      "upstreamPath": "Resources/Lang/zh_CN.json",
+      "logicalName": "EHR.Resources.Lang.zh_CN.json",
+      "sha256": "8b83a863692090f9752e5cb0cf923a7bc14ef8f6aa471d9fc69d7bdb98565dc3"
+    },
+    {
+      "upstreamPath": "Resources/Lang/zh_TW.json",
+      "logicalName": "EHR.Resources.Lang.zh_TW.json",
+      "sha256": "d9a2a346a1d6e61351ef0a25063fcfad1f546892b5c4d57c588e4c3a055ba670"
+    },
+    {
+      "upstreamPath": "Resources/Loading.png",
+      "logicalName": "EHR.Resources.Loading.png",
+      "sha256": "c27ea9839f285d3e58de0c10fe11880fe3323f4cb24e00499f1712b958ab1fef"
+    },
+    {
+      "upstreamPath": "Resources/Sounds/AWP.wav",
+      "logicalName": "EHR.Resources.Sounds.AWP.wav",
+      "sha256": "8218a471edf28942afb52e2b027ffa4c1fdbcea875ffa2bdae8ddda934257d60"
+    },
+    {
+      "upstreamPath": "Resources/Sounds/Bet.wav",
+      "logicalName": "EHR.Resources.Sounds.Bet.wav",
+      "sha256": "a62b71993543288137419048c81f1742d399b3bf4a5892385f476525186e88f9"
+    },
+    {
+      "upstreamPath": "Resources/Sounds/Bite.wav",
+      "logicalName": "EHR.Resources.Sounds.Bite.wav",
+      "sha256": "b4d6f17d3417ffdfcb7dc28b23c6beba80381586149eb923f087c7c51c510bf1"
+    },
+    {
+      "upstreamPath": "Resources/Sounds/Boom.wav",
+      "logicalName": "EHR.Resources.Sounds.Boom.wav",
+      "sha256": "a8eee60fde8c6118fb74b1e2581212f1d1b02be114574192d3c5caf995489c3f"
+    },
+    {
+      "upstreamPath": "Resources/Sounds/Clothe.wav",
+      "logicalName": "EHR.Resources.Sounds.Clothe.wav",
+      "sha256": "a584adf14157e16869c62c7d200c5b2de69334540747f4c87b2b967ded9dc8c7"
+    },
+    {
+      "upstreamPath": "Resources/Sounds/Congrats.wav",
+      "logicalName": "EHR.Resources.Sounds.Congrats.wav",
+      "sha256": "507ea276397cf42e24ef253aff28a3ca255b050a171d6c5dc7568020e1c6b760"
+    },
+    {
+      "upstreamPath": "Resources/Sounds/Curse.wav",
+      "logicalName": "EHR.Resources.Sounds.Curse.wav",
+      "sha256": "d85207312835459be60712ef92d1f250cfe08aef7726e85114fb4c0e6e296942"
+    },
+    {
+      "upstreamPath": "Resources/Sounds/Dove.wav",
+      "logicalName": "EHR.Resources.Sounds.Dove.wav",
+      "sha256": "3dc8ef0f8009d2227d7ca1906cf3d3c6c86404d93541c491f7e6c73d07cabdf2"
+    },
+    {
+      "upstreamPath": "Resources/Sounds/Eat.wav",
+      "logicalName": "EHR.Resources.Sounds.Eat.wav",
+      "sha256": "336d8c934aac13797c7ff8f61d9532049be9644dcb772cced050cc6a16e22bdf"
+    },
+    {
+      "upstreamPath": "Resources/Sounds/FlashBang.wav",
+      "logicalName": "EHR.Resources.Sounds.FlashBang.wav",
+      "sha256": "7e69497b67b3fa25af574d26260e0b27d197b33a947e201ca4bbca9cad38f455"
+    },
+    {
+      "upstreamPath": "Resources/Sounds/Gunfire.wav",
+      "logicalName": "EHR.Resources.Sounds.Gunfire.wav",
+      "sha256": "72e4c07dc09e61bf77badd75de188590dd2ca1941e6aa29676f6f7c6c1c390e3"
+    },
+    {
+      "upstreamPath": "Resources/Sounds/Gunload.wav",
+      "logicalName": "EHR.Resources.Sounds.Gunload.wav",
+      "sha256": "cba912b22702de2936bc9ea6c2e5dc2ded157165176b8bc9e5dcd1e62fea2e84"
+    },
+    {
+      "upstreamPath": "Resources/Sounds/Line.wav",
+      "logicalName": "EHR.Resources.Sounds.Line.wav",
+      "sha256": "6922cc407810a66389e805c192dc51cf72ecad4e3031b9fb902401c5d6b2fa61"
+    },
+    {
+      "upstreamPath": "Resources/Sounds/MarioCoin.wav",
+      "logicalName": "EHR.Resources.Sounds.MarioCoin.wav",
+      "sha256": "b30b98e14b0f227d0d22998bef1d3ce7f764ca4f15c9392a53ee926b06fc847a"
+    },
+    {
+      "upstreamPath": "Resources/Sounds/MarioJump.wav",
+      "logicalName": "EHR.Resources.Sounds.MarioJump.wav",
+      "sha256": "a2b5f755789a8367ee09b508f1c721ca7a1f0f669d087c6cdbf5009cbb362f6a"
+    },
+    {
+      "upstreamPath": "Resources/Sounds/Onichian.wav",
+      "logicalName": "EHR.Resources.Sounds.Onichian.wav",
+      "sha256": "92c787ce5fea1e422231f76b3abc39e8b2d6fb397654f491cab18ac4eca1cedb"
+    },
+    {
+      "upstreamPath": "Resources/Sounds/Shield.wav",
+      "logicalName": "EHR.Resources.Sounds.Shield.wav",
+      "sha256": "ba491a5ea6afdba39b5c169e95118bec96edcb002bab4172c0d105b502556334"
+    },
+    {
+      "upstreamPath": "Resources/Sounds/Teleport.wav",
+      "logicalName": "EHR.Resources.Sounds.Teleport.wav",
+      "sha256": "69b8f9bfcb9c5c9d6ae1fafbadbbed74e7bd984660c2bb4d5d2125479b11b69a"
+    },
+    {
+      "upstreamPath": "Resources/supported_chars.txt",
+      "logicalName": "EHR.Resources.supported_chars.txt",
+      "sha256": "bc194b2ac547b1ef740c3729e43bac404df6fd8595ce67e961e9724dae71983f"
+    }
+  ]
+}

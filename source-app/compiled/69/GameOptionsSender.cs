@@ -1,0 +1,183 @@
+using System.Collections;
+using System.Collections.Generic;
+using System.Diagnostics;
+using AmongUs.GameOptions;
+using Hazel;
+using UnityEngine;
+
+namespace EHR.Modules;
+
+public abstract class GameOptionsSender
+{
+    protected abstract bool IsDirty { get; set; }
+
+    private byte[] BuildOptionArray()
+    {
+        IGameOptions opt = BuildGameOptions();
+        var currentGameMode = AprilFoolsMode.IsAprilFoolsModeToggledOn ? opt.AprilFoolsOnMode : opt.GameMode;
+
+        // option => byte[]
+        MessageWriter writer = MessageWriter.Get();
+        writer.Write(opt.Version);
+        writer.StartMessage(0);
+        writer.Write((byte)currentGameMode);
+
+#if IL2CPP
+        if (opt.TryCastFast(out NormalGameOptionsV12 normalOpt))
+            NormalGameOptionsV12.Serialize(writer, normalOpt);
+        else if (opt.TryCastFast(out HideNSeekGameOptionsV12 hnsOpt))
+#else
+        if (opt is NormalGameOptionsV12 normalOpt)
+            NormalGameOptionsV12.Serialize(writer, normalOpt);
+        else if (opt is HideNSeekGameOptionsV12 hnsOpt)
+#endif
+            HideNSeekGameOptionsV12.Serialize(writer, hnsOpt);
+        else
+            Logger.Error("Option cast failed", ToString());
+
+        writer.EndMessage();
+
+        byte[] optionArray = writer.ToByteArray(false);
+        writer.Recycle();
+        return optionArray;
+    }
+
+    protected virtual void SendGameOptions()
+    {
+        byte[] optionArray = BuildOptionArray();
+        SendOptionsArray(optionArray);
+    }
+
+    protected virtual IEnumerator SendGameOptionsAsync()
+    {
+        byte[] optionArray = BuildOptionArray();
+        yield return SendOptionsArrayAsync(optionArray);
+    }
+
+    private void SendOptionsArray(byte[] optionArray)
+    {
+        int count = GameManager.Instance.LogicComponents.Count;
+
+        for (byte i = 0; i < count; i++)
+        {
+            GameLogicComponent logicComponent = GameManager.Instance.LogicComponents[i];
+            if (logicComponent is LogicOptions) SendOptionsArray(optionArray, i);
+        }
+    }
+
+    private IEnumerator SendOptionsArrayAsync(byte[] optionArray)
+    {
+        int count = GameManager.Instance.LogicComponents.Count;
+
+        for (byte i = 0; i < count; i++)
+        {
+            GameLogicComponent logicComponent = GameManager.Instance.LogicComponents[i];
+            if (logicComponent is LogicOptions) yield return SendOptionsArrayAsync(optionArray, i);
+            yield return WaitFrameIfNecessary();
+        }
+    }
+
+    protected abstract void SendOptionsArray(byte[] optionArray, byte logicOptionsIndex);
+    protected abstract IEnumerator SendOptionsArrayAsync(byte[] optionArray, byte logicOptionsIndex);
+
+    public abstract IGameOptions BuildGameOptions();
+
+    protected virtual bool AmValid()
+    {
+        return true;
+    }
+
+    #region Static
+
+    public static readonly List<GameOptionsSender> AllSenders = [new NormalGameOptionsSender()];
+
+    protected static MessageWriter PackedWriter;
+    protected static int PackedWriterMessages;
+    
+    // Currently, a LogicOptions serialize is 155-156 bytes. 11 bytes are needed for the packet headers.
+    // Safe to pack until the length is over 1000, as it's impossible to exceed 1200 with 156 bytes per message.
+
+    public static IEnumerator SendDirtyGameOptionsContinuously()
+    {
+        try
+        {
+            while (GameStates.InGame || GameStates.IsLobby)
+            {
+                if (AntiBlackout.SkipTasks)
+                {
+                    yield return new WaitForSecondsRealtime(1f);
+                    continue;
+                }
+                
+                if (GameStates.InGame)
+                {
+                    PackedWriterMessages = 0;
+                    PackedWriter = MessageWriter.Get(SendOption.Reliable);
+                    PackedWriter.StartMessage(26);
+                    PackedWriter.WritePacked(AmongUsClient.Instance.GameId);
+                }
+                
+                for (var index = 0; index < AllSenders.Count; index++)
+                {
+                    yield return WaitFrameIfNecessary();
+                    
+                    if (index >= AllSenders.Count) break;
+                    GameOptionsSender sender = AllSenders[index];
+
+                    if (sender == null || !sender.AmValid())
+                    {
+                        AllSenders.RemoveAt(index);
+                        index--;
+                        continue;
+                    }
+
+                    if (sender.IsDirty)
+                        yield return sender.SendGameOptionsAsync();
+
+                    sender.IsDirty = false;
+                }
+
+                yield return WaitFrameIfNecessary();
+
+                if (PackedWriterMessages > 0 && PackedWriter != null)
+                {
+                    PackedWriter.EndMessage();
+                    yield return DataFlagRateLimiter.Enqueue(() => AmongUsClient.Instance.SendOrDisconnect(PackedWriter)).Wait();
+                    Logger.Info($"PackedWriter flush finished - Length: {PackedWriter.Length}, Messages: {PackedWriterMessages}", "SendDirtyGameOptionsContinuously");
+                }
+
+                PackedWriter?.Recycle();
+                PackedWriter = null;
+                PackedWriterMessages = 0;
+
+                ForceWaitFrame = true;
+                yield return WaitFrameIfNecessary();
+            }
+        }
+        finally
+        {
+            ActiveCoroutine = null;
+            PackedWriter?.Recycle();
+            PackedWriter = null;
+            PackedWriterMessages = 0;
+        }
+    }
+
+    protected static IEnumerator WaitFrameIfNecessary()
+    {
+        if (ForceWaitFrame || Stopwatch.ElapsedMilliseconds >= FrameBudget)
+        {
+            ForceWaitFrame = false;
+            Stopwatch.Reset();
+            yield return null;
+            Stopwatch.Start();
+        }
+    }
+
+    public static Coroutine ActiveCoroutine;
+    private static readonly Stopwatch Stopwatch = new();
+    private const int FrameBudget = 3; // in milliseconds
+    protected static bool ForceWaitFrame;
+
+    #endregion
+}

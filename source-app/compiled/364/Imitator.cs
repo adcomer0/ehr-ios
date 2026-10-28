@@ -1,0 +1,121 @@
+﻿using System.Collections.Generic;
+using EHR.Modules;
+using UnityEngine;
+
+namespace EHR.Roles;
+
+public class Imitator : RoleBase
+{
+    public static bool On;
+    public static List<byte> PlayerIdList;
+    public static Dictionary<byte, CustomRoles> ImitatingRole;
+
+    public override bool IsEnable => On;
+
+
+    public override void SetupCustomOption()
+    {
+        StartSetup(653190);
+    }
+
+    public override void Init()
+    {
+        if (GameStates.InGame && !Main.HasJustStarted) return;
+        On = false;
+        PlayerIdList = null;
+        ImitatingRole = null;
+    }
+
+    public override void Add(byte playerId)
+    {
+        On = true;
+        ImitatingRole ??= [];
+        ImitatingRole[playerId] = CustomRoles.Imitator;
+        PlayerIdList ??= [];
+        PlayerIdList.Add(playerId);
+    }
+
+    public static void SetRoles()
+    {
+        if (PlayerIdList == null || ImitatingRole == null) return;
+
+        foreach (byte id in PlayerIdList)
+        {
+            PlayerControl pc = id.GetPlayer();
+
+            if (pc && pc.IsAlive() && ImitatingRole.TryGetValue(id, out CustomRoles role) && !pc.Is(role))
+            {
+                Main.AbilityUseLimit.Remove(pc.PlayerId);
+                Utils.SendRPC(CustomRPC.RemoveAbilityUseLimit, pc.PlayerId);
+                pc.RpcSetCustomRole(role);
+                pc.RpcChangeRoleBasis(role);
+            }
+        }
+    }
+
+    private static void ImitatorOnClick(byte playerId /*, MeetingHud __instance*/)
+    {
+        Logger.Msg($"Click: ID {playerId}", "Imitator UI");
+        PlayerControl pc = Utils.GetPlayerById(playerId);
+        if (pc == null || pc.IsAlive() || !GameStates.IsVoting || Starspawn.IsDayBreak) return;
+
+        var command = $"/imitate {playerId}";
+        
+        if (AmongUsClient.Instance.AmHost)
+        {
+            ChatCommands.ImitateCommand(PlayerControl.LocalPlayer, command, command.Split(' '));
+
+            if (ImitatingRole != null && ImitatingRole.ContainsKey(PlayerControl.LocalPlayer.PlayerId))
+            {
+                foreach (PlayerVoteArea pva in MeetingHud.Instance.playerStates)
+                {
+                    Transform button = pva.transform.Find("ImitatorButton");
+                    if (button != null) Object.Destroy(button.gameObject);
+                }
+            }
+        }
+        else
+            ChatCommands.RequestCommandProcessingFromHost(command, "Imitate");
+    }
+
+    private static void CreateImitatorButton(MeetingHud __instance)
+    {
+        foreach (PlayerVoteArea pva in __instance.playerStates)
+        {
+            PlayerControl pc = Utils.GetPlayerById(pva.PlayerId);
+            if (!pc || pc.IsAlive()) continue;
+
+            GameObject template = pva.Buttons.transform.Find("CancelButton").gameObject;
+            GameObject targetBox = Object.Instantiate(template, pva.transform);
+            targetBox.name = "ImitatorButton";
+            targetBox.transform.localPosition = new(-0.35f, 0.03f, -1.31f);
+            var renderer = targetBox.GetComponent<SpriteRenderer>();
+            renderer.sprite = Utils.LoadSprite("EHR.Resources.Images.Skills.Imitate.png", 130f);
+            var button = targetBox.GetComponent<PassiveButton>();
+            button.OnClick.RemoveAllListeners();
+            button.OnClick.AddListener(() => ImitatorOnClick(pva.PlayerId));
+        }
+    }
+
+    //[HarmonyPatch(typeof(MeetingHud), nameof(MeetingHud.Start))]
+    public static class StartMeetingPatch
+    {
+        public static void Postfix(MeetingHud __instance)
+        {
+            if (PlayerIdList != null && PlayerIdList.Contains(PlayerControl.LocalPlayer.PlayerId) && PlayerControl.LocalPlayer.IsAlive())
+                CreateImitatorButton(__instance);
+        }
+    }
+
+    public override void ManipulateGameEndCheckCrew(PlayerState playerState, out bool keepGameGoing, out int countsAs)
+    {
+        if (playerState.IsDead)
+        {
+            base.ManipulateGameEndCheckCrew(playerState, out keepGameGoing, out countsAs);
+            return;
+        }
+
+        keepGameGoing = true;
+        countsAs = 1;
+    }
+}

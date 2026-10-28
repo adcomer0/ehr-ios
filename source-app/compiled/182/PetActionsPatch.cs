@@ -1,0 +1,288 @@
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using AmongUs.GameOptions;
+using EHR.Gamemodes;
+using EHR.Modules;
+using EHR.Roles;
+using HarmonyLib;
+using Hazel;
+using UnityEngine;
+
+namespace EHR.Patches;
+/*
+ * HUGE THANKS TO
+ * ImaMapleTree / 단풍잎 / Tealeaf
+ * FOR THE CODE
+ */
+
+[HarmonyPatch(typeof(PlayerControl), "TryPet")]
+internal static class LocalPetPatch
+{
+    private static readonly Dictionary<byte, long> LastProcess = [];
+
+    public static bool Prefix(PlayerControl __instance)
+    {
+        if (!Options.UsePets.GetBool()) return true;
+        if (!(AmongUsClient.Instance.AmHost && AmongUsClient.Instance.AmClient)) return true;
+        if (GameStates.IsLobby || !__instance.IsAlive()) return true;
+        
+        if (__instance.petting) return true;
+        __instance.petting = true;
+
+        AFKDetector.SetNotAFK(__instance.PlayerId);
+
+        LastProcess.TryAdd(__instance.PlayerId, Utils.TimeStamp - 2);
+        if (LastProcess[__instance.PlayerId] + 1 >= Utils.TimeStamp) return true;
+
+        ExternalRpcPetPatch.Prefix(__instance.MyPhysics, (byte)RpcCalls.Pet);
+
+        return !Main.CancelPetAnimation.Value || !__instance.GetCustomRole().PetActivatedAbility();
+    }
+
+    public static void Postfix(PlayerControl __instance)
+    {
+        if (!Options.UsePets.GetBool()) return;
+        if (!(AmongUsClient.Instance.AmHost && AmongUsClient.Instance.AmClient)) return;
+
+        __instance.petting = false;
+        
+        if (!Main.CancelPetAnimation.Value) LateTask.New(() => __instance.MyPhysics?.CancelPet(), 0.4f, log: false);
+    }
+
+    internal static void __EHRStaticCallback_224(global::EHR.EHRStaticPatchFrame __ehrFrame)
+    {
+        PlayerControl __ehrp0 = __ehrFrame.GetInstance<PlayerControl>();
+        bool __ehrReturn = default;
+        try
+        {
+            __ehrReturn = Prefix(__ehrp0);
+        }
+        finally
+        {
+        }
+        __ehrFrame.RunOriginal = __ehrFrame.RunOriginal && __ehrReturn;
+    }
+
+
+    internal static void __EHRStaticCallback_225(global::EHR.EHRStaticPatchFrame __ehrFrame)
+    {
+        PlayerControl __ehrp0 = __ehrFrame.GetInstance<PlayerControl>();
+        try
+        {
+            Postfix(__ehrp0);
+        }
+        finally
+        {
+        }
+    }
+
+}
+
+[HarmonyPatch(typeof(PlayerPhysics), "HandleRpc")]
+internal static class ExternalRpcPetPatch
+{
+    private static readonly Dictionary<byte, long> LastProcess = [];
+
+    public static void Prefix(PlayerPhysics __instance, [HarmonyArgument(0)] byte callID)
+    {
+        if (GameStates.IsLobby || !Options.UsePets.GetBool() || !AmongUsClient.Instance.AmHost || (RpcCalls)callID != RpcCalls.Pet) return;
+
+        PlayerControl pc = __instance.myPlayer;
+        PlayerPhysics physics = __instance;
+
+        if (!pc.IsAlive()) return;
+
+        AFKDetector.SetNotAFK(pc.PlayerId);
+
+        LastProcess.TryAdd(pc.PlayerId, Utils.TimeStamp - 2);
+        if (LastProcess[pc.PlayerId] + 1 >= Utils.TimeStamp) return;
+        LastProcess[pc.PlayerId] = Utils.TimeStamp;
+
+        if (!pc.inVent
+            && !pc.inMovingPlat
+            && !pc.walkingToVent
+            && !pc.onLadder
+            && !physics.Animations.IsPlayingEnterVentAnimation()
+            && !physics.Animations.IsPlayingClimbAnimation()
+            && !physics.Animations.IsPlayingAnyLadderAnimation()
+            && !Pelican.IsEaten(pc.PlayerId)
+            && GameStates.IsInTask)
+        {
+            CancelPet();
+            LateTask.New(CancelPet, 0.4f, log: false);
+
+            void CancelPet()
+            {
+                physics.CancelPet();
+                MessageWriter w = AmongUsClient.Instance.StartRpcImmediately(physics.NetId, (byte)RpcCalls.CancelPet, SendOption.None);
+                AmongUsClient.Instance.FinishRpcImmediately(w);
+            }
+        }
+
+        Logger.Info($"Player {pc.GetNameWithRole()} petted their pet", "PetActionTrigger");
+
+        LateTask.New(() => OnPetUse(pc), 0.2f, $"OnPetUse: {pc.GetNameWithRole()}", false);
+    }
+
+    private static void OnPetUse(PlayerControl pc)
+    {
+        if (!pc ||
+            pc.inVent ||
+            pc.inMovingPlat ||
+            pc.onLadder ||
+            pc.walkingToVent ||
+            pc.MyPhysics.Animations.IsPlayingEnterVentAnimation() ||
+            pc.MyPhysics.Animations.IsPlayingClimbAnimation() ||
+            pc.MyPhysics.Animations.IsPlayingAnyLadderAnimation() ||
+            Pelican.IsEaten(pc.PlayerId) ||
+            Penguin.IsVictim(pc) ||
+            !AmongUsClient.Instance.AmHost ||
+            GameStates.IsLobby ||
+            AntiBlackout.SkipTasks ||
+            IntroCutsceneDestroyPatch.PreventKill
+            )
+            return;
+
+        if (Options.CurrentGameMode == CustomGameMode.CaptureTheFlag)
+        {
+            CaptureTheFlag.TryPickUpFlag(pc);
+            return;
+        }
+
+        if (Mastermind.ManipulatedPlayers.ContainsKey(pc.PlayerId))
+        {
+            PlayerControl killTarget = SelectKillButtonTarget(pc);
+            if (killTarget) Mastermind.ForceKillForManipulatedPlayer(pc, killTarget);
+
+            return;
+        }
+
+        if (pc.Is(CustomRoles.Trainee) && MeetingStates.FirstMeeting)
+        {
+            pc.Notify(Translator.GetString("TraineeNotify"));
+            return;
+        }
+
+        if (pc.HasAbilityCD())
+        {
+            if (!pc.AmOwner) pc.Notify(Translator.GetString("AbilityOnCooldown"));
+            else Main.Instance.StartCoroutine(FlashCooldownTimer());
+
+            return;
+        }
+
+        var hasKillTarget = false;
+        PlayerControl target = SelectKillButtonTarget(pc);
+        if (target) hasKillTarget = true;
+
+        CustomRoles role = pc.GetCustomRole();
+        
+        if (Options.CurrentGameMode == CustomGameMode.Standard && Options.UsePhantomBasis.GetBool() && (!role.IsNK() || Options.UsePhantomBasisForNKs.GetBool()) && role.SimpleAbilityTrigger() && !role.AlwaysUsesPhantomBase() && role != CustomRoles.Chemist) return;
+        
+        bool alwaysPetRole = role is CustomRoles.Necromancer or CustomRoles.Deathknight or CustomRoles.Renegade or CustomRoles.Sidekick;
+
+        if (!pc.CanUseKillButton() && !alwaysPetRole)
+            hasKillTarget = false;
+
+        RoleBase roleBase = Main.PlayerStates[pc.PlayerId].Role;
+
+        if (role.UsesPetInsteadOfKill() && hasKillTarget && (pc.Data.RoleType != RoleTypes.Impostor || alwaysPetRole))
+        {
+            if (Options.CurrentGameMode != CustomGameMode.Speedrun)
+                pc.AddKCDAsAbilityCD();
+
+            if (target.Is(CustomRoles.Spy) && !Spy.OnKillAttempt(pc, target)) goto Skip;
+            if (!Starspawn.CheckInteraction(pc, target)) goto Skip;
+
+            Seamstress.OnAnyoneCheckMurder(pc, target);
+            
+            PlagueBearer.CheckAndSpreadInfection(pc, target);
+            PlagueBearer.CheckAndSpreadInfection(target, pc);
+
+            if (roleBase.OnCheckMurder(pc, target))
+                pc.RpcCheckAndMurder(target);
+
+            if (alwaysPetRole) pc.SetKillCooldown();
+        }
+        else roleBase.OnPet(pc);
+
+        Skip:
+
+        if (pc.HasAbilityCD() || Utils.ShouldNotApplyAbilityCooldown(roleBase)) return;
+
+        pc.AddAbilityCD();
+    }
+
+    public static PlayerControl SelectKillButtonTarget(PlayerControl pc)
+    {
+        PlayerControl target = FastVector2.TryGetClosestPlayerInRangeTo(pc, 3.5f, out PlayerControl closest) ? closest : null;
+
+        if (target)
+        {
+            if (pc.Is(CustomRoles.Dizzy))
+            {
+                Vector2 pos = pc.Pos();
+                float range = pc.GetKillDistance();
+                PlayerControl[] allInRange = FastVector2.GetPlayersInRange(pos, range, x => x.PlayerId != pc.PlayerId).ToArray();
+
+                if (allInRange.Length > 1)
+                {
+                    PlayerControl tempTarget = target;
+                    target = allInRange.RandomElement();
+                    Logger.Info($"Target was {tempTarget.GetNameWithRole()}, new target is {target.GetNameWithRole()}", "Dizzy");
+                }
+            }
+            
+            if (target.Is(CustomRoles.Detour) && target.GetAbilityUseLimit() >= 1f)
+            {
+                target.RpcRemoveAbilityUse();
+                PlayerControl tempTarget = target;
+                FastVector2.TryGetClosestPlayerTo(tempTarget, out target, x => x.PlayerId != pc.PlayerId);
+                Logger.Info($"Target was {tempTarget.GetNameWithRole()}, new target is {target.GetNameWithRole()}", "Detour");
+
+                if (tempTarget.AmOwner)
+                {
+                    Detour.TotalRedirections++;
+                    if (Detour.TotalRedirections >= 3) Achievements.Type.CantTouchThis.CompleteAfterGameEnd();
+                }
+            }
+            
+            if (Spirit.TryGetSwapTarget(target, out PlayerControl newTarget))
+            {
+                Logger.Info($"Target was {target.GetNameWithRole()}, new target is {newTarget.GetNameWithRole()}", "Spirit");
+                target = newTarget;
+            }
+        }
+
+        return target;
+    }
+
+    public static IEnumerator FlashCooldownTimer()
+    {
+        var yellow = false;
+
+        for (var i = 0; i < 8; i++)
+        {
+            HudManagerPatch.CooldownTimerFlashColor = yellow ? Color.red : Color.yellow;
+            yellow = !yellow;
+            yield return new WaitForSecondsRealtime(0.2f);
+        }
+
+        HudManagerPatch.CooldownTimerFlashColor = null;
+    }
+
+    internal static void __EHRStaticCallback_226(global::EHR.EHRStaticPatchFrame __ehrFrame)
+    {
+        PlayerPhysics __ehrp0 = __ehrFrame.GetInstance<PlayerPhysics>();
+        byte __ehrp1 = __ehrFrame.GetArgument<byte>(0);
+        try
+        {
+            Prefix(__ehrp0, __ehrp1);
+        }
+        finally
+        {
+        }
+    }
+
+}

@@ -1,0 +1,135 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using AmongUs.Data;
+using AmongUs.Data.Player;
+using Assets.InnerNet;
+using HarmonyLib;
+using UnityEngine.Networking;
+
+#if IL2CPP
+using Il2CppInterop.Runtime.InteropTypes.Arrays;
+using System.Text.Json;
+#else
+using Newtonsoft.Json;
+#endif
+
+namespace EHR;
+
+// ReSharper disable once ClassNeverInstantiated.Global
+public class ModNews
+{
+    // ReSharper disable UnassignedField.Global
+    // ReSharper disable UnusedAutoPropertyAccessor.Global
+    public int Number { get; set; }
+    public string Date { get; set; }
+    public string Title { get; set; }
+    public string SubTitle { get; set; }
+    public string ShortTitle { get; set; }
+
+    public string Text { get; set; }
+    // ReSharper restore UnassignedField.Global
+    // ReSharper restore UnusedAutoPropertyAccessor.Global
+
+    public Announcement ToAnnouncement()
+    {
+        return new()
+        {
+            Number = Number,
+            Title = Title,
+            SubTitle = SubTitle,
+            ShortTitle = ShortTitle,
+            Text = Text,
+            Language = (uint)DataManager.Settings.Language.CurrentLanguage,
+            Date = Date,
+            Id = "ModNews"
+        };
+    }
+
+    public static List<ModNews> FromJson(string json)
+    {
+#if IL2CPP
+        return JsonSerializer.Deserialize(json, global::EHR.SourcePort.EHRPortableJsonContext.Default.News);
+#else
+        return JsonConvert.DeserializeObject<List<ModNews>>(json);
+#endif
+    }
+}
+
+public static class ModNewsFetcher
+{
+    private const string NewsUrl = "https://app.gurge44.eu/modnews";
+
+    public static IEnumerator FetchNews()
+    {
+        if (OperatingSystem.IsAndroid()) yield break;
+        
+        UnityWebRequest request = UnityWebRequest.Get(NewsUrl);
+        request.SetRequestHeader("User-Agent", $"{Main.ModName} v{Main.PluginVersion}");
+
+        yield return request.SendWebRequest();
+
+        if (request.result != UnityWebRequest.Result.Success)
+        {
+            Logger.Error("Failed to fetch mod news: " + request.error, "ModNewsFetcher");
+            yield break;
+        }
+
+        try
+        {
+            List<ModNews> newsList = ModNews.FromJson(request.downloadHandler.text);
+            ModNewsHistory.AllModNews = newsList.OrderByDescending(n => DateTime.Parse(n.Date)).ToList();
+            Logger.Info($"Successfully fetched {ModNewsHistory.AllModNews.Count} mod news items.", "ModNewsFetcher");
+        }
+        catch (Exception ex) { Utils.ThrowException(ex); }
+    }
+}
+
+[HarmonyPatch]
+public static class ModNewsHistory
+{
+    public static List<ModNews> AllModNews = [];
+
+    public static bool Prepare()
+    {
+        return !OperatingSystem.IsAndroid();
+    }
+
+    [HarmonyPatch(typeof(PlayerAnnouncementData), "SetAnnouncements")]
+    [HarmonyPrefix]
+#if IL2CPP
+    public static void SetModAnnouncements(ref Il2CppReferenceArray<Announcement> aRange)
+#else
+    public static void SetModAnnouncements(ref Announcement[] aRange)
+#endif
+    {
+        if (AllModNews.Count == 0)
+        {
+            Logger.Warn("No mod news loaded.", "ModNewsHistory");
+            return;
+        }
+
+        List<Announcement> finalAllNews = AllModNews.ConvertAll(n => n.ToAnnouncement());
+        finalAllNews.AddRange(aRange.Where(news => AllModNews.All(x => x.Number != news.Number)));
+        finalAllNews.Sort((a1, a2) => DateTime.Compare(DateTime.Parse(a2.Date), DateTime.Parse(a1.Date)));
+
+        aRange = finalAllNews.ToArray();
+    }
+
+    internal static bool __EHRStaticPrepare() => Prepare();
+
+    internal static void __EHRStaticCallback_27(global::EHR.EHRStaticPatchFrame __ehrFrame)
+    {
+        Il2CppReferenceArray<Announcement> __ehrp0 = __ehrFrame.GetArgument<Il2CppReferenceArray<Announcement>>("aRange");
+        try
+        {
+            SetModAnnouncements(ref __ehrp0);
+        }
+        finally
+        {
+            __ehrFrame.SetArgument("aRange", __ehrp0);
+        }
+    }
+
+}

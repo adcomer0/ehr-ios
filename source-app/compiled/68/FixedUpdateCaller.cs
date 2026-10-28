@@ -1,0 +1,271 @@
+using System;
+using EHR.Gamemodes;
+using EHR.Patches;
+using HarmonyLib;
+using InnerNet;
+
+namespace EHR.Modules;
+
+[HarmonyPatch(typeof(InnerNetClient), "FixedUpdate")]
+public static class FixedUpdateCaller
+{
+    private static int NonLowLoadPlayerIndex;
+
+    private static long Now;
+    private static long LastFileLoadTS;
+    private static long LastAutoMessageSendTS;
+
+    private static AmongUsClient AmongUsClient;
+    private static LobbyBehaviour LobbyBehaviour;
+    private static HudManager HudManager;
+
+    private static Predicate<PlayerControl> Predicate;
+
+    // ReSharper disable once UnusedMember.Global
+    public static void Postfix()
+    {
+        try
+        {
+            PerSecondUpdateScheduler.OnFixedUpdate();
+            
+            AmongUsClient = AmongUsClient.Instance;
+            LobbyBehaviour = LobbyBehaviour.Instance;
+
+            try
+            {
+                if (!string.IsNullOrEmpty(LobbySharingAPI.LastRoomCode) && Utils.TimeStamp - LobbySharingAPI.LastRequestTimeStamp > Options.LobbyUpdateInterval.GetInt())
+                    LobbySharingAPI.NotifyLobbyStatusChanged(!PlayerControl.LocalPlayer ? LobbyStatus.Closed : GameStates.InGame ? LobbyStatus.In_Game : LobbyStatus.In_Lobby);
+            }
+            catch { }
+
+            if (LobbyBehaviour)
+            {
+                LobbyFixedUpdatePatch.Postfix();
+                LobbyBehaviourUpdatePatch.Postfix(LobbyBehaviour);
+
+                Now = Utils.TimeStamp;
+
+                if (Now - LastFileLoadTS > 10)
+                {
+                    LastFileLoadTS = Now;
+                    Options.LoadUserData();
+                }
+
+                if (Options.EnableAutoMessage.GetBool() && Now - LastAutoMessageSendTS > Options.AutoMessageSendInterval.GetInt())
+                {
+                    LastAutoMessageSendTS = Now;
+                    TemplateManager.SendTemplate("Notification", noErr: true, importance: MessageImportance.Low);
+                }
+            }
+
+            if (HudManager.InstanceExists)
+            {
+                HudManager = HudManager.Instance;
+
+                HudManagerPatch.Postfix(HudManager);
+                Zoom.Postfix();
+                HudSpritePatch.Postfix(HudManager);
+                ChatBubbleShower.Update();
+
+                try
+                {
+                    if (ChatUpdatePatch.LastMessages.Count > 0)
+                    {
+                        long now = Utils.TimeStamp;
+
+                        for (var i = ChatUpdatePatch.LastMessages.Count - 1; i >= 0; i--)
+                        {
+                            if (now - ChatUpdatePatch.LastMessages[i].SendTimeStamp > 10)
+                                ChatUpdatePatch.LastMessages.RemoveAt(i);
+                        }
+                    }
+                }
+                catch
+                {
+                    ChatUpdatePatch.LastMessages.Clear();
+                }
+            }
+
+            try { DataFlagRateLimiter.OnFixedUpdate(); }
+            catch (Exception e) { Utils.ThrowException(e); }
+
+            if (!PlayerControl.LocalPlayer) return;
+
+            if (AmongUsClient.IsGameStarted)
+                Utils.CountAlivePlayers();
+
+            try
+            {
+                if (HudManager.InstanceExists && GameStates.IsInTask && !ExileController.Instance && !AntiBlackout.SkipTasks && PlayerControl.LocalPlayer.CanUseKillButton())
+                {
+
+                    Predicate = AmongUsClient.AmHost
+                        ? Options.CurrentGameMode switch
+                        {
+                            CustomGameMode.BedWars => BedWars.IsNotInLocalPlayersTeam,
+                            CustomGameMode.CaptureTheFlag => CaptureTheFlag.IsNotInLocalPlayersTeam,
+                            CustomGameMode.KingOfTheZones => KingOfTheZones.IsNotInLocalPlayersTeam,
+                            _ => ExtendedPlayerControl.IsValidTargetForKillButton
+                        }
+                        : ExtendedPlayerControl.IsValidTargetForKillButton;
+
+                    PlayerControl closest = FastVector2.TryGetClosestPlayerInRangeTo(PlayerControl.LocalPlayer, PlayerControl.LocalPlayer.GetKillDistance(), out PlayerControl closestPlayer, Predicate) ? closestPlayer : null;
+
+                    KillButton killButton = HudManager.KillButton;
+
+                    if (killButton.currentTarget && killButton.currentTarget != closest)
+                        killButton.currentTarget.ToggleHighlight(false, RoleTeamTypes.Impostor);
+
+                    killButton.currentTarget = closest;
+
+                    if (killButton.currentTarget)
+                    {
+                        killButton.currentTarget.ToggleHighlight(true, RoleTeamTypes.Impostor);
+                        killButton.SetEnabled();
+                    }
+                    else
+                        killButton.SetDisabled();
+                }
+            }
+            catch { }
+
+            try
+            {
+                if (AmongUsClient.AmHost && GameStates.InGame && !GameStates.IsEnded)
+                    FixedUpdatePatch.LoversSuicide();
+            }
+            catch (Exception e) { Utils.ThrowException(e); }
+
+            bool lobby = GameStates.IsLobby;
+
+            if (lobby || Main.IntroDestroyed && GameStates.InGame && !GameStates.IsMeeting && !ExileController.Instance && !AntiBlackout.SkipTasks)
+            {
+                NonLowLoadPlayerIndex++;
+
+                var players = Main.CachedAllPlayerControls();
+                int playerCount = players.Count;
+
+                if (NonLowLoadPlayerIndex >= playerCount)
+                    NonLowLoadPlayerIndex = Math.Min(0, -(30 - playerCount));
+
+                CustomGameMode currentGameMode = Options.CurrentGameMode;
+                //bool vanilla = GameStates.CurrentServerType == GameStates.ServerType.Vanilla;
+
+                for (byte playerIndex = 0; playerIndex < players.Count; playerIndex++)
+                {
+                    try
+                    {
+                        PlayerControl pc = players[playerIndex];
+                        if (!pc || pc.PlayerId >= 254) continue;
+
+                        FixedUpdatePatch.Postfix(pc, NonLowLoadPlayerIndex != playerIndex);
+
+                        if (lobby) continue;
+
+                        //if (vanilla && NonLowLoadPlayerIndex == playerIndex)
+                        //    Utils.NotifyRoles(SpecifySeer: pc, ForceLoop: true, SendOption: SendOption.None);
+
+                        switch (currentGameMode)
+                        {
+                            case CustomGameMode.CaptureTheFlag:
+                                CaptureTheFlag.FixedUpdatePatch.Postfix(pc);
+                                break;
+                            case CustomGameMode.HotPotato:
+                                HotPotato.FixedUpdatePatch.Postfix(pc);
+                                break;
+                            case CustomGameMode.StopAndGo:
+                                StopAndGo.FixedUpdatePatch.Postfix(pc);
+                                break;
+                            case CustomGameMode.SoloPVP:
+                                SoloPVP.FixedUpdatePatch.Postfix(pc);
+                                break;
+                            case CustomGameMode.Speedrun:
+                                Speedrun.FixedUpdatePatch.Postfix(pc);
+                                break;
+                            case CustomGameMode.BedWars:
+                                BedWars.FixedUpdatePatch.Postfix(pc);
+                                break;
+                            case CustomGameMode.Snowdown:
+                                Snowdown.FixedUpdatePatch.Postfix(pc);
+                                break;
+                        }
+
+                        CheckInvalidMovementPatch.Postfix(pc);
+                    }
+                    catch (Exception e) { Utils.ThrowException(e); }
+                }
+
+                if (lobby) return;
+
+                try
+                {
+                    switch (currentGameMode)
+                    {
+                        case CustomGameMode.HideAndSeek:
+                            CustomHnS.FixedUpdatePatch.Postfix();
+                            goto default;
+                        case CustomGameMode.FFA:
+                            FreeForAll.FixedUpdatePatch.Postfix();
+                            goto default;
+                        case CustomGameMode.KingOfTheZones:
+                            KingOfTheZones.FixedUpdatePatch.Postfix();
+                            goto default;
+                        case CustomGameMode.NaturalDisasters:
+                            NaturalDisasters.FixedUpdatePatch.Postfix();
+                            break;
+                        case CustomGameMode.Quiz:
+                            Quiz.FixedUpdatePatch.Postfix();
+                            goto default;
+                        case CustomGameMode.RoomRush:
+                            RoomRush.FixedUpdatePatch.Postfix();
+                            goto default;
+                        case CustomGameMode.Deathrace:
+                            Deathrace.FixedUpdatePatch.Postfix();
+                            goto default;
+                        case CustomGameMode.Mingle:
+                            Mingle.FixedUpdatePatch.Postfix();
+                            goto default;
+                        case CustomGameMode.DoomTag:
+                            DoomTag.FixedUpdatePatch.Postfix();
+                            goto default;
+                        default:
+                            if (Options.IntegrateNaturalDisasters.GetBool()) goto case CustomGameMode.NaturalDisasters;
+                            break;
+                    }
+                }
+                catch (Exception e) { Utils.ThrowException(e); }
+
+                try
+                {
+                    if (AmongUsClient.AmHost && Main.GameTimer.IsRunning && Options.EnableGameTimeLimit.GetBool() && Main.GameTimer.Elapsed.TotalSeconds > Options.GameTimeLimit.GetInt() && Options.CurrentGameMode is CustomGameMode.Standard or CustomGameMode.NaturalDisasters)
+                    {
+                        Main.GameTimer.Reset();
+                        Main.GameEndDueToTimer = true;
+                        CustomWinnerHolder.ResetAndSetWinner(CustomWinner.None);
+
+                        if (Options.CurrentGameMode == CustomGameMode.NaturalDisasters)
+                        {
+                            var alivePlayers = Main.CachedAlivePlayerControls();
+                            for (int i = 0; i < alivePlayers.Count; i++)
+                                CustomWinnerHolder.WinnerIds.Add(alivePlayers[i].PlayerId);
+                        }
+                    }
+                }
+                catch (Exception e) { Utils.ThrowException(e); }
+            }
+        }
+        catch (Exception e) { Utils.ThrowException(e); }
+    }
+
+    internal static void __EHRStaticCallback_8(global::EHR.EHRStaticPatchFrame __ehrFrame)
+    {
+        try
+        {
+            Postfix();
+        }
+        finally
+        {
+        }
+    }
+
+}

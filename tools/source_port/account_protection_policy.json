@@ -1,0 +1,70 @@
+{
+  "schema": "ehr.source-account-protection-policy.v1",
+  "upstream_commit": "ce23f0d050f617a59507e5bb0fbfff751d4b5134",
+  "profile": "account-protected-ios",
+  "compile_profile": "IL2CPP",
+  "excluded_callbacks": [
+    {
+      "callback_id": "EHR.Modules.PrivacyPolicyScreenShowPatch::Prefix#15",
+      "selector_id": "9417fbfdd81e3915f579",
+      "source_file": "Modules/ModConsentPopUp.cs",
+      "category": "vanilla_privacy_state",
+      "reason": "Replaces native privacy consent controls and lowers vanilla LastAcceptedPrivacyPolicyVersion."
+    },
+    {
+      "callback_id": "EHR.Modules.PrivacyPolicyScreenClosePatch::Postfix#16",
+      "selector_id": "a6152399ad4be99d2f5f",
+      "source_file": "Modules/ModConsentPopUp.cs",
+      "category": "vanilla_privacy_state",
+      "reason": "Writes and saves vanilla LastAcceptedPrivacyPolicyVersion for the mod consent flow."
+    },
+    {
+      "callback_id": "EHR.ChatControllerAwakePatch::Postfix#41",
+      "selector_id": "3de0fd9e0b6759b191f2",
+      "source_file": "Patches/ChatControlPatch.cs",
+      "category": "native_chat_restriction",
+      "reason": "Forces native QuickChatOnly mode to FreeChatOrQuickChat."
+    },
+    {
+      "callback_id": "EHR.RunLoginPatch::Prefix#54",
+      "selector_id": "165d04efae3cc1de33f5",
+      "source_file": "Patches/ClientPatch.cs",
+      "category": "native_online_permission",
+      "reason": "Forces canOnline true under a mod debugger or missing mod consent."
+    },
+    {
+      "callback_id": "EHR.CheckOnlinePermissionsPatch::Prefix#60",
+      "selector_id": "035231d2a76e1a4df416",
+      "source_file": "Patches/ClientPatch.cs",
+      "category": "native_ban_state",
+      "reason": "Resets vanilla player banPoints to zero before native permission checks."
+    },
+    {
+      "callback_id": "EHR.GameStartManagerBeginPatch+GameStartManagerStartPatch::Prefix#138",
+      "selector_id": "e502a9e4453902b4f6fc",
+      "source_file": "Patches/GameStartManagerPatch.cs",
+      "category": "vanilla_onboarding_state",
+      "reason": "Writes and saves vanilla player onboarding warning flags."
+    }
+  ],
+  "source_sha256": {
+    "Patches/ClientPatch.cs": "91373bfc3189672c7ce1e1d45e24076a853c33d2cfced332b3e83755bac18b64",
+    "Modules/ModConsentPopUp.cs": "e7aa22be336acf0d89d49e1df87f9dcbf9f89ea780d7ebfa131da7530594639f",
+    "Patches/ChatControlPatch.cs": "09ef2f1620bfa8c4552771835a5294af60e1dc3512d672c497c65e47ce883f24",
+    "Patches/GameStartManagerPatch.cs": "26e848723a6c5a122c5025ebac78891c38a447295266b9e187b2bb2c0c3c356f",
+    "Patches/UsablesPatch.cs": "bd9197061c7c62d269a6e0843acffd2f6b841f2e8f779f505d8fad75420f54ba",
+    "Modules/LobbySharingAPI.cs": "b11ac3e5498646213ee506abe9035b29a1ed1ed5feb8bccf8fabb2e6b75d41db",
+    "Modules/OptionHolder.cs": "0d3239dfc9493acadfc7ed6eb5030ece6aa52aa26820f68b690668a4ca785540",
+    "Modules/OptionItem/OptionItem.cs": "fdb05556931d67b25f3b104c5acfd64a0c14ff20407b73f913cbb042a99dd3f4",
+    "Modules/OptionItem/TextOptionItem.cs": "fcf91d695416bcbaeed26096ec63fef3166067b9a1540c009d2cca32d1dbb836",
+    "Patches/ChatCommandPatch.cs": "876afae3bcf08aea3d96b9a1e22f45382092911da63422d4fc399709816a379a",
+    "Modules/Achievements.cs": "076ea03708316beb2b60a6c5907dee29ca1549245de7be39a1fddbe4786467ea",
+    "Modules/BanManager.cs": "2223840c7ab7c1790fea708a49ebc1c829765c340fdd1ba7f7ed38ea5e0b7370",
+    "Modules/OnlinePresetsManager.cs": "04c86beaa57bebb631313559b724934d4f1e23593d9d3d46da80ce654223d228",
+    "Modules/ModUpdater.cs": "565778e0fe7c98339ab749b292bee0a043cfa517ebb6ee45fe789692d9492ce9",
+    "Patches/PlayerJoinAndLeftPatch.cs": "317550035c52224b9696e750d8a3cb41ebec6abab4551c4cbb056d6896000f40",
+    "Patches/TmpAwakePatch.cs": "57ac13246054b1cf824b418ae489d75e70b0b0351af11b783c6c9847cce1227e",
+    "Main.cs": "55cb33819e1224dbad5a4b6f035f1ea198b5071c0f81b70b513ba15ba367513d"
+  },
+  "scope": "Exact descriptor exclusions; no native login provider, permission, ban or progression implementation changes."
+}

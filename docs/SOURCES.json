@@ -1,0 +1,7 @@
+{
+  "ehr": {"repository": "https://github.com/Gurge44/EndlessHostRoles", "tag": "v8.0.3", "commit": "ce23f0d050f617a59507e5bb0fbfff751d4b5134"},
+  "gameBaseline": {"bundleVersion": "2026.9.29 (3)", "unity": "2022.3.62f3", "metadataVersion": 31},
+  "toolchainObserved": {"xcode": "27.1", "dotnetSdk": "10.0.403"},
+  "fullPortReady": false,
+  "currentScope": "See README.md and docs/KNOWN_ISSUES.md; no game inputs or private reports distributed"
+}

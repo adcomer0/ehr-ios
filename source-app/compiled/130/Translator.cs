@@ -1,0 +1,407 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+using EHR.Gamemodes;
+#if IL2CPP
+using System.Text.Json;
+#else
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+#endif
+
+namespace EHR;
+
+public static class Translator
+{
+    private const string LanguageFolderName = "Language";
+    private static Dictionary<string, Dictionary<int, string>> TranslateMaps;
+    public static Dictionary<CustomRoles, Dictionary<SupportedLangs, string>> OriginalRoleNames;
+    public static readonly StringNames[] AllStringNames = EnumHelper.GetValues<StringNames>();
+
+    public static void Init()
+    {
+        Logger.Info("Loading Custom Translations...", "Translator");
+        LoadLangs();
+        Logger.Info("Loaded Custom Translations", "Translator");
+    }
+
+#if !IL2CPP
+    private static readonly JsonSerializer JsonSerializer = new();
+#endif
+
+    public static void LoadLangs()
+    {
+        try
+        {
+            // Get the directory containing the JSON files (e.g., EHR.Resources.Lang)
+            const string jsonDirectory = "EHR.Resources.Lang";
+            // Get the assembly containing the resources
+            var assembly = Assembly.GetExecutingAssembly();
+            string[] jsonFileNames = GetJsonFileNames(assembly, jsonDirectory);
+
+            TranslateMaps = [];
+
+            if (jsonFileNames.Length == 0)
+            {
+                Logger.Warn("Json Translation files does not exist.", "Translator");
+                return;
+            }
+
+            foreach (string jsonFileName in jsonFileNames)
+            {
+                using Stream resourceStream = assembly.GetManifestResourceStream(jsonFileName);
+                if (resourceStream == null) continue;
+
+                try
+                {
+#if IL2CPP
+                    var jsonDictionary = JsonSerializer.Deserialize(resourceStream, global::EHR.SourcePort.EHRPortableJsonContext.Default.Language);
+#else
+                    using var reader = new StreamReader(resourceStream);
+                    using var jsonReader = new JsonTextReader(reader);
+                    var jsonDictionary = JsonSerializer.Deserialize<Dictionary<string, JToken>>(jsonReader);
+#endif
+
+                    if (jsonDictionary == null)
+                    {
+                        Logger.Warn($"Failed to deserialize JSON file: {jsonFileName}. Is it a valid jsonc?", "Translator");
+                        continue;
+                    }
+
+#if IL2CPP
+                    if (!jsonDictionary.TryGetValue("LanguageID", out var langElem) || langElem.ValueKind != JsonValueKind.String || !int.TryParse(langElem.GetString(), out int languageId))
+#else
+                    if (!jsonDictionary.TryGetValue("LanguageID", out var langElem) || langElem.Type != JTokenType.String || !int.TryParse(langElem.Value<string>(), out int languageId))
+#endif
+                    {
+                        Logger.Warn($"Invalid JSON format in {jsonFileName}: Missing or invalid 'LanguageID' field.", "Translator");
+                        continue;
+                    }
+
+                    jsonDictionary.Remove("LanguageID");
+
+                    // We expect every element in the jsonc file is a string value.
+                    // But just in case someone added a number or other stuff in it,
+                    // we put a check in the MergeJsonIntoTranslationMap function.
+                    MergeJsonIntoTranslationMap(TranslateMaps, languageId, jsonDictionary);
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error($"Error parsing {jsonFileName}: {ex}", "Translator");
+                }
+            }
+        }
+        catch (Exception ex) { Logger.Error($"Error: {ex}", "Translator"); }
+
+        // Loading custom translation files
+        if (!Directory.Exists($"{Main.DataPath}/{LanguageFolderName}")) Directory.CreateDirectory($"{Main.DataPath}/{LanguageFolderName}");
+
+        try { OriginalRoleNames = Main.CustomRoleValues.ToDictionary(x => x, x => EnumHelper.GetValues<SupportedLangs>().ToDictionary(s => s, s => GetString($"{x}", s))); }
+        catch (Exception e) { Utils.ThrowException(e); }
+
+        // Creating a translation template
+        CreateTemplateFile();
+
+        foreach (SupportedLangs lang in EnumHelper.GetValues<SupportedLangs>())
+        {
+            if (File.Exists($"{Main.DataPath}/{LanguageFolderName}/{lang}.dat"))
+            {
+                UpdateCustomTranslation($"{lang}.dat" /*, lang*/);
+                LoadCustomTranslation($"{lang}.dat", lang);
+            }
+        }
+    }
+
+#if IL2CPP
+    private static void MergeJsonIntoTranslationMap(Dictionary<string, Dictionary<int, string>> translationMaps, int languageId, Dictionary<string, JsonElement> jsonDictionary)
+    {
+        foreach ((string key, JsonElement value) in jsonDictionary)
+        {
+            if (value.ValueKind != JsonValueKind.String)
+            {
+                Logger.Warn($"Invalid value type for key '{key}' in language ID {languageId}. Expected a string.", "Translator");
+                continue;
+            }
+
+            string translation = value.GetString();
+            if (string.IsNullOrEmpty(translation))
+                continue;
+
+            if (!translationMaps.TryGetValue(key, out var langMap))
+            {
+                langMap = [];
+                translationMaps[key] = langMap;
+            }
+
+            langMap[languageId] = translation.Replace("\\n", "\n").Replace("\\r", "\r");
+        }
+    }
+#else
+    private static void MergeJsonIntoTranslationMap(Dictionary<string, Dictionary<int, string>> translationMaps, int languageId, Dictionary<string, JToken> jsonDictionary)
+    {
+        foreach ((string key, JToken value) in jsonDictionary)
+        {
+            if (value.Type != JTokenType.String)
+            {
+                Logger.Warn($"Invalid value type for key '{key}' in language ID {languageId}. Expected a string.", "Translator");
+                continue;
+            }
+
+            string translation = value.Value<string>();
+            if (string.IsNullOrEmpty(translation))
+                continue;
+
+            if (!translationMaps.TryGetValue(key, out var langMap))
+            {
+                langMap = [];
+                translationMaps[key] = langMap;
+            }
+
+            langMap[languageId] = translation.Replace("\\n", "\n").Replace("\\r", "\r");
+        }
+    }
+#endif
+
+    // Function to get a list of JSON file names in a directory
+    private static string[] GetJsonFileNames(Assembly assembly, string directoryName)
+    {
+        string[] resourceNames = assembly.GetManifestResourceNames();
+        return resourceNames.Where(resourceName => resourceName.StartsWith(directoryName) && (resourceName.EndsWith(".jsonc") || resourceName.EndsWith(".json"))).ToArray();
+    }
+
+    public static string GetString(string s, Dictionary<string, string> replacementDic = null, bool console = false)
+    {
+        SupportedLangs langId;
+        int modLanguageId = Options.IsLoaded ? Options.ModLanguage.GetValue() : 0;
+
+        if (console)
+            langId = SupportedLangs.English;
+        else
+        {
+            if (modLanguageId != 0)
+                langId = (SupportedLangs)(modLanguageId + 99);
+            else if (Main.ForceOwnLanguage.Value)
+                langId = GetUserTrueLang();
+            else
+                langId = TranslationController.InstanceExists
+                ? TranslationController.Instance.currentLanguage.languageID
+                : SupportedLangs.English;
+        }
+
+        if (GameStates.InGame)
+        {
+            int roomNumber = -1;
+            if (SubmergedCompatibility.IsSubmerged() && int.TryParse(s, out roomNumber) && roomNumber is >= 128 and <= 135)
+                s = $"SubmergedRoomName.{roomNumber}";
+
+            if (Options.CurrentGameMode == CustomGameMode.Deathrace)
+            {
+                if ((roomNumber != -1 || int.TryParse(s, out roomNumber)) && Deathrace.CoordinateChecks.ContainsKey(roomNumber))
+                    s = "Deathrace.CoordinateCheck";
+            }
+        }
+
+        string str = GetString(s, langId);
+
+        if (replacementDic is { Count: > 0 })
+        {
+            foreach (KeyValuePair<string, string> rd in replacementDic)
+                str = str.Replace(rd.Key, rd.Value);
+        }
+
+        return str;
+    }
+
+    public static string GetString(string str, SupportedLangs langId)
+    {
+        try
+        {
+            if (TranslateMaps.TryGetValue(str, out var dic))
+            {
+                if (dic.TryGetValue((int)langId, out var res) && !string.IsNullOrEmpty(res))
+                    return res;
+
+                if (langId != SupportedLangs.English)
+                    return GetString(str, SupportedLangs.English);
+            }
+            else if (TryGetStringName(str, out var stringName)) return GetString(stringName);
+        }
+        catch (Exception ex)
+        {
+            Logger.Fatal($"Error oucured at [{str}] in the translation file", "Translator");
+            Logger.Error("Here was the error:\n" + ex, "Translator");
+        }
+
+        return $"*{str}";
+    }
+
+    public static string GetString(StringNames stringName)
+    {
+        return TranslationController.Instance.GetString(stringName);
+    }
+    public static string GetString(SystemTypes room)
+    {
+        return TranslationController.Instance.GetString(room);
+    }
+    private static bool TryGetStringName(string str, out StringNames result)
+    {
+        for (int i = 0; i < AllStringNames.Length; i++)
+        {
+            var val = AllStringNames[i];
+            if (val.ToString() == str)
+            {
+                result = val;
+                return true;
+            }
+        }
+        result = default;
+        return false;
+    }
+    public static string GetRoleString(string str, bool forUser = true)
+    {
+        SupportedLangs currentLanguage = TranslationController.Instance.currentLanguage.languageID;
+        SupportedLangs lang = forUser ? currentLanguage : SupportedLangs.English;
+        if (Main.ForceOwnLanguageRoleName.Value) lang = GetUserTrueLang();
+
+        return GetString(str, lang);
+    }
+
+    public static SupportedLangs GetUserTrueLang()
+    {
+        try
+        {
+            string name = CultureInfo.CurrentUICulture.Name;
+            if (name.StartsWith("en")) return SupportedLangs.English;
+            if (name.StartsWith("zh_CHT")) return SupportedLangs.TChinese;
+            if (name.StartsWith("zh")) return SupportedLangs.SChinese;
+            if (name.StartsWith("ru")) return SupportedLangs.Russian;
+            return TranslationController.Instance.currentLanguage.languageID;
+        }
+        catch { return SupportedLangs.English; }
+    }
+
+    private static void UpdateCustomTranslation(string filename /*, SupportedLangs lang*/)
+    {
+        var path = $"{Main.DataPath}/{LanguageFolderName}/{filename}";
+
+        if (File.Exists(path))
+        {
+            Logger.Info("Updating Custom Translations", "UpdateCustomTranslation");
+
+            try
+            {
+                List<string> textStrings = [];
+
+                using (StreamReader reader = new(path, Encoding.GetEncoding("UTF-8")))
+                {
+                    while (reader.ReadLine() is { } line)
+                    {
+                        // Split the line by ':' to get the first part
+                        string[] parts = line.Split(':');
+
+                        // Check if there is at least one part before ':'
+                        if (parts.Length >= 1)
+                        {
+                            // Trim any leading or trailing spaces and add it to the list
+                            string textString = parts[0].Trim();
+                            textStrings.Add(textString);
+                        }
+                    }
+                }
+
+                var sb = new StringBuilder();
+
+                foreach (string templateString in TranslateMaps.Keys)
+                {
+                    if (!textStrings.Contains(templateString))
+                        sb.Append($"{templateString}:\n");
+                }
+
+                using FileStream fileStream = new(path, FileMode.Append, FileAccess.Write);
+                using StreamWriter writer = new(fileStream);
+                writer.WriteLine(sb.ToString());
+            }
+            catch (Exception e) { Logger.Error("An error occurred: " + e.Message, "Translator"); }
+        }
+    }
+
+    private static void LoadCustomTranslation(string filename, SupportedLangs lang)
+    {
+        var path = $"{Main.DataPath}/{LanguageFolderName}/{filename}";
+
+        if (File.Exists(path))
+        {
+            Logger.Info($"Loading Custom Translation File: {filename}", "LoadCustomTranslation");
+
+            try
+            {
+                using StreamReader sr = new(path, Encoding.GetEncoding("UTF-8"));
+
+                while (sr.ReadLine() is { } text)
+                {
+                    string[] tmp = text.Split(':');
+
+                    if (tmp.Length > 1 && tmp[1] != "")
+                    {
+                        try { TranslateMaps[tmp[0]][(int)lang] = string.Join(':', tmp[1..]).Replace("\\n", "\n").Replace("\\r", "\r"); }
+                        catch (KeyNotFoundException) { Logger.Warn($"Invalid Key: {tmp[0]}", "LoadCustomTranslation"); }
+                    }
+                }
+            }
+            catch (ObjectDisposedException) { }
+            catch (Exception e) { Logger.Error(e.ToString(), "Translator.LoadCustomTranslation"); }
+        }
+        else
+            Logger.Error($"Custom Translation File Not Found: {filename}", "LoadCustomTranslation");
+    }
+
+    private static void CreateTemplateFile()
+    {
+        File.WriteAllText($"{Main.DataPath}/{LanguageFolderName}/template.dat", TranslateMaps.Keys.Join('\n', x => $"{x}:"));
+    }
+
+    public static void ExportCustomTranslation()
+    {
+        LoadLangs();
+        var sb = new StringBuilder();
+        SupportedLangs lang = TranslationController.Instance.currentLanguage.languageID;
+
+        foreach (KeyValuePair<string, Dictionary<int, string>> title in TranslateMaps)
+        {
+            string text = title.Value.GetValueOrDefault((int)lang, "");
+            sb.Append($"{title.Key}:{text.Replace("\n", "\\n").Replace("\r", "\\r")}\n");
+        }
+
+        File.WriteAllText($"{Main.DataPath}/{LanguageFolderName}/export_{lang}.dat", sb.ToString());
+    }
+
+    public static string FixRoleName(this string infoLong, CustomRoles role)
+    {
+        if (!OriginalRoleNames.TryGetValue(role, out var d) || !d.TryGetValue(GetUserTrueLang(), out var o)) return infoLong;
+        string modifiedName = role.ToColoredString();
+        return infoLong.Contains(modifiedName) ? infoLong : infoLong.Replace(o, modifiedName, StringComparison.OrdinalIgnoreCase);
+    }
+
+    public static bool LangHasSensitiveOutlineText()
+    {
+        return TranslationController.InstanceExists && TranslationController.Instance.currentLanguage.languageID is
+                SupportedLangs.Russian or
+                SupportedLangs.Korean or
+                SupportedLangs.Japanese or
+                SupportedLangs.SChinese or
+                SupportedLangs.TChinese;
+    }
+    public static bool LangHasSensitiveOutlineText(SupportedLangs lang)
+    {
+        return lang is
+            SupportedLangs.Russian or
+            SupportedLangs.Korean or
+            SupportedLangs.Japanese or
+            SupportedLangs.SChinese or
+            SupportedLangs.TChinese;
+    }
+}

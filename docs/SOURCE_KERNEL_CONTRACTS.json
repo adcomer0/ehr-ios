@@ -1,0 +1,190 @@
+{
+  "schema": "ehr.ios-port-contracts.v1",
+  "upstream_commit": "ce23f0d050f617a59507e5bb0fbfff751d4b5134",
+  "status": "proposed_architectural_contracts_not_implemented_by_this_inventory_stage",
+  "implementation_strategy": "Reuse pinned EHR role and central-pipeline source through a generated, ABI-validated game facade and static patch dispatcher. The contracts describe the behavioral boundaries that source reuse must preserve; they do not require rewriting each role in C++.",
+  "common_invariants": [
+    "A role name, source constructor, compiled assembly or export does not prove a working role in the actual game.",
+    "All Unity/game-object access occurs on the actual game main thread; background work uses copied immutable data.",
+    "Object references retained across callbacks are rooted in their owning managed runtime and released exactly once.",
+    "Game IL2CPP objects and NativeAOT managed objects are separate heaps; raw game pointers must never be treated as NativeAOT object references.",
+    "Each game target is resolved against actual pinned metadata, native image hash/UUID, full method signature and ARM64 ABI.",
+    "Player identity includes round generation and connection incarnation. Death event identity also includes death generation so resurrection/repeated deaths work.",
+    "Mutating host behavior requires current host authority and the appropriate lifecycle phase; cancellation semantics are specific to each upstream feature.",
+    "Unknown bindings remain unavailable and observable. Returning a successful placeholder is not implementation."
+  ],
+  "contracts": [
+    {
+      "id": "source_bootstrap_and_static_dispatch",
+      "priority": 0,
+      "depends_on": [],
+      "boundary": "Native callback -> typed facade wrappers -> pinned EHR prefix/original/postfix/finalizer dispatcher",
+      "required_behavior": [
+        "Generate explicit factories/roots for RoleBase, IAddon, IGhostRole, IVanillaSettingHolder, IHideAndSeekRole and natural-disaster constructors; preserve upstream enum-to-type mapping and settings registration.",
+        "Replace Harmony.PatchAll/runtime Patch calls with an explicit generated registration policy. Preserve class and method attributes, Prepare/Cleanup gates, priority/dependency ordering and duplicate-registration behavior.",
+        "Preserve bool-prefix skip semantics, mutable arguments/results, per-invocation __state, postfix result semantics and exception/finalizer behavior. Original-first is insufficient for most EHR patches.",
+        "Resolve coroutine MoveNext targets from this game's metadata rather than assuming generated Windows class names or field layouts.",
+        "Provide a non-JIT cast/factory path where Expression.Compile, Activator or reflection-based generic construction is not AOT-safe.",
+        "Define explicit policies for desktop-only Discord, text input, updater and optional Submerged/LevelImposter integrations; unavailable external modules must not break startup."
+      ],
+      "source_anchors": ["Main.cs:88", "Main.cs:985", "Main.cs:1119", "Modules/Il2CppHelpers/CastHelper.cs:32", "Modules/OptionHolder.cs:1196", "Patches/IntroPatch.cs:24", "Patches/ExilePatch.cs:250"],
+      "generator_input": "IL2CPP/patch_dispatch.json and Mono/patch_dispatch.json",
+      "acceptance_evidence": ["Generated registration is compared against pinned callback manifest with explicit unresolved targets", "Real callback round trip for primitive, object, ref argument/result, per-call state, struct and exception cases", "Actual game startup executes settings and role factory construction without fake game objects"]
+    },
+    {
+      "id": "lifecycle_player_role_state",
+      "priority": 0,
+      "depends_on": ["source_bootstrap_and_static_dispatch"],
+      "inputs": ["game boot", "client create/destroy", "lobby enter/leave", "host change", "round start", "player join/leave", "death/revival", "meeting/exile", "game end"],
+      "required_behavior": [
+        "Preserve Main caches, PlayerState, primary role, ordered add-ons, task state, death reason and real-killer records.",
+        "Track actual ship/round, authority, intro completion, task phase, meeting and exile rather than a single Started flag.",
+        "Port upstream fixed-update/low-load scheduling and LateTask timing through a main-thread scheduler; lifecycle transitions cannot leak delayed actions into another round.",
+        "Keep stable facade object identity, Unity destroyed-object/null semantics, collection enumeration and IL2CPP string/array marshaling."
+      ],
+      "source_anchors": ["Modules/GameState.cs:12", "Modules/GameState.cs:586", "Modules/GameState.cs:594", "Modules/FixedUpdateCaller.cs:10", "Patches/PlayerControlPatch.cs:1570"],
+      "acceptance_evidence": ["Two consecutive actual rounds reset state", "Host loss, reconnect, meeting, exile and revive transitions retain correct identities", "Delayed action cannot use collected game objects or a prior-round identity"]
+    },
+    {
+      "id": "settings_registry_persistence_and_ui",
+      "priority": 1,
+      "depends_on": ["source_bootstrap_and_static_dispatch"],
+      "required_behavior": [
+        "Execute upstream setup factories to create the effective typed settings registry; the lexical option-site count is not the expanded registry.",
+        "Preserve numeric IDs, parent relationships, mode/team visibility, ValueRule index/value conversion, formatting and update/sync events.",
+        "Preserve twenty presets, defaults, localization keys and iOS-sandbox persistence; expose actual settings to touch UI rather than another independent list of feature flags.",
+        "Snapshot schema/values for reproducible comparisons, including loop-generated and StartSetup/AutoSetupOption IDs."
+      ],
+      "source_anchors": ["Modules/OptionItem/OptionItem.cs:11", "Modules/OptionItem/OptionItem.cs:273", "Modules/OptionSaver.cs:97", "Modules/OptionSaver.cs:110", "Modules/OptionHolder.cs:3461", "Roles/RoleBase.cs:217"],
+      "acceptance_evidence": ["Expanded ID/default/range/parent registry is compared to pinned upstream execution", "Preset edit/save/reload works in iOS sandbox", "Settings changes affect the actual role pipeline and vanilla client settings"]
+    },
+    {
+      "id": "assignment_and_recipient_projection",
+      "priority": 1,
+      "depends_on": ["lifecycle_player_role_state", "settings_registry_persistence_and_ui"],
+      "required_behavior": [
+        "Preserve upstream host start coroutine sequencing, quotas, chances, exclusions, add-on selection, initializers and role instance creation.",
+        "Represent base-role projection as (seer,target) rather than one global role per player. Preserve host and vanilla-recipient desynchronized base roles.",
+        "Preserve assignment, intro, task assignment and settings send ordering plus recipient NetId/client routing.",
+        "Do not expose secret role identity to other recipients while presenting role descriptions to the intended player."
+      ],
+      "source_anchors": ["Patches/OnGameStartedPatch.cs:417", "Patches/OnGameStartedPatch.cs:433", "Patches/OnGameStartedPatch.cs:1170", "Patches/OnGameStartedPatch.cs:1271", "Modules/CustomRolesHelper.cs:104"],
+      "acceptance_evidence": ["Actual host plus two vanilla clients receive intended base-role projections", "Automatic selected-role/add-on assignment replaces manual ID configuration", "Next round role allocation resets without leaking prior roles"]
+    },
+    {
+      "id": "per_player_options",
+      "priority": 1,
+      "depends_on": ["assignment_and_recipient_projection"],
+      "required_behavior": [
+        "Preserve upstream option construction and modifier ordering, role options, add-on interactions, speed inversion/freeze, light/sabotage state, cooldowns and dirty/coalesced sends.",
+        "Serialize actual current-game NormalGameOptionsV12/HideNSeekGameOptionsV12 and route to the correct client. Confirm this game's layout/signatures rather than serializing a source-only placeholder.",
+        "Preserve the scoped behavior of AURoleOptions static backing state so building one recipient's options does not contaminate the next recipient.",
+        "Restore normal settings after temporary effects, death/meeting, disconnect and role changes as upstream specifies."
+      ],
+      "source_anchors": ["Modules/GameOptionsSender/GameOptionsSender.cs:16", "Modules/GameOptionsSender/GameOptionsSender.cs:27", "Modules/GameOptionsSender/PlayerGameOptionsSender.cs:188", "Modules/GameOptionsSender/PlayerGameOptionsSender.cs:380", "Modules/GameOptionsSender/PlayerGameOptionsSender.cs:518", "Modules/GameOptionsSender/PlayerGameOptionsSender.cs:696"],
+      "acceptance_evidence": ["Flash speed and Watcher votes differ for intended vanilla recipient", "Torch vision updates across actual light sabotage and restoration", "Two recipients with conflicting options do not inherit each other's values"]
+    },
+    {
+      "id": "kill_validation_death_and_reporting",
+      "priority": 2,
+      "depends_on": ["per_player_options"],
+      "required_behavior": [
+        "Intercept actual CmdCheckMurder/CheckMurder before the original. Preserve current authority, phase, distance/rate checks, game-mode dispatch, global role veto/protect/redirect order, target role checks, cooldowns and actual result flags.",
+        "Preserve MurderPlayer prefix/postfix and __state; distinguish rejected/protected interactions from confirmed deaths, suicides and delayed or redirected kills.",
+        "Update real killer/death reason and global/role murder callbacks once per actual event, with repeated deaths after resurrection supported.",
+        "Port report validation and emergency/null-body handling, queued reports, blocked reporting, role exceptions and forced meetings before claiming full Bait parity."
+      ],
+      "source_anchors": ["Patches/PlayerControlPatch.cs:66", "Patches/PlayerControlPatch.cs:84", "Patches/PlayerControlPatch.cs:274", "Patches/PlayerControlPatch.cs:627", "Patches/PlayerControlPatch.cs:759", "Patches/PlayerControlPatch.cs:1014"],
+      "acceptance_evidence": ["Real vanilla-client kill request can be rejected without original kill", "Protected/redirected attacks set correct state/cooldown and do not schedule Bait", "Actual automatic Bait report works for other-client killer and configured delays", "Meeting/report lock and revive/repeated-death cases match upstream"]
+    },
+    {
+      "id": "meetings_votes_and_exile",
+      "priority": 3,
+      "depends_on": ["kill_validation_death_and_reporting"],
+      "required_behavior": [
+        "Preserve PlayerId struct ABI, player/skip/no-vote semantics, role vetoes, vote weights, swaps, overrule/guess/chat commands, ties and tally ordering.",
+        "Run report/meeting start/end callbacks and queued meeting deaths in upstream order.",
+        "Handle base exile and Airship coroutine completion once, then run WrapUpPostfix/WrapUpFinalizer with actual exiled data."
+      ],
+      "source_anchors": ["Patches/MeetingHudPatch.cs:20", "Patches/MeetingHudPatch.cs:715", "Patches/MeetingHudPatch.cs:1465", "Patches/ExilePatch.cs:20", "Patches/ExilePatch.cs:238", "Patches/ExilePatch.cs:250"],
+      "acceptance_evidence": ["Actual host and vanilla voters agree on weighted/swapped result", "Tie/skip/no-vote handling and meeting death queues match upstream", "Airship and ordinary exile callbacks produce one transition"]
+    },
+    {
+      "id": "custom_win_pipeline",
+      "priority": 3,
+      "depends_on": ["meetings_votes_and_exile"],
+      "required_behavior": [
+        "Preserve normal/custom winner priorities, team/id/role winners and additional winner accumulation, source interactions and game-mode end predicates.",
+        "Do not suppress the normal game's end checks unless the replacement path can finish successfully.",
+        "Project winners to vanilla ghost roles, resynchronize alive/dead data and complete upstream staged end-game sequence rather than setting an internal winner enum only."
+      ],
+      "source_anchors": ["Modules/CustomWinnerHolder.cs:6", "Patches/CheckGameEndPatch.cs:44", "Patches/CheckGameEndPatch.cs:392", "Patches/CheckGameEndPatch.cs:408", "Patches/ExilePatch.cs:64"],
+      "acceptance_evidence": ["Jester exile produces correct actual vanilla win/lose screens", "Executioner and additional-winner interactions resolve in source order", "Task, sabotage, parity and mode-specific endings complete and return to lobby"]
+    },
+    {
+      "id": "abilities_tasks_world_and_modes",
+      "priority": 4,
+      "depends_on": ["custom_win_pipeline"],
+      "required_behavior": [
+        "Provide actual vent, pet, shapeshift, vanish, sabotage, tasks, positions, teleport, collider and map-system access used by the pinned source, including appropriate pre-original veto points.",
+        "Preserve vector/value-type ABI and coroutine scheduling; Unity objects allocated by a role must be actual game objects with safe lifecycle handling.",
+        "Run each custom mode through its own assignment, kill/report, timer, HUD/options and win branches; enum presence does not enable a mode."
+      ],
+      "source_anchors": ["Roles/RoleBase.cs:74", "Roles/RoleBase.cs:80", "Roles/RoleBase.cs:82", "Roles/RoleBase.cs:112", "Patches/PetActionsPatch.cs:19", "Patches/PhantomRolePatch.cs:10", "Modules/OptionHolder.cs:24"],
+      "acceptance_evidence": ["Ability origin from actual vanilla pet/vent/role RPC causes correct visible effect", "Timers and temporary effects reset across map/meeting/round transitions", "Each of eighteen selectable modes has an explicit actual-game scenario result"]
+    },
+    {
+      "id": "recipient_notifications_and_native_touch_ui",
+      "priority": 1,
+      "depends_on": ["lifecycle_player_role_state", "settings_registry_persistence_and_ui"],
+      "required_behavior": [
+        "Provide actual Unity text/button/UI object access or equivalent iOS touch settings UI backed by the real registry; preserve role ability affordances for the host.",
+        "Preserve per-recipient name/chat/role-description projection and throttling; custom EHR RPC alone cannot render UI for vanilla players.",
+        "Preserve intended role secrecy, names, titles, notifications, sounds and localization without leaking temporary display overrides to permanent player identity."
+      ],
+      "source_anchors": ["Modules/Utils.cs:1831", "Roles/RoleBase.cs:178", "Roles/RoleBase.cs:184", "Roles/RoleBase.cs:186", "Patches/GameOptionsMenuPatch.cs:54", "Patches/ChatCommandPatch.cs:100"],
+      "acceptance_evidence": ["Host changes actual settings using touch", "Only intended vanilla recipient sees private role text", "Ability use and state changes update actual game UI and clear temporary text correctly"]
+    }
+  ],
+  "feature_batches": [
+    {
+      "id": "B0",
+      "name": "Generated source bootstrap and ABI dispatch",
+      "contracts": ["source_bootstrap_and_static_dispatch", "lifecycle_player_role_state"],
+      "bounded_deliverable": "Reuse the compiled upstream source with generated role factories/AOT roots and actual typed game facade. Produce a resolved/unresolved patch target manifest and demonstrate dispatch semantics in the actual game; no role-count completion credit yet."
+    },
+    {
+      "id": "B1",
+      "name": "Host settings, automatic assignment and recipient options",
+      "contracts": ["settings_registry_persistence_and_ui", "assignment_and_recipient_projection", "per_player_options", "recipient_notifications_and_native_touch_ui"],
+      "first_feature_scenarios": ["Flash", "Watcher", "Torch"],
+      "bounded_deliverable": "Select real settings on phone, assign add-ons automatically and observe targeted speed/vote/vision effects on vanilla clients, including freeze/light restoration interactions. These scenarios exercise central code outside their small role files."
+    },
+    {
+      "id": "B2",
+      "name": "Kill/report pipeline and complete Bait behavior",
+      "contracts": ["kill_validation_death_and_reporting"],
+      "first_feature_scenarios": ["Bait", "Sheriff", "a protective target interaction"],
+      "bounded_deliverable": "Preserve upstream pre-kill checks and MurderPlayer state, validate a rejected/protected attack and a real delayed Bait report. Retire the manual-only Bait implementation once actual upstream pipeline parity is observed."
+    },
+    {
+      "id": "B3",
+      "name": "Meeting, exile and end-game source pipelines",
+      "contracts": ["meetings_votes_and_exile", "custom_win_pipeline"],
+      "first_feature_scenarios": ["Jester", "Executioner", "weighted or swapped vote role", "additional-winner role"],
+      "bounded_deliverable": "Validate actual vanilla voting and winner screens plus ordinary/Airship exile and next-lobby transition; setting only CustomWinnerHolder does not complete this batch."
+    },
+    {
+      "id": "B4",
+      "name": "Abilities, tasks, map effects and remaining role interactions",
+      "contracts": ["abilities_tasks_world_and_modes"],
+      "bounded_deliverable": "Bind remaining actually referenced game members and validate each dependency family and interaction through reused upstream role code; maintain a mechanics/evidence matrix rather than marking every role complete because it compiles."
+    },
+    {
+      "id": "B5",
+      "name": "Alternative modes, presentation and platform completion",
+      "contracts": ["abilities_tasks_world_and_modes", "recipient_notifications_and_native_touch_ui"],
+      "bounded_deliverable": "Exercise each of the seventeen nonstandard modes separately, localization/settings presets and host touch controls on the physical phone. Record concrete platform substitutes or unavailable external-map integrations instead of claiming desktop-only modules are running."
+    }
+  ]
+}

@@ -1,0 +1,639 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using Hazel;
+
+// ReSharper disable ConvertIfStatementToReturnStatement
+// ReSharper disable ForCanBeConvertedToForeach
+
+namespace EHR;
+
+public static class CollectionExtensions
+{
+    /// <param name="dictionary">The <see cref="Dictionary{TKey,TValue}" /> to search</param>
+    /// <typeparam name="TKey">The type of the keys in the <paramref name="dictionary" /></typeparam>
+    /// <typeparam name="TValue">The type of the values in the <paramref name="dictionary" /></typeparam>
+    extension<TKey, TValue>(Dictionary<TKey, TValue> dictionary)
+    {
+        /// <summary>
+        ///     Returns the key of a dictionary by its value
+        /// </summary>
+        /// <param name="value">The <typeparamref name="TValue" /> used to search for the corresponding key</param>
+        /// <param name="defaultValue">The return value if <paramref name="value"/> is not found in the <paramref name="dictionary"/></param>
+        /// <returns>
+        ///     The key of the <paramref name="dictionary" /> that corresponds to the given <paramref name="value" />, or
+        ///     <paramref name="defaultValue"/> if the <paramref name="value" /> is not found in the
+        ///     <paramref name="dictionary" />
+        /// </returns>
+        public TKey GetKeyByValue(TValue value, TKey defaultValue = default)
+        {
+            foreach (KeyValuePair<TKey, TValue> pair in dictionary)
+            {
+                if (pair.Value.Equals(value))
+                    return pair.Key;
+            }
+
+            return defaultValue;
+        }
+
+        /// <summary>
+        ///     Sets the value for all existing keys in a dictionary to a specific value
+        /// </summary>
+        /// <param name="value"></param>
+        public void SetAllValues(TValue value)
+        {
+#if IL2CPP
+            foreach (TKey key in dictionary.Keys)
+#else
+            foreach (TKey key in dictionary.Keys.ToArray())
+#endif
+                dictionary[key] = value;
+        }
+
+        /// <summary>
+        ///     Adjusts the value for all existing keys in a dictionary
+        /// </summary>
+        /// <param name="adjust">The function to adjust the values with</param>
+        public void AdjustAllValues(Func<TValue, TValue> adjust)
+        {
+#if IL2CPP
+            foreach (TKey key in dictionary.Keys)
+#else
+            foreach (TKey key in dictionary.Keys.ToArray())
+#endif
+                dictionary[key] = adjust(dictionary[key]);
+        }
+
+        /// <summary>
+        ///     Adds a range of elements to a dictionary
+        /// </summary>
+        /// <param name="other">The dictionary containing the elements to add</param>
+        /// <param name="overrideExistingKeys">
+        ///     Whether to override existing keys in the <paramref name="dictionary" /> with the
+        ///     same keys in the <paramref name="other" /> dictionary. If <c>true</c>, the same keys in the
+        ///     <paramref name="dictionary" /> will be overwritten with the values from the <paramref name="other" /> dictionary.
+        ///     If <c>false</c>, the same keys in the <paramref name="dictionary" /> will be kept and the values from the
+        ///     <paramref name="other" /> dictionary will be ignored
+        /// </param>
+        /// <returns>The <paramref name="dictionary" /> with the elements from the <paramref name="other" /> dictionary added</returns>
+        public Dictionary<TKey, TValue> AddRange(Dictionary<TKey, TValue> other, bool overrideExistingKeys = true)
+        {
+            foreach ((TKey key, TValue value) in other)
+            {
+                if (overrideExistingKeys || !dictionary.ContainsKey(key))
+                    dictionary[key] = value;
+            }
+
+            return dictionary;
+        }
+    }
+
+    /// <param name="collection">The collection</param>
+    /// <typeparam name="T">The type of the collection</typeparam>
+    extension<T>(IEnumerable<T> collection)
+    {
+        /// <summary>
+        ///     Returns a random element from a collection
+        /// </summary>
+        /// <returns>
+        ///     A random element from the collection, or the default value of <typeparamref name="T" /> if the collection is
+        ///     empty
+        /// </returns>
+        public T RandomElement()
+        {
+            if (collection is IReadOnlyList<T> list) return list.RandomElement();
+            return collection.ToList().RandomElement();
+        }
+
+        /// <summary>
+        ///     Combines multiple collections into a single collection
+        /// </summary>
+        /// <param name="collections">The other collections to add to <paramref name="collection" /></param>
+        /// <returns>
+        ///     A collection containing all elements of <paramref name="collection" /> and all
+        ///     <paramref name="collections" />
+        /// </returns>
+        public IEnumerable<T> CombineWith(params IEnumerable<T>[] collections)
+        {
+            return collection.Concat(collections.Flatten());
+        }
+
+        /// <summary>
+        ///     Executes an action for each element in a collection
+        /// </summary>
+        /// <param name="action">The action to execute for each element</param>
+        [Annotations.CollectionAccess(Annotations.CollectionAccessType.Read)]
+        public void Do([Annotations.InstantHandle] Action<T> action)
+        {
+            if (collection is List<T> list)
+            {
+                for (var i = 0; i < list.Count; i++) action(list[i]);
+
+                return;
+            }
+
+            foreach (T element in collection) action(element);
+        }
+
+        /// <summary>
+        ///     Executes an action for each element in a collection if the predicate is true
+        /// </summary>
+        /// <param name="fast">Whether to use a fast loop or linq</param>
+        /// <param name="predicate">The predicate to check for each element</param>
+        /// <param name="action">The action to execute for each element that satisfies the predicate</param>
+        [Annotations.CollectionAccess(Annotations.CollectionAccessType.Read)]
+        public void DoIf(Func<T, bool> predicate, [Annotations.InstantHandle] Action<T> action, bool fast = true)
+        {
+            if (fast)
+            {
+                if (collection is List<T> list)
+                {
+                    for (var i = 0; i < list.Count; i++)
+                    {
+                        T element = list[i];
+                        if (predicate(element)) action(element);
+                    }
+
+                    return;
+                }
+
+                foreach (T element in collection)
+                {
+                    if (predicate(element))
+                        action(element);
+                }
+
+                return;
+            }
+
+            collection.Where(predicate).ToArray().Do(action);
+        }
+
+        /// <summary>
+        ///     Splits a collection into two collections based on a predicate
+        /// </summary>
+        /// <param name="predicate">The predicate to split the collection by</param>
+        /// <returns>
+        ///     A tuple containing two collections: one with elements that satisfy the predicate, and one with elements that
+        ///     do not
+        /// </returns>
+        public (List<T> TrueList, List<T> FalseList) Split(Func<T, bool> predicate)
+        {
+            var list1 = new List<T>();
+            var list2 = new List<T>();
+
+            foreach (T element in collection)
+            {
+                if (predicate(element))
+                    list1.Add(element);
+                else
+                    list2.Add(element);
+            }
+
+            return (list1, list2);
+        }
+
+        /// <summary>
+        ///     Determines whether a collection contains any elements that satisfy a predicate and returns the first element that
+        ///     satisfies the predicate
+        /// </summary>
+        /// <param name="predicate">The predicate to check for each element</param>
+        /// <param name="element">
+        ///     The first element that satisfies the predicate, or the default value of <typeparamref name="T" />
+        ///     if no elements satisfy the predicate
+        /// </param>
+        /// <returns><c>true</c> if the collection contains any elements that satisfy the predicate, <c>false</c> otherwise</returns>
+        [Annotations.CollectionAccess(Annotations.CollectionAccessType.Read)]
+        public bool FindFirst([Annotations.InstantHandle] Func<T, bool> predicate, out T element)
+        {
+            if (collection is List<T> list)
+            {
+                for (var i = 0; i < list.Count; i++)
+                {
+                    T item = list[i];
+
+                    if (predicate(item))
+                    {
+                        element = item;
+                        return true;
+                    }
+                }
+
+                element = default(T);
+                return false;
+            }
+
+            foreach (T item in collection)
+            {
+                if (predicate(item))
+                {
+                    element = item;
+                    return true;
+                }
+            }
+
+            element = default(T);
+            return false;
+        }
+
+        /// <summary>
+        /// Takes the specified number of random elements from the collection, and adds them to a new List.
+        /// </summary>
+        /// <param name="count">The number of random elements to pick.</param>
+        /// <returns>A new List with the specified number of random elements from the original collection.</returns>
+        public List<T> TakeRandom(int count)
+        {
+            if (collection == null || count <= 0)
+                return [];
+
+            var reservoir = new List<T>(count);
+            int i = 0;
+
+            foreach (var item in collection)
+            {
+                if (i < count)
+                {
+                    reservoir.Add(item);
+                }
+                else
+                {
+                    int j = IRandom.Instance.Next(i + 1);
+                    if (j < count)
+                        reservoir[j] = item;
+                }
+                i++;
+            }
+
+            return reservoir;
+        }
+
+        /// <summary>
+        ///     Partitions a collection into a specified number of parts
+        /// </summary>
+        /// <param name="parts">The number of parts to partition the collection into</param>
+        /// <returns>A collection of collections, each containing a part of the original collection</returns>
+        public IEnumerable<IEnumerable<T>> Partition(int parts)
+        {
+            List<T> list = collection.ToList();
+            int length = list.Count;
+            if (parts <= 0 || length == 0) yield break;
+
+            if (parts > length) parts = length;
+
+            int size = length / parts;
+            int remainder = length % parts;
+            var index = 0;
+
+            for (var i = 0; i < parts; i++)
+            {
+                int partSize = size + (i < remainder ? 1 : 0);
+                yield return list.Skip(index).Take(partSize);
+                index += partSize;
+            }
+        }
+
+        /// <summary>
+        ///     Removes an element from a collection
+        /// </summary>
+        /// <param name="element">The element to remove</param>
+        /// <returns>
+        ///     A collection containing all elements of <paramref name="collection" /> except for <paramref name="element" />
+        /// </returns>
+        public IEnumerable<T> Without(T element)
+        {
+            return collection.Where(x => !x.Equals(element));
+        }
+
+        /// <summary>
+        ///     Shuffles all elements in a collection randomly
+        /// </summary>
+        /// <returns>A new, shuffled collection as a <see cref="List{T}" /></returns>
+        public List<T> Shuffle()
+        {
+            if (collection is not List<T> list)
+                list = collection.ToList();
+        
+            int n = list.Count;
+            var r = IRandom.Instance;
+
+            while (n > 1)
+            {
+                n--;
+                int k = r.Next(n + 1);
+                (list[n], list[k]) = (list[k], list[n]);
+            }
+
+            return list;
+        }
+
+        public string Join(string separator, Func<T, string> selector)
+        {
+            separator ??= string.Empty;
+            selector ??= x => x.ToString();
+
+            using IEnumerator<T> enumerator = collection.GetEnumerator();
+
+            if (!enumerator.MoveNext())
+                return string.Empty;
+
+            StringBuilder sb = new();
+
+            sb.Append(selector(enumerator.Current));
+
+            while (enumerator.MoveNext())
+            {
+                sb.Append(separator);
+                sb.Append(selector(enumerator.Current));
+            }
+
+            return sb.ToString();
+        }
+
+        public string Join(char separator, Func<T, string> selector)
+        {
+            selector ??= x => x.ToString();
+
+            using IEnumerator<T> enumerator = collection.GetEnumerator();
+
+            if (!enumerator.MoveNext())
+                return string.Empty;
+
+            StringBuilder sb = new();
+
+            sb.Append(selector(enumerator.Current));
+
+            while (enumerator.MoveNext())
+            {
+                sb.Append(separator);
+                sb.Append(selector(enumerator.Current));
+            }
+
+            return sb.ToString();
+        }
+    }
+
+    /// <param name="collection">The collection</param>
+    /// <typeparam name="T">The type of the collection</typeparam>
+    extension<T>(IReadOnlyList<T> collection)
+    {
+        /// <summary>
+        ///     Partitions a list into a specified number of parts
+        /// </summary>
+        /// <param name="parts">The number of parts to partition the list into</param>
+        /// <returns>A list of lists, each containing a part of the original list</returns>
+        public IEnumerable<IEnumerable<T>> Partition(int parts)
+        {
+            int length = collection.Count;
+            if (parts <= 0 || length == 0) yield break;
+
+            if (parts > length) parts = length;
+
+            int size = length / parts;
+            int remainder = length % parts;
+            var index = 0;
+
+            for (var i = 0; i < parts; i++)
+            {
+                int partSize = size + (i < remainder ? 1 : 0);
+                yield return collection.Skip(index).Take(partSize);
+                index += partSize;
+            }
+        }
+
+        /// <summary>
+        ///     Returns a random element from a collection
+        /// </summary>
+        /// <returns>
+        ///     A random element from the collection, or the default value of <typeparamref name="T" /> if the collection is
+        ///     empty
+        /// </returns>
+        public T RandomElement()
+        {
+            if (collection.Count == 0) return default(T);
+            return collection[IRandom.Instance.Next(collection.Count)];
+        }
+
+        public string Join(string separator, Func<T, string> selector)
+        {
+            separator ??= string.Empty;
+            selector ??= x => x.ToString();
+
+            int count = collection.Count;
+
+            if (count == 0)
+                return string.Empty;
+
+            StringBuilder sb = new();
+            sb.Append(selector(collection[0]));
+
+            for (int i = 1; i < count; i++)
+            {
+                sb.Append(separator);
+                sb.Append(selector(collection[i]));
+            }
+
+            return sb.ToString();
+        }
+
+        public string Join(char separator, Func<T, string> selector)
+        {
+            selector ??= x => x.ToString();
+
+            int count = collection.Count;
+
+            if (count == 0)
+                return string.Empty;
+
+            StringBuilder sb = new();
+            sb.Append(selector(collection[0]));
+
+            for (int i = 1; i < count; i++)
+            {
+                sb.Append(separator);
+                sb.Append(selector(collection[i]));
+            }
+
+            return sb.ToString();
+        }
+
+        /// <summary>
+        ///     Splits a collection into two integers based on a predicate
+        /// </summary>
+        /// <param name="predicate">The predicate to split the collection by</param>
+        /// <returns>
+        ///     A tuple containing two integers: one that is the number of elements that satisfy the predicate, and one that is the number of elements that do not
+        /// </returns>
+        public (int TrueCount, int FalseCount) SplitCount(Func<T, bool> predicate)
+        {
+            var int1 = 0;
+            var int2 = 0;
+
+            for (var i = 0; i < collection.Count; i++)
+            {
+                if (predicate(collection[i]))
+                    int1++;
+                else
+                    int2++;
+            }
+
+            return (int1, int2);
+        }
+    }
+
+    /// <summary>
+    ///     Flattens a collection of collections into a single collection
+    /// </summary>
+    /// <param name="collection">The collection of collections to flatten</param>
+    /// <typeparam name="T">The type of the elements in the collections</typeparam>
+    /// <returns>A single collection containing all elements of the collections in <paramref name="collection" /></returns>
+    public static IEnumerable<T> Flatten<T>(this IEnumerable<IEnumerable<T>> collection)
+    {
+        return collection.SelectMany(x => x);
+    }
+
+    public static void NotifyPlayers(this IEnumerable<PlayerControl> players, string text, float time = 6f, bool overrideAll = false, bool log = true, bool setName = true, SendOption sendOption = SendOption.Reliable)
+    {
+        var sender = CustomRpcSender.Create("NotifyPlayers", sendOption).StartPackedMessage();
+        var hasValue = false;
+
+        foreach (PlayerControl player in players)
+        {
+            hasValue |= CustomRpcSenderExtensions.Notify(ref sender, player, text, time, overrideAll, log, setName);
+            // RpcSetName will handle oversized packets
+        }
+
+        sender.SendMessage(dispose: !hasValue || sender.stream.Length <= 11);
+    }
+    public static void NotifyPlayers(this List<PlayerControl> players, string text, float time = 6f, bool overrideAll = false, bool log = true, bool setName = true, SendOption sendOption = SendOption.Reliable)
+    {
+        var sender = CustomRpcSender.Create("NotifyPlayers", sendOption).StartPackedMessage();
+        var hasValue = false;
+
+        for (int index = 0; index < players.Count; index++)
+        {
+            hasValue |= CustomRpcSenderExtensions.Notify(ref sender, players[index], text, time, overrideAll, log, setName);
+            // RpcSetName will handle oversized packets
+        }
+
+        sender.SendMessage(dispose: !hasValue || sender.stream.Length <= 11);
+    }
+
+    #region ToValidPlayers
+
+    /// <summary>
+    ///     Converts a collection of player IDs to a collection of <see cref="PlayerControl" /> instances
+    /// </summary>
+    /// <param name="playerIds"></param>
+    /// <returns></returns>
+    public static IEnumerable<PlayerControl> ToValidPlayers(this IEnumerable<byte> playerIds)
+    {
+        return playerIds.Select(Utils.GetPlayer).Where(x => x);
+    }
+    
+    #endregion
+    
+    #region Without
+
+    /// <summary>
+    ///     Removes an element from a collection
+    /// </summary>
+    /// <param name="collection">The collection to remove the element from</param>
+    /// <param name="element">The element to remove</param>
+    /// <returns>
+    ///     A collection containing all elements of <paramref name="collection" /> except for <paramref name="element" />
+    /// </returns>
+    public static IEnumerable<PlayerControl> Without(this IEnumerable<PlayerControl> collection, PlayerControl element)
+    {
+        return collection.Where(x => x.PlayerId != element.PlayerId);
+    }
+
+    /// <summary>
+    ///     Removes an element from a collection
+    /// </summary>
+    /// <param name="collection">The collection to remove the element from</param>
+    /// <param name="element">The element to remove</param>
+    /// <returns>
+    ///     A collection containing all elements of <paramref name="collection" /> except for <paramref name="element" />
+    /// </returns>
+    public static IEnumerable<PlainShipRoom> Without(this IEnumerable<PlainShipRoom> collection, PlainShipRoom element)
+    {
+        return collection.Where(x => x != element);
+    }
+    
+    #endregion
+    
+    #region Shuffle
+
+    /// <summary>
+    ///     Shuffles all elements in a collection randomly
+    /// </summary>
+    /// <param name="collection">The collection to be shuffled</param>
+    /// <typeparam name="T">The type of the collection</typeparam>
+    /// <returns>The same collection with its elements shuffled</returns>
+    public static List<T> Shuffle<T>(this List<T> collection)
+    {
+        int n = collection.Count;
+        var r = IRandom.Instance;
+
+        while (n > 1)
+        {
+            n--;
+            int k = r.Next(n + 1);
+            (collection[n], collection[k]) = (collection[k], collection[n]);
+        }
+
+        return collection;
+    }
+
+    /// <summary>
+    ///     Shuffles all elements in an array randomly
+    /// </summary>
+    /// <param name="collection">The array to be shuffled</param>
+    /// <typeparam name="T">The type of the array</typeparam>
+    /// <returns>The same array with its elements shuffled</returns>
+    public static T[] Shuffle<T>(this T[] collection)
+    {
+        int n = collection.Length;
+        var r = IRandom.Instance;
+
+        while (n > 1)
+        {
+            n--;
+            int k = r.Next(n + 1);
+            (collection[n], collection[k]) = (collection[k], collection[n]);
+        }
+
+        return collection;
+    }
+
+    /// <summary>
+    ///     Shuffles all elements in an IList randomly
+    /// </summary>
+    /// <param name="collection">The IList to be shuffled</param>
+    /// <typeparam name="T">The type of the IList</typeparam>
+    /// <returns>The same IList with its elements shuffled</returns>
+    public static IList<T> Shuffle<T>(this IList<T> collection)
+    {
+        int n = collection.Count;
+        var r = IRandom.Instance;
+
+        while (n > 1)
+        {
+            n--;
+            int k = r.Next(n + 1);
+            (collection[n], collection[k]) = (collection[k], collection[n]);
+        }
+
+        return collection;
+    }
+    
+    #endregion
+}
+
+public static class Loop
+{
+    public static void Times(int count, Action<int> action)
+    {
+        for (var i = 0; i < count; i++) action(i);
+    }
+}

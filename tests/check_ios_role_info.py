@@ -1,0 +1,14 @@
+#!/usr/bin/env python3
+from pathlib import Path
+import argparse,subprocess
+p=argparse.ArgumentParser();p.add_argument('--source',type=Path,required=True);p.add_argument('--output',type=Path,required=True);p.add_argument('--dotnet',type=Path,required=True);a=p.parse_args();s=a.source.read_text();start=s.index('            if (inGame && (GameStates.IsCanMove || isMeeting))');end=s.index('            if (KeysDown(ChangeReslutionsKey))',start);body=s[start:end]
+out=a.output
+if out.exists():raise ValueError('fresh output required')
+out.mkdir(parents=True);(out/'Fixture.csproj').write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework></PropertyGroup></Project>')
+(out/'Program.cs').write_text('''using System;enum CustomGameMode{Standard,Other}enum KeyCode{F1,JoystickButton11,JoystickButton13}static class Input{public static bool Held;public static bool GetKey(KeyCode unused)=>Held;public static bool GetKeyDown(KeyCode unused)=>false;}
+static class GameStates{public static bool IsCanMove;}static class OperatingSystem{public static bool IOS;public static bool IsIOS()=>IOS;}static class Options{public static CustomGameMode CurrentGameMode;}class Button{public Action OnClick=()=>{};}static class TaskPanelBehaviourPatch{public static Button RolePanelButton;}static class PlayerControl{public static object LocalPlayer=new();}
+static class InGameRoleInfoMenu{public static bool Showing;public static int References;public static void SetRoleInfoRef(object player){++References;}public static void Show()=>Showing=true;public static void Hide()=>Showing=false;}
+static class Source{public static void Tick(bool inGame,bool isMeeting){'''+body+'''}}
+static class Program{static void Main(){int checks=0;for(int flags=0;flags<128;++flags){bool ios=(flags&1)!=0,ingame=(flags&2)!=0,move=(flags&4)!=0,meeting=(flags&8)!=0,standard=(flags&16)!=0,held=(flags&32)!=0,showing=(flags&64)!=0;OperatingSystem.IOS=ios;GameStates.IsCanMove=move;Options.CurrentGameMode=standard?CustomGameMode.Standard:CustomGameMode.Other;Input.Held=held;InGameRoleInfoMenu.Showing=showing;InGameRoleInfoMenu.References=0;Source.Tick(ingame,meeting);bool phase=ingame&&(move||meeting);bool originalOpen=phase&&standard&&held;bool expected=phase&&(originalOpen||(ios&&showing));if(InGameRoleInfoMenu.Showing!=expected||InGameRoleInfoMenu.References!=(originalOpen&&!showing?1:0))throw new Exception("case "+flags);checks+=2;}Console.WriteLine("PASS "+checks+" actual-source role-info touch/keyboard phase checks; no game executed");}}
+''')
+r=subprocess.run([str(a.dotnet),'run','--project',str(out/'Fixture.csproj'),'-c','Release'],text=True,capture_output=True);(out/'test.log').write_text(r.stdout+r.stderr);print(r.stdout+r.stderr,end='');raise SystemExit(r.returncode)

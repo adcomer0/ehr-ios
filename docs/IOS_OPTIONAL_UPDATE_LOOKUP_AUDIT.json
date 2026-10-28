@@ -1,0 +1,95 @@
+{
+  "schema": "ehr.ios-optional-update-lookup-audit.v1",
+  "upstream": "Gurge44/EndlessHostRoles",
+  "commit": "ce23f0d050f617a59507e5bb0fbfff751d4b5134",
+  "version": "8.0.3",
+  "selectedSignedUpdaterInputSHA256": "36bbe71b2eef1d82fe5791d3ee278d2cfcecf4bcb972cb3c51c329b8da204c94",
+  "producers": [
+    {
+      "path": "Modules/ModUpdater.cs",
+      "line": 90,
+      "condition": "GitHub UnityWebRequest result is not Success",
+      "meaning": "Optional remote release lookup failed",
+      "adaptation": "On iOS leave IsBroken unchanged; retain log and yield break"
+    },
+    {
+      "path": "Modules/ModUpdater.cs",
+      "line": 149,
+      "condition": "No EHR.dll asset URL in GitHub release response",
+      "meaning": "Desktop installer asset absent",
+      "adaptation": "Already removed by the separate signed-updater adaptation; not touched here"
+    },
+    {
+      "path": "Modules/ModUpdater.cs",
+      "line": 159,
+      "condition": "Exception while parsing or processing GitHub release response",
+      "meaning": "Optional remote release lookup failed",
+      "adaptation": "On iOS leave IsBroken unchanged; retain exception log"
+    },
+    {
+      "path": "Modules/ModUpdater.cs",
+      "line": 153,
+      "condition": "Release response processed successfully",
+      "meaning": "Clear updater failure state",
+      "adaptation": "Unchanged"
+    }
+  ],
+  "consumers": [
+    {
+      "path": "Patches/ClientPatch.cs",
+      "line": 50,
+      "active": true,
+      "effect": "MMOnlineManager.Start hides FindGameButton when IsBroken, or HasUpdate and ForceUpdate",
+      "adaptation": "Unchanged"
+    },
+    {
+      "path": "Patches/PlayerControlPatch.cs",
+      "line": 1694,
+      "active": true,
+      "effect": "Host changes a public lobby private when IsBroken, or forced update, or AllowPublicRoom false",
+      "adaptation": "Unchanged"
+    },
+    {
+      "path": "Patches/ClientPatch.cs",
+      "line": 19,
+      "active": false,
+      "effect": "MakePublic patch is in a block comment",
+      "adaptation": "Unchanged"
+    },
+    {
+      "path": "Patches/GameStartManagerPatch.cs",
+      "line": 108,
+      "active": true,
+      "effect": "Conditional body contains only commented UI writes",
+      "adaptation": "Unchanged"
+    }
+  ],
+  "unrelated": [
+    {
+      "path": "Gamemodes/BedWars.cs",
+      "line": 1887,
+      "note": "Different IsBroken member; not ModUpdater state and not adapted"
+    }
+  ],
+  "threading": {
+    "platformHelper": "Selected Mobile33 OperatingSystem caches Windows, Android and IOS as static readonly fields from Application.platform",
+    "platformHelperSHA256": "7346637e8ac8862b39f5e7078a4592c8b6fd600dd35471e37037f31d91505af2",
+    "directCaller": "Selected ModUpdater.Start_Prefix calls OperatingSystem.IsAndroid before StartCoroutine(CheckReleaseFromGithub); this is the private coroutine's sole callsite",
+    "independentStartupOrder": "Selected Main.Load calls OperatingSystem.IsAndroid before returning; EHRSourceApplication completes plugin.Load before BindRequested activates source callbacks",
+    "newBackgroundUnityCall": false,
+    "newPlatformProvider": false
+  },
+  "scope": {
+    "iosErrorBehavior": "Two optional failures do not set IsBroken; preexisting true state stays true",
+    "desktopAndroidErrorBehavior": "Unchanged",
+    "initialState": "Original static Boolean IsBroken defaults false in a new process",
+    "allConsumersUnchanged": true,
+    "nativeAccountPermissionAndCompatibilityCodeUnchanged": true,
+    "hostOnlyPlus25Unchanged": true,
+    "sourceBindingAndActivationGuardsUnchanged": true,
+    "remoteRequestsMadeByTests": 0,
+    "accountOrPhoneActions": 0,
+    "preview24_1CauseDiagnosed": false,
+    "authenticatedDiscoveryVerified": false
+  }
+}

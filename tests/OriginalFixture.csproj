@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework><AssemblyName>EHROriginalFixture</AssemblyName>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks><Nullable>enable</Nullable><LangVersion>preview</LangVersion>
+    <PublishAot>true</PublishAot><NativeLib>Shared</NativeLib><PublishAotUsingRuntimePack>true</PublishAotUsingRuntimePack>
+    <IsAotCompatible>true</IsAotCompatible><InvariantGlobalization>true</InvariantGlobalization>
+    <DisableRuntimeMarshalling>true</DisableRuntimeMarshalling><TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <OriginalSourcePath Condition="'$(OriginalSourcePath)' == '' and Exists('../managed/OriginalRuntime.cs')">../managed/OriginalRuntime.cs</OriginalSourcePath>
+    <OriginalSourcePath Condition="'$(OriginalSourcePath)' == ''">../managed/SourceReuse/Facades/OriginalRuntime.cs</OriginalSourcePath>
+    <FacadeSourcePath Condition="'$(FacadeSourcePath)' == '' and Exists('../DependencySnapshot/FacadeRuntime.cs')">../DependencySnapshot/FacadeRuntime.cs</FacadeSourcePath>
+    <FacadeSourcePath Condition="'$(FacadeSourcePath)' == ''">../managed/SourceReuse/Facades/FacadeRuntime.cs</FacadeSourcePath>
+    <LifetimeSourcePath Condition="'$(LifetimeSourcePath)' == '' and Exists('../DependencySnapshot/NativeLifetime.cs')">../DependencySnapshot/NativeLifetime.cs</LifetimeSourcePath>
+    <LifetimeSourcePath Condition="'$(LifetimeSourcePath)' == ''">../managed/SourceReuse/Facades/NativeLifetime.cs</LifetimeSourcePath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(OriginalSourcePath)" />
+    <Compile Include="$(FacadeSourcePath)" />
+    <Compile Include="$(LifetimeSourcePath)" />
+    <Compile Include="UnavailableFixtureSurface.cs" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,95 @@
+using UnityEngine;
+
+namespace EHR.Roles;
+
+public class Ventriloquist : RoleBase
+{
+    public static bool On;
+
+    private static OptionItem UseLimit;
+    internal static OptionItem VentriloquistAbilityUseGainWithEachKill;
+
+    public byte Target;
+    public override bool IsEnable => On;
+
+    public override void SetupCustomOption()
+    {
+        Options.SetupRoleOptions(649650, TabGroup.ImpostorRoles, CustomRoles.Ventriloquist);
+
+        UseLimit = new FloatOptionItem(649652, "AbilityUseLimit", new(0, 20, 0.05f), 0, TabGroup.ImpostorRoles)
+            .SetParent(Options.CustomRoleSpawnChances[CustomRoles.Ventriloquist])
+            .SetValueFormat(OptionFormat.Times);
+
+        VentriloquistAbilityUseGainWithEachKill = new FloatOptionItem(649653, "AbilityUseGainWithEachKill", new(0f, 5f, 0.1f), 2f, TabGroup.ImpostorRoles)
+            .SetParent(Options.CustomRoleSpawnChances[CustomRoles.Ventriloquist])
+            .SetValueFormat(OptionFormat.Times);
+    }
+
+    public override void Init()
+    {
+        On = false;
+    }
+
+    public override void Add(byte playerId)
+    {
+        On = true;
+        Target = byte.MaxValue;
+        playerId.SetAbilityUseLimit(UseLimit.GetFloat());
+    }
+
+    public override bool OnJudge(PlayerControl pc, PlayerControl target)
+    {
+        if (Starspawn.IsDayBreak) return false;
+        var command = $"/target {target.PlayerId}";
+        ChatCommands.TargetCommand(pc, command, command.Split(' '));
+        return true;
+    }
+
+    public override void OnMeetingShapeshift(PlayerControl shapeshifter, PlayerControl target)
+    {
+        OnJudge(shapeshifter, target);
+    }
+
+    private static void VentriloquistOnClick(byte playerId /*, MeetingHud __instance*/)
+    {
+        Logger.Msg($"Click: ID {playerId}", "Ventriloquist UI");
+        PlayerControl pc = Utils.GetPlayerById(playerId);
+        if (pc == null || !pc.IsAlive() || !GameStates.IsVoting || Starspawn.IsDayBreak) return;
+
+        var command = $"/target {playerId}";
+
+        if (AmongUsClient.Instance.AmHost)
+            ChatCommands.TargetCommand(PlayerControl.LocalPlayer, command, command.Split(' '));
+        else
+            ChatCommands.RequestCommandProcessingFromHost(command, "Target");
+    }
+
+    public static void CreateVentriloquistButton(MeetingHud __instance)
+    {
+        foreach (PlayerVoteArea pva in __instance.playerStates)
+        {
+            PlayerControl pc = Utils.GetPlayerById(pva.PlayerId);
+            if (!pc || !pc.IsAlive()) continue;
+
+            GameObject template = pva.Buttons.transform.Find("CancelButton").gameObject;
+            GameObject targetBox = Object.Instantiate(template, pva.transform);
+            targetBox.name = "ShootButton";
+            targetBox.transform.localPosition = new(-0.35f, 0.03f, -1.31f);
+            var renderer = targetBox.GetComponent<SpriteRenderer>();
+            renderer.sprite = Utils.LoadSprite("EHR.Resources.Images.Skills.Hack.png", 160f);
+            var button = targetBox.GetComponent<PassiveButton>();
+            button.OnClick.RemoveAllListeners();
+            button.OnClick.AddListener(() => VentriloquistOnClick(pva.PlayerId));
+        }
+    }
+
+    //[HarmonyPatch(typeof(MeetingHud), nameof(MeetingHud.Start))]
+    public static class StartMeetingPatch
+    {
+        public static void Postfix(MeetingHud __instance)
+        {
+            if (PlayerControl.LocalPlayer.Is(CustomRoles.Ventriloquist) && PlayerControl.LocalPlayer.IsAlive())
+                CreateVentriloquistButton(__instance);
+        }
+    }
+}

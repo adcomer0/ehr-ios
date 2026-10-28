@@ -1,0 +1,15 @@
+> Implementation-stage notes. For the current public snapshot and prerequisites, start with [BUILDING.md](BUILDING.md) and [KNOWN_ISSUES.md](KNOWN_ISSUES.md). Historical fixture paths are placeholders, not included artifacts.
+
+# Native iOS keyboard paste
+
+Only the original desktop Ctrl+V handler gains `!OperatingSystem.IsIOS()`. Its body remains byte-for-byte unchanged for desktop and Android. Existing chat/focus/name/phase guards, native character filtering, limits, composition handling, source SetText hooks, and touch input are unchanged. No facade, metadata layout, native entrypoint, selection API, or clipboard read is added.
+
+The pinned iOS game has no `TextBoxTMP.caretPos` field. Its real `SetCaretPosition(Int32)` and `MoveCaret()` bodies are no-ops. Therefore neither should be presented as a working caret replacement. Its existing `TextBoxTMP.Update` reads `TouchScreenKeyboard.get_status/get_text` and calls original `SetText`. The complete `SetText` body synchronizes accepted text through `TouchScreenKeyboard.set_text` when the native keyboard exists. Existing history/completion SetText calls therefore do not require an extra guessed keyboard write.
+
+The source's Ctrl modifier is a desktop shortcut; iOS external keyboards normally use platform editing gestures such as Command+V. This adaptation does not promise native Ctrl+V support, add a Command+V handler, or manually insert clipboard text a second time. Physical keyboard paste, selection and IME behavior remain unverified on the phone. The verified result is removal of the obsolete iOS field-access path while retaining the game's native input handling.
+
+Private metadata/disassembly proof remains outside Git under Reports/2026-10-28-ehr-native: `text-box-caret-metadata40.local.json`, `text-box-native-input-update42.local.txt`, `text-box-settext-complete42.local.txt`, `text-keyboard-api42.local.json`. Original framework SHA256 is `42e47c2e676fd5389385d12ddefc45bdcb88a9c3db54285381521abb762ba84f`, metadata SHA256 `22dd824b108490c49962b7e31c30eae0055ce0b72e39aac3fa159324d6dd529c`. No game instructions are copied into source Git.
+
+Run `prepare_ios_keyboard_paste.py --project CURRENT.csproj --expected-control-sha256 SELECTED_SHA --output FRESH_OUTSIDE_GIT`. The tool selects exactly one compiled ControlPatch, checks its explicit input hash, replaces one exact predicate, preserves every other source byte including line endings, and retains all project compile/resource items. It composes before or after the separately owned touch-shortcut transform because their source spans differ.
+
+Tests compile the exact adapted predicate against original counter-only input doubles for 96 platform/modifier/chat/focus combinations, assert the actual selected source has exactly the one predicate difference, and reject changed/duplicate anchors. Set `EHR_CONTROL_PATCH_TEST_INPUT=/absolute/selected/unadapted/ControlPatch.cs` for the actual-source comparison; that comparison skips without an explicit input. They make no game, keyboard, clipboard, account or phone calls. Full-source compilation is a separate package artifact; it does not prove physical input behavior.
