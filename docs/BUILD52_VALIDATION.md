@@ -42,7 +42,22 @@ upgrade on the exact test iPhone over its `localNetwork` developer connection.
 The installed build was queried and confirmed. Installation did not launch the
 app, uninstall anything, access an app container, change pairing/security, or
 operate an account. No build-52 physical multiplayer or authentication success
-is claimed.
+is independently certified by the installer.
+
+## Subsequent user report and numeric observation
+
+Following delivery, the user reported playing a match with a peer using the
+ordinary unmodified client. This supports one host/vanilla-peer gameplay path;
+the exact settings, complete outcome and all-role behavior were not established.
+
+A subsequent copy of the host app's own bounded numeric cache records player
+join, host-start/ship initialization and player spawns. It also records
+`GameStartManager.Start` / `CheckSettingsDiffs` null-reference failures and ten
+map-door postfix cast failures. Its single recorded disconnect is reason 16
+(`Destroy`), rather than reason 10. No game-end route appears in this cache.
+The cache has no explicit build identity, so its emitter build cannot be
+independently identified solely from these fields. This observation is not a
+clean runtime or complete-round certification.
 
 Apple authorization and the correct Apple credential type reached EOS in
 physical build 51; EOS returned 7000 and the game fell back to a device guest.

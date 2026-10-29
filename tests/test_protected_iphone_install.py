@@ -5,6 +5,8 @@ import plistlib
 import tempfile
 import sys
 import unittest
+from contextlib import redirect_stderr
+import io
 from unittest.mock import patch
 from types import SimpleNamespace
 
@@ -28,11 +30,11 @@ def receipt(command, result):
 
 
 class OwnDeviceRunner:
-    def __init__(self, disconnected=False):
-        self.calls=[]; self.disconnected=disconnected
+    def __init__(self, disconnected=False, *, absent=False, product_type='iPhone18,2'):
+        self.calls=[]; self.disconnected=disconnected;self.absent=absent;self.product_type=product_type
     def call(self, name, arguments, seconds=20):
         self.calls.append((name,arguments))
-        hardware={'udid':OWN_UDID,'productType':'iPhone18,2','platform':'iOS'}
+        hardware={'udid':OWN_UDID,'productType':self.product_type,'platform':'iOS'}
         connection={'pairingState':'paired','transportType':'localNetwork','tunnelState':'connected'}
         if name=='device-inventory':
             return receipt('list.devices', {'devices':[] if self.disconnected else
@@ -43,8 +45,9 @@ class OwnDeviceRunner:
                 'developerModeStatus':'enabled','ddiServicesAvailable':True}})
         if name in ('installed-before','installed-after'):
             return receipt('device.info.apps', {'deviceIdentifier':OWN_DEVICE,'matchingBundleIdentifier':BUNDLE,
-                'apps':[{'bundleIdentifier':BUNDLE,'bundleVersion':'24.1' if name.endswith('before') else '36',
-                         'version':'1.0','url':'file:///Own/Installed.app'}]})
+                'apps':[] if self.absent and name=='installed-before' else
+                    [{'bundleIdentifier':BUNDLE,'bundleVersion':'24.1' if name.endswith('before') else '36',
+                      'version':'1.0','url':'file:///Own/Installed.app'}]})
         if name=='install':
             return receipt('device.install.app', {'deviceIdentifier':OWN_DEVICE,'installedApplications':[{'bundleID':BUNDLE}]})
         if name=='launch':
@@ -342,6 +345,97 @@ class InstallerGuards(unittest.TestCase):
         wrong=receipt('device.info.apps',{'deviceIdentifier':OWN_DEVICE,'matchingBundleIdentifier':BUNDLE,
             'apps':[{'bundleIdentifier':'own.foreign.app'}]})
         with self.assertRaisesRegex(M.Rejected,'installed_bundle'):M.installed_app(wrong,OWN_DEVICE,bundle_id=BUNDLE)
+
+    def test_explicit_initial_install_requires_absence_and_never_launches_or_queries_other_apps(self):
+        runner=OwnDeviceRunner(absent=True);summary=self.run_fixture(runner,initial_install=True)
+        self.assertEqual(summary['status'],'initial_install_installed');self.assertTrue(summary['initial_install_ready'])
+        self.assertTrue(summary['installed_version_confirmed']);self.assertNotIn('previous_build',summary)
+        self.assertEqual(summary['install_mode'],'initial_install')
+        self.assertEqual([c[0]for c in runner.calls],['device-inventory','device-details','installed-before','install','installed-after'])
+        for name,args in runner.calls:
+            self.assertNotIn('uninstall',args);self.assertNotIn('copy',args);self.assertNotIn('launch',args)
+            self.assertNotIn('--include-container-paths',args)
+            if name.startswith('installed-'):self.assertEqual(args[-2:],['--bundle-id',BUNDLE])
+        self.assertNotIn(OWN_DEVICE,json.dumps(summary));self.assertNotIn(OWN_UDID,json.dumps(summary))
+        existing=OwnDeviceRunner();summary=self.run_fixture(existing,initial_install=True)
+        self.assertEqual(summary['status'],'initial_install_requires_absent_exact_app')
+        self.assertNotIn('install',[c[0]for c in existing.calls])
+
+    def test_initial_install_preflight_and_launch_conflict_are_nonmutating(self):
+        runner=OwnDeviceRunner(absent=True);summary=self.run_fixture(runner,initial_install=True,preflight_only=True)
+        self.assertEqual(summary['status'],'ready_for_initial_install');self.assertFalse(summary['installation_succeeded'])
+        self.assertEqual([c[0]for c in runner.calls],['device-inventory','device-details','installed-before'])
+        runner=OwnDeviceRunner(absent=True);self.verified.clear()
+        with self.assertRaisesRegex(M.Rejected,'initial_install_never_launches'):
+            self.run_fixture(runner,initial_install=True,launch=True)
+        self.assertEqual(runner.calls,[]);self.assertEqual(self.verified,[])
+        output=self.root/'UntouchedCLIOutput'
+        args=['--source-root',str(CANONICAL),'--candidate-app',str(self.app),
+              '--mac-runtime-summary',str(self.summary),'--device-id-file',str(self.device),
+              '--output-root',str(output),'--team-id',TEAM,'--bundle-id',BUNDLE,
+              '--initial-install','--launch']
+        with redirect_stderr(io.StringIO()),self.assertRaises(SystemExit) as error:M.main(args)
+        self.assertEqual(error.exception.code,2);self.assertFalse(output.exists())
+
+    def test_initial_install_keeps_exact_profile_coverage_and_installed_version_proof(self):
+        runner=OwnDeviceRunner(absent=True);self.signing['requested_device_covered']=False
+        with self.assertRaisesRegex(M.Rejected,'exact_phone_paid_signature'):
+            self.run_fixture(runner,initial_install=True)
+        self.assertEqual(runner.calls,[]);self.signing['requested_device_covered']=True
+        original=OwnDeviceRunner.call
+        class WrongInstalled(OwnDeviceRunner):
+            def call(inner,name,args,seconds=20):
+                value=original(inner,name,args,seconds)
+                if name=='installed-after':value['result']['apps'][0]['bundleVersion']='35'
+                return value
+        runner=WrongInstalled(absent=True)
+        with self.assertRaisesRegex(M.Rejected,'installed_version_not_confirmed'):
+            self.run_fixture(runner,initial_install=True)
+        self.assertEqual([c[0]for c in runner.calls],['device-inventory','device-details','installed-before','install','installed-after'])
+
+    def test_explicit_exact_iphone_model_is_required_in_both_inventory_and_details(self):
+        runner=OwnDeviceRunner(absent=True,product_type='iPhone17,1')
+        summary=self.run_fixture(runner,initial_install=True,preflight_only=True,expected_product_type='iPhone17,1')
+        self.assertEqual(summary['status'],'ready_for_initial_install');self.assertEqual(summary['expected_product_type'],'iPhone17,1')
+        runner=OwnDeviceRunner(absent=True,product_type='iPhone17,1')
+        self.assertIn('unreachable',self.run_fixture(runner,initial_install=True)['status'])
+        self.assertEqual([c[0]for c in runner.calls],['device-inventory'])
+        original=OwnDeviceRunner.call
+        class WrongDetails(OwnDeviceRunner):
+            def call(inner,name,args,seconds=20):
+                value=original(inner,name,args,seconds)
+                if name=='device-details':value['result']['hardwareProperties']['productType']='iPhone18,2'
+                return value
+        runner=WrongDetails(absent=True,product_type='iPhone17,1')
+        with self.assertRaisesRegex(M.Rejected,'details_identity_differs'):
+            self.run_fixture(runner,initial_install=True,expected_product_type='iPhone17,1')
+        self.assertEqual([c[0]for c in runner.calls],['device-inventory','device-details'])
+        for invalid in ('*','iPhone18,*','iPad13,11','iPhone018,2','iPhone18,0',None):
+            runner=OwnDeviceRunner(absent=True);self.verified.clear()
+            with self.subTest(model=invalid),self.assertRaisesRegex(M.Rejected,'expected_product_type'):
+                self.run_fixture(runner,initial_install=True,expected_product_type=invalid)
+            self.assertEqual(runner.calls,[]);self.assertEqual(self.verified,[])
+
+    def test_initial_install_rejects_ambiguous_identity_and_nonphysical_or_unpaired_inventory(self):
+        original=OwnDeviceRunner.call
+        for variant in ('duplicate_udid','duplicate_identifier','wrong_platform','unpaired','same_machine'):
+            class InvalidInventory(OwnDeviceRunner):
+                def call(inner,name,args,seconds=20):
+                    value=original(inner,name,args,seconds)
+                    if name=='device-inventory':
+                        rows=value['result']['devices'];row=rows[0]
+                        if variant.startswith('duplicate'):
+                            extra=json.loads(json.dumps(row))
+                            if variant=='duplicate_identifier':extra['hardwareProperties']['udid']='FEDCBA98-0123456789ABCDEF'
+                            rows.append(extra)
+                        elif variant=='wrong_platform':row['hardwareProperties']['platform']='macOS'
+                        elif variant=='unpaired':row['connectionProperties']['pairingState']='unpaired'
+                        else:row['connectionProperties']['transportType']='sameMachine'
+                    return value
+            runner=InvalidInventory(absent=True)
+            with self.subTest(variant=variant):
+                summary=self.run_fixture(runner,initial_install=True)
+                self.assertIn('unreachable',summary['status']);self.assertEqual([c[0]for c in runner.calls],['device-inventory'])
 
 
 if __name__=='__main__':unittest.main()

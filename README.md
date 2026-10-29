@@ -1,6 +1,6 @@
 # EHR iOS — native integration research
 
-An experimental, all-local iOS port of [Endless Host Roles](https://github.com/Gurge44/EndlessHostRoles), intended to let an iPhone host EHR games for vanilla Among Us players. **This is a research prototype. Authentication fails, and the latest vanilla-peer test disconnected the host. It is not a finished release.**
+An experimental, all-local iOS port of [Endless Host Roles](https://github.com/Gurge44/EndlessHostRoles), intended to let an iPhone host EHR games for vanilla Among Us players. **This is a research prototype. One match with a vanilla peer is now user-reported working; authentication and other runtime failures remain unresolved. It is not a finished release.**
 
 ## How it works
 
@@ -13,7 +13,7 @@ There is no BepInEx Unity/IL2CPP plugin loader running on the phone and no embed
 - The full selected EHR source compiles for `ios-arm64`: 796 C# inputs; the 224 resource names/hashes are catalogued separately.
 - Signed startup on an Apple Silicon Mac loads EHR once, initializes 5,049 options and activates 292 permitted bindings from 298 metadata targets. Six account/consent-related patches are deliberately excluded.
 - A physical iPhone can open an Online lobby, configure settings and reach a game in build 49. The user confirmed that test was solo; its early win is consistent with EHR's low-player end conditions. The trace reached intro, ship initialization, game start and game end.
-- In build 50, a vanilla peer joined and the modded host disconnected; the remaining vanilla client became host. Build 51 recorded server reason 10 (`Hacking`), without identifying its exact rule. Build 52 adds the omitted native chat-mode gate before optional system-message sends and revalidates a delayed name restore. A normal multiplayer round has not been validated; see [the guards and evidence](docs/MULTIPLAYER_SEND_GUARDS.md).
+- In build 50, a vanilla peer joined and the modded host disconnected; the remaining vanilla client became host. Build 51 recorded server reason 10 (`Hacking`), without identifying its exact rule. Build 52 adds the omitted native chat-mode gate before optional system-message sends and revalidates a delayed name restore. Following that delivery, the user reports playing a match with a vanilla peer. This supports one multiplayer path; it does not certify stability or all roles. See [the guards and evidence](docs/MULTIPLAYER_SEND_GUARDS.md).
 - Build 48's phone diagnostic showed immediate retirement of completed coroutine slots, two active entries and no recorded callback failures during the black screen. The earlier 256-entry exhaustion did not recur in that reproduction.
 - The pinned native game inlines host-start iterator construction, bypassing EHR's patched host factory. Build 49 adapts the exact native yield through the existing EHR factory and callbacks. The phone recorded one replacement and one host-factory call, with no adapter or source callback failures.
 - Apple authorization is followed by EOS result 7000. The explicitly enabled development retry guard stopped the repeated sheets during the phone test, but successful backend authentication remains unresolved.

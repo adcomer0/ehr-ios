@@ -93,20 +93,26 @@ def validate_candidate_pins(candidate, path):
     return supplied
 
 
-def select_physical_device(inventory, requested):
+def select_physical_device(inventory, requested, *, expected_product_type="iPhone18,2"):
+    if not isinstance(expected_product_type, str) or not re.fullmatch(r"iPhone[1-9][0-9]*,[1-9][0-9]*", expected_product_type):
+        raise ValueError("Expected product type must be an exact physical iPhone model")
     devices = inventory.get("result", {}).get("devices", [])
     matches = [d for d in devices if d.get("hardwareProperties", {}).get("udid") == requested["udid"]]
     if len(matches) != 1:
         raise ValueError("Exact physical iPhone is not uniquely visible to CoreDevice")
     device = matches[0]
     hardware, connection = device.get("hardwareProperties", {}), device.get("connectionProperties", {})
-    if hardware.get("productType") != "iPhone18,2" or hardware.get("platform") != "iOS":
-        raise ValueError("Destination is not the requested physical iPhone 17 Pro Max")
+    if hardware.get("productType") != expected_product_type or hardware.get("platform") != "iOS":
+        raise ValueError("Destination is not the exact requested physical iPhone model")
+    if "reality" in hardware and hardware["reality"] != "physical":
+        raise ValueError("Destination explicitly identifies a nonphysical iPhone")
     if connection.get("transportType") not in ("wired", "localNetwork") or connection.get("pairingState") != "paired":
         raise ValueError("Physical iPhone must already be paired and reachable by USB or network")
     identifier = device.get("identifier")
     if not isinstance(identifier, str) or requested["identifier"] not in (None, identifier):
         raise ValueError("CoreDevice identity differs from the private device input")
+    if sum(d.get("identifier") == identifier for d in devices) != 1:
+        raise ValueError("Exact CoreDevice identity is not uniquely visible")
     return device
 
 

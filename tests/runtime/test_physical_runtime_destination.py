@@ -138,6 +138,32 @@ class PhysicalDestinationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "identity differs"):
             runner.select_physical_device({"result": {"devices": [device()]}}, {"udid": UDID, "identifier": "different"})
 
+    def test_explicit_model_keeps_exact_physical_identity_and_rejects_coredevice_alias(self):
+        requested={"udid":UDID,"identifier":IDENTIFIER}
+        own=device("localNetwork",product="iPhone17,1")
+        self.assertEqual(runner.select_physical_device({"result":{"devices":[own]}},requested,expected_product_type="iPhone17,1"),own)
+        with self.assertRaisesRegex(ValueError,"model"):
+            runner.select_physical_device({"result":{"devices":[own]}},requested)
+        for model in ("*","iPad13,11","iPhone18,*","iPhone018,2",None):
+            with self.subTest(model=model),self.assertRaisesRegex(ValueError,"exact physical iPhone model"):
+                runner.select_physical_device({"result":{"devices":[own]}},requested,expected_product_type=model)
+        alias=device();alias['hardwareProperties']['udid']='00000000-0000000000000002'
+        with self.assertRaisesRegex(ValueError,"CoreDevice identity is not uniquely"):
+            runner.select_physical_device({"result":{"devices":[device(),alias]}},requested)
+        wrong=device();wrong['hardwareProperties']['platform']='macOS'
+        with self.assertRaisesRegex(ValueError,"physical iPhone"):
+            runner.select_physical_device({"result":{"devices":[wrong]}},requested)
+
+    def test_explicit_nonphysical_reality_rejected_with_missing_field_compatibility(self):
+        requested={"udid":UDID,"identifier":IDENTIFIER}
+        physical=device("localNetwork");physical['hardwareProperties']['reality']='physical'
+        self.assertEqual(runner.select_physical_device({"result":{"devices":[physical]}},requested),physical)
+        self.assertEqual(runner.select_physical_device({"result":{"devices":[device()]}},requested)['identifier'],IDENTIFIER)
+        for reality in ('simulated','virtual',None,''):
+            invalid=device();invalid['hardwareProperties']['reality']=reality
+            with self.subTest(reality=reality),self.assertRaisesRegex(ValueError,"explicitly identifies a nonphysical"):
+                runner.select_physical_device({"result":{"devices":[invalid]}},requested)
+
     def test_candidate_pins_exact_all_four_and_tamper(self):
         with tempfile.TemporaryDirectory() as temp:
             base = Path(temp); app = base / "Own.app"; pins = {}

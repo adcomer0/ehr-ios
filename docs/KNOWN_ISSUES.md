@@ -1,6 +1,18 @@
 # Known issues and current native work
 
-This snapshot is incomplete. Physical build 48 reached Online lobby hosting and mod settings, then a black screen after starting the game. Physical build 49 reached a solo game and an early win, consistent with EHR's low-player end conditions. Its trace reached custom intro, ship initialization, game start and game end without new source failures. Physical build 50 then disconnected the host when a vanilla peer joined. Authentication and a normal multiplayer round remain unresolved.
+This snapshot is incomplete. Physical build 48 reached Online lobby hosting and mod settings, then a black screen after starting the game. Physical build 49 reached a solo game and an early win, consistent with EHR's low-player end conditions. Its trace reached custom intro, ship initialization, game start and game end without new source failures. Physical build 50 then disconnected the host when a vanilla peer joined. Following build-52 delivery, the user reports playing a match with a vanilla peer. Authentication, multiplayer stability and full role behavior remain unresolved or unverified.
+
+## Later gameplay observation
+
+The subsequent host numeric cache contains player join, host-start/ship and
+player-spawn progress. It also records null references in
+`GameStartManager.Start` / `CheckSettingsDiffs` and ten
+`MapRoomDoorsStartPatch.Postfix` cast exceptions. The map-door source attempts
+two strict sibling-system casts; those failures need a separate source/bridge
+review. No game-end route is recorded. Its disconnect reason is 16 (`Destroy`).
+The cache does not contain an explicit build identity. These facts corroborate
+gameplay progress and remaining defects without proving the complete round or
+which build emitted it. See [the validation limits](BUILD52_VALIDATION.md).
 
 ## Vanilla-peer join disconnect
 
