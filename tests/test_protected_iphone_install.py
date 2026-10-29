@@ -116,6 +116,23 @@ class InstallerGuards(unittest.TestCase):
         path=self.proof.with_name('EHRGameStartIteratorProof.json');path.write_text(json.dumps(proof))
         return path
 
+    def enable_auth_handoff(self):
+        path=self.app/'Info.plist';info=plistlib.loads(path.read_bytes())
+        info['EHRAuthHandoffDiagnosticsCompiled']=True;path.write_bytes(plistlib.dumps(info))
+        proof=json.loads(self.proof.read_text());proof['status']['authHandoff']={'preparedStatus':0,'schemaVersion':2,
+            'eventCapacity':32,'eventCount':0,'events':[],
+            'appleSuccesses':0,'managedCredentialEntries':0,'loginEntries':0,'typeObservations':0,'observerFaults':0}
+        self.proof.write_text(json.dumps(proof))
+
+    def write_auth_handoff_proof(self,**changes):
+        proof={'schema':'ehr.auth-handoff-proof.v1','success':True,'status':0,'preparedStatus':0,'checks':87,'failures':0,
+            'eventCapacity':32,'eventRingBounded':True,'middleAppleTypePreserved':True,'unknownScalarRedacted':True,
+            'isolatedRecorder':True,'realAuthenticationInvoked':False,'credentialsRead':False,'networkOperations':False,
+            'runtimeExecutableWrites':False,'actualCredentialReads':0,'originalAuthCalls':0,'networkRequests':0,'accountActions':0}
+        proof.update(changes)
+        path=self.proof.with_name('EHRAuthHandoffProof.json');path.write_text(json.dumps(proof))
+        return path
+
     def test_changed_binary_or_profile_rejected_before_any_device_operation(self):
         for path in (runtime.RELATIVE_BINARIES[2], 'embedded.mobileprovision'):
             target=self.app/path;before=target.read_bytes();target.write_bytes(before+b'changed')
@@ -145,6 +162,22 @@ class InstallerGuards(unittest.TestCase):
                 self.run_fixture(runner)
             self.assertEqual(runner.calls,[])
 
+    def test_network_disconnect_scalar_capture_requires_untouched_mac_startup(self):
+        path=self.app/'Info.plist';info=plistlib.loads(path.read_bytes());info['EHRNetworkDiagnosticsCompiled']=True
+        path.write_bytes(plistlib.dumps(info));original=json.loads(self.proof.read_text())
+        ready={'schemaVersion':1,'targetMatches':0,'count':0,'hasReason':0,'observerFaults':0}
+        for network in (None,{},dict(ready,schemaVersion=0),dict(ready,count=1),
+                        dict(ready,targetMatches=1),dict(ready,hasReason=1),dict(ready,observerFaults=1)):
+            proof=json.loads(json.dumps(original));proof['status']['numericDiagnostics']={'networkDisconnect':network}
+            self.proof.write_text(json.dumps(proof));runner=OwnDeviceRunner()
+            with self.subTest(network=network),self.assertRaisesRegex(M.Rejected,'network_disconnect_startup_not_ready'):
+                self.run_fixture(runner)
+            self.assertEqual(runner.calls,[]);self.assertEqual(self.verified,[])
+        proof=json.loads(json.dumps(original));proof['status']['numericDiagnostics']={'networkDisconnect':ready}
+        self.proof.write_text(json.dumps(proof));runner=OwnDeviceRunner(disconnected=True)
+        self.assertIn('unreachable',self.run_fixture(runner,preflight_only=True)['status'])
+        self.assertEqual([c[0]for c in runner.calls],['device-inventory'])
+
     def test_requested_auth_guard_requires_actual_prepared_enabled_startup_before_device_access(self):
         path=self.app/'Info.plist';info=plistlib.loads(path.read_bytes())
         info['EHRAuthRetryGuardActivationRequested']=True;info['EHRAuthRetryGuardCompiled']=True
@@ -163,6 +196,35 @@ class InstallerGuards(unittest.TestCase):
         self.proof.write_text(json.dumps(proof));runner=OwnDeviceRunner(disconnected=True)
         summary=self.run_fixture(runner,preflight_only=True)
         self.assertIn('unreachable',summary['status']);self.assertEqual([c[0]for c in runner.calls],['device-inventory'])
+
+    def test_auth_handoff_requires_passed_preparation_without_auth_actions_before_device_access(self):
+        self.enable_auth_handoff();self.write_auth_handoff_proof();original=json.loads(self.proof.read_text())
+        ready=original['status']['authHandoff']
+        for handoff in (None,{},dict(ready,preparedStatus=1),dict(ready,preparedStatus=False),
+                        dict(ready,observerFaults=1),dict(ready,loginEntries=1),dict(ready,typeObservations=1)):
+            proof=json.loads(json.dumps(original));proof['status']['authHandoff']=handoff
+            self.proof.write_text(json.dumps(proof));runner=OwnDeviceRunner()
+            with self.subTest(handoff=handoff),self.assertRaisesRegex(M.Rejected,'auth_handoff_startup_not_ready'):
+                self.run_fixture(runner)
+            self.assertEqual(runner.calls,[]);self.assertEqual(self.verified,[])
+
+    def test_auth_handoff_requires_isolated_numeric_probe_before_device_access(self):
+        self.enable_auth_handoff();runner=OwnDeviceRunner()
+        with self.assertRaisesRegex(M.Rejected,'auth_handoff_self_test_missing'):self.run_fixture(runner)
+        self.assertEqual(runner.calls,[])
+        for values in ({'schema':'own.unrelated-proof'},{'success':False},{'status':6},{'checks':86},
+                       {'eventCapacity':33},{'eventRingBounded':False},{'middleAppleTypePreserved':False},
+                       {'preparedStatus':1},{'failures':1},{'originalAuthCalls':1},{'accountActions':1},
+                       {'runtimeExecutableWrites':True},{'actualCredentialReads':1},{'networkRequests':1},
+                       {'checks':True},{'isolatedRecorder':False},{'realAuthenticationInvoked':True},
+                       {'credentialsRead':True},{'networkOperations':True}):
+            self.write_auth_handoff_proof(**values);runner=OwnDeviceRunner()
+            with self.subTest(values=values),self.assertRaisesRegex(M.Rejected,'auth_handoff_self_test_not_passed'):
+                self.run_fixture(runner)
+            self.assertEqual(runner.calls,[]);self.assertEqual(self.verified,[])
+        self.write_auth_handoff_proof();runner=OwnDeviceRunner(disconnected=True)
+        self.assertIn('unreachable',self.run_fixture(runner,preflight_only=True)['status'])
+        self.assertEqual([c[0]for c in runner.calls],['device-inventory'])
 
     def test_compiled_game_start_adapter_requires_ready_enabled_actual_startup_before_device_access(self):
         path=self.app/'Info.plist';info=plistlib.loads(path.read_bytes())

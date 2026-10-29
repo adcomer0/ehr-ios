@@ -68,6 +68,9 @@ EHRRuntimeStatus EHRNativePatchBoxBorrowedValue(EHRRuntimeToken,
     const EHRNativePatchTypeV1 &,void *payload,size_t,EHRRuntimeToken *owned);
 #ifdef __OBJC__
 @class NSDictionary;
+// Own numeric recorder only; safe on the private diagnostics worker. Never
+// reads IL2CPP, a string reason, account data, objects or packet contents.
+extern "C" NSDictionary *EHRNativeDisconnectCopyStatus(void);
 // Isolated boxed value + owned string only; no target body or lobby operation.
 NSDictionary *EHRNativePatchBoxedReferenceSelfTest(const EHRNativePatchTypeV1 &,
     const char *image,const char *name_space,const char *name,const char *reference_field);

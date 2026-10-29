@@ -3,6 +3,9 @@
 #import <objc/runtime.h>
 #include "EHRRuntimePinnedAssociation.h"
 #include "EHRRuntimeDiagnostics.h"
+#if EHR_HAS_AUTH_HANDOFF
+#include "EHRAuthHandoffDiagnostics.h"
+#endif
 #include <atomic>
 #include <cstring>
 #include <dlfcn.h>
@@ -58,7 +61,11 @@ void request(id self, SEL cmd, id controller, uint32_t requestID) {
     original(self, cmd, controller, requestID);
 }
 void success(id self, SEL cmd, id controller, id authorization) {
-    @try { observeCompletion(controller); increment(successes); publishCounters(); }
+    @try { observeCompletion(controller); increment(successes);
+#if EHR_HAS_AUTH_HANDOFF
+        EHRAuthHandoffDiagnosticsRecordAppleSuccess();
+#endif
+        publishCounters(); }
     @catch (__unused NSException *exception) { increment(observerFaults); }
     auto original = reinterpret_cast<Completion>(originals[1].load(std::memory_order_acquire));
     original(self, cmd, controller, authorization);

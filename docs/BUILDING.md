@@ -75,6 +75,14 @@ startup, exact-device and signing checks.
 
 Signing tools require explicit `--team-id` and `--bundle-id` values. `--team-name` can add an exact organization assertion. Use a separate test app identity and your own provisioning; the official game's bundle identity is rejected. No certificate/profile/device values are supplied. See [portable tooling](PORTABLE_TOOLING.md) for parameter flow. Do not uninstall the official game, import its container, reset account data or bypass consent/authentication to work around failures.
 
+The optional passive authentication probe adds `--auth-handoff-map PRIVATE_MAP`.
+Generate that private map with `tools/prepare_auth_handoff_map.py` for the same
+read-only source framework, metadata and pin report. Selection requires the full
+source profile, existing EOS result map and platform sign-in capabilities. It
+adds no authentication request and changes no credential or permission. See
+[the complete diagnostic scope](AUTH_HANDOFF_DIAGNOSTICS.md). Full builds also
+record the scalar reason at the existing validated disconnect boundary.
+
 ## Checks and evidence
 
 Owned native fixtures and a portable test subset can run without game inputs. The full development suite includes tests that need prior source-pipeline fixtures, generated native headers or a configured .NET SDK. `bash tools/run_checks.sh` invokes the broad suite and will expose those missing dependencies; it is not advertised as a clean-clone all-green command.

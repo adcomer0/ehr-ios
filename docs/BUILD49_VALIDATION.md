@@ -59,7 +59,8 @@ factory call, zero adapter failures and zero source callback failures. The host
 replacement, custom intro, allowed original `ShipStatus.Begin`, role-display,
 game-start and game-end routes completed. The end arrived about 13 seconds after
 host setup began. This is a successful real-owner host-start observation; the
-exact winner condition still needs player-count/settings context.
+user confirmed the test was solo, consistent with EHR's low-player end conditions.
+The exact winning faction was not inspected.
 
 With USB unplugged, the exact paired device connected over the local network
 with its developer tunnel and services ready. An exact own-app query confirmed

@@ -1,6 +1,9 @@
 #import "EHRFullSourceRuntime.h"
 #include "EHRRuntimeDiagnostics.h"
 #include "EHRAppleAuthDiagnostics.h"
+#if EHR_HAS_AUTH_HANDOFF
+#include "EHRAuthHandoffDiagnostics.h"
+#endif
 #if EHR_HAS_GAME_START_ITERATOR
 #include "EHRGameStartIteratorAdapter.h"
 #endif
@@ -117,6 +120,9 @@ NSDictionary *EHRFullSourceCopyRuntimeStatus(void) {
     result[@"authRetryGuard"]=EHRAuthRetryGuardCopyStatus();
 #endif
     result[@"eosLoginObserverStatus"]=@(s.eosObserverStatus);
+#if EHR_HAS_AUTH_HANDOFF
+    result[@"authHandoff"]=EHRAuthHandoffDiagnosticsCopyStatus();
+#endif
     if(s.status){
         auto copy=reinterpret_cast<int32_t(*)(uint8_t *,size_t,size_t *)>(fullExport("ehr_source_application_copy_error_v1"));
         uint8_t error[8192]{};size_t needed=0;
@@ -138,6 +144,10 @@ NSDictionary *EHRFullSourceBindRuntime(void) {
     EHRRuntimeDiagnosticsRecordAuthInstall(EHRAppleAuthDiagnosticsInstall());
 #if EHR_HAS_EOS_LOGIN_DIAGNOSTICS
     s.eosObserverStatus=EHREOSLoginDiagnosticsPrepare();
+#endif
+#if EHR_HAS_AUTH_HANDOFF
+    // Passive metadata preparation must never change game/auth startup outcome.
+    (void)EHRAuthHandoffDiagnosticsPrepare();
 #endif
 #if EHR_HAS_AUTH_RETRY_GUARD
     // Signed opt-in controls only the retry UX guard; no auth is started here.

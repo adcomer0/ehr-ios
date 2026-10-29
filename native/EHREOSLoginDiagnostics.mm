@@ -4,6 +4,9 @@
 #include "EHRRuntimeGateway.h"
 #include "EHRRuntimeMetadataPrivate.h"
 #include "EHRRuntimeDiagnostics.h"
+#if EHR_HAS_AUTH_HANDOFF
+#include "EHRAuthHandoffDiagnostics.h"
+#endif
 #include "EHRAuthRetryScope.hpp"
 #include <atomic>
 
@@ -51,6 +54,9 @@ Observation observe(uint32_t phase, void *info) noexcept {
             }
             else if (status == EHR_RUNTIME_OK) status = EHR_RUNTIME_NOT_READY;
             EHRRuntimeDiagnosticsRecordEOSLogin(phase, result, status, count);
+#if EHR_HAS_AUTH_HANDOFF
+            EHRAuthHandoffDiagnosticsRecordEOSResult(phase, status, result);
+#endif
         } catch (...) { /* Optional observer failure must not change login. */ }
     } @catch (__unused NSException *exception) { /* Original still runs. */ }
     return observation;

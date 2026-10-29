@@ -108,6 +108,30 @@ def validate_game_start_iterator_proof(attachments):
                     == proof["rootsBefore"], "game_start_iterator_self_test_root_accounting_invalid")
 
 
+def validate_auth_handoff_proof(attachments):
+    path = attachments / "EHRAuthHandoffProof.json"
+    require(path.is_file() and not path.is_symlink()
+            and path.resolve().parent == attachments.resolve(), "auth_handoff_self_test_missing")
+    try:
+        proof = json.loads(path.read_text())
+    except (OSError, UnicodeError, ValueError) as error:
+        raise Rejected("auth_handoff_self_test_invalid") from error
+    require(isinstance(proof, dict), "auth_handoff_self_test_invalid")
+    require(proof.get("schema") == "ehr.auth-handoff-proof.v1"
+            and proof.get("success") is True and type(proof.get("status")) is int and proof["status"] == 0
+            and type(proof.get("preparedStatus")) is int and proof["preparedStatus"] == 0
+            and type(proof.get("failures")) is int and proof["failures"] == 0
+            and type(proof.get("checks")) is int and 87 <= proof["checks"] <= (1 << 32) - 1
+            and proof.get("isolatedRecorder") is True
+            and proof.get("eventCapacity") == 32 and proof.get("eventRingBounded") is True
+            and proof.get("middleAppleTypePreserved") is True and proof.get("unknownScalarRedacted") is True
+            and all(proof.get(key) is False for key in (
+                "realAuthenticationInvoked", "credentialsRead", "networkOperations", "runtimeExecutableWrites"))
+            and all(type(proof.get(key)) is int and proof[key] == 0 for key in (
+                "actualCredentialReads", "originalAuthCalls", "networkRequests", "accountActions")),
+            "auth_handoff_self_test_not_passed")
+
+
 def validate_mac_proof(candidate, summary_path, runtime, *, team_id, bundle_id):
     candidate, summary_path = candidate.resolve(), summary_path.resolve()
     require(outside_git(candidate) and outside_git(summary_path), "artifact_input_inside_git")
@@ -150,8 +174,24 @@ def validate_mac_proof(candidate, summary_path, runtime, *, team_id, bundle_id):
     require(profile_pin == summary.get("candidate_profile_sha256"), "profile_differs_from_mac_test")
     info = plistlib.loads((candidate / "Info.plist").read_bytes())
     version_proof = proof.get("applicationVersion", {})
+    if info.get("EHRNetworkDiagnosticsCompiled"):
+        network = status.get("numericDiagnostics", {}).get("networkDisconnect", {})
+        require(isinstance(network, dict) and network.get("schemaVersion") == 1
+                and all(type(network.get(key)) is int and network[key] == 0 for key in (
+                    "targetMatches", "count", "hasReason", "observerFaults")),
+                "network_disconnect_startup_not_ready")
     if info.get("EHREOSLoginDiagnosticsEnabled"):
         require(status.get("eosLoginObserverStatus") == 0, "eos_login_observer_not_ready")
+    if info.get("EHRAuthHandoffDiagnosticsCompiled"):
+        handoff = status.get("authHandoff", {})
+        require(isinstance(handoff, dict) and type(handoff.get("preparedStatus")) is int
+                and handoff["preparedStatus"] == 0
+                and handoff.get("schemaVersion") == 2 and handoff.get("eventCapacity") == 32
+                and handoff.get("eventCount") == 0 and handoff.get("events") == []
+                and all(type(handoff.get(key)) is int and handoff[key] == 0 for key in (
+                    "appleSuccesses", "managedCredentialEntries", "loginEntries", "typeObservations",
+                    "observerFaults")), "auth_handoff_startup_not_ready")
+        validate_auth_handoff_proof(attachments)
     if info.get("EHRAuthRetryGuardActivationRequested"):
         guard = status.get("authRetryGuard", {})
         require(info.get("EHRAuthRetryGuardCompiled") is True and isinstance(guard, dict)

@@ -1,5 +1,13 @@
 #import <Foundation/Foundation.h>
 #include "EHRRuntimeDiagnostics.h"
+#if EHR_HAS_NETWORK_DIAGNOSTICS
+#include "EHRNativePatchThunks.h"
+extern "C" NSDictionary *EHRNativeDisconnectCopyStatus(void){return @{@"schemaVersion":@1,@"count":@1,@"reason":@5};}
+#endif
+#if EHR_HAS_AUTH_HANDOFF
+#include "EHRAuthHandoffDiagnostics.h"
+extern "C" NSDictionary<NSString *,id> *EHRAuthHandoffDiagnosticsCopyStatus(void){return @{@"preparedStatus":@0,@"phaseSequence":@9,@"loginEntries":@1};}
+#endif
 #if EHR_HAS_GAME_START_ITERATOR
 #include "EHRGameStartIteratorAdapter.h"
 // Fixed owned counters only: exercise the writer's optional linkage/schema
@@ -24,6 +32,14 @@ int main(){@autoreleasepool {
 #if EHR_HAS_GAME_START_ITERATOR
  [expected addObject:@"gameStartIterator"];
  if(![copy[@"gameStartIterator"] isEqualToDictionary:@{@"preparedStatus":@0,@"enabled":@YES,@"replacements":@2}])return 12;
+#endif
+#if EHR_HAS_AUTH_HANDOFF
+ [expected addObject:@"authHandoff"];
+ if(![copy[@"authHandoff"] isEqualToDictionary:@{@"preparedStatus":@0,@"phaseSequence":@9,@"loginEntries":@1}])return 13;
+#endif
+#if EHR_HAS_NETWORK_DIAGNOSTICS
+ [expected addObject:@"networkDisconnect"];
+ if(![copy[@"networkDisconnect"] isEqualToDictionary:@{@"schemaVersion":@1,@"count":@1,@"reason":@5}])return 14;
 #endif
  if(error||![expected isEqualToSet:[NSSet setWithArray:copy.allKeys]])return 2;
  NSDictionary *route=[copy[@"routes"] firstObject];

@@ -1,5 +1,11 @@
 #import <Foundation/Foundation.h>
 #include "EHRRuntimeDiagnostics.h"
+#if EHR_HAS_NETWORK_DIAGNOSTICS
+#include "EHRNativePatchThunks.h"
+#endif
+#if EHR_HAS_AUTH_HANDOFF
+#include "EHRAuthHandoffDiagnostics.h"
+#endif
 #if EHR_HAS_GAME_START_ITERATOR
 #include "EHRGameStartIteratorAdapter.h"
 #endif
@@ -38,6 +44,13 @@ NSDictionary *dictionary(const ehr_diagnostics::Snapshot &s) {
  // This getter copies only adapter-owned atomics; the writer performs no
  // runtime, metadata, source, scene or account operation.
  result[@"gameStartIterator"]=EHRGameStartIteratorCopyStatus();
+#endif
+#if EHR_HAS_AUTH_HANDOFF
+ // Own numeric recorder state only; no credentials or runtime calls on worker.
+ result[@"authHandoff"]=EHRAuthHandoffDiagnosticsCopyStatus();
+#endif
+#if EHR_HAS_NETWORK_DIAGNOSTICS
+ result[@"networkDisconnect"]=EHRNativeDisconnectCopyStatus();
 #endif
  return result;
 }

@@ -24,6 +24,9 @@
 #ifndef EHR_EXERCISE_GAME_START_ITERATOR
 #define EHR_EXERCISE_GAME_START_ITERATOR 0
 #endif
+#ifndef EHR_EXERCISE_AUTH_HANDOFF
+#define EHR_EXERCISE_AUTH_HANDOFF 0
+#endif
 
 namespace {
 void *helperExport(const char *name) {
@@ -114,8 +117,28 @@ NSDictionary *status() {
         XCTAssertNotNil(route[@"lastArgument"]);
     }
     XCTAssertEqualObjects(diagnostics[@"appleAuth"][@"installStatus"],@0);
+    if([NSBundle.mainBundle.infoDictionary[@"EHRNetworkDiagnosticsCompiled"] boolValue]){
+        NSDictionary *network=diagnostics[@"networkDisconnect"];
+        XCTAssertEqualObjects(network[@"schemaVersion"],@1);
+        for(NSString *key in @[@"targetMatches",@"count",@"hasReason",@"observerFaults"])
+            XCTAssertEqualObjects(network[key],@0);
+    }
     if([NSBundle.mainBundle.infoDictionary[@"EHREOSLoginDiagnosticsEnabled"] boolValue])
         XCTAssertEqualObjects(last[@"eosLoginObserverStatus"],@0);
+    if([NSBundle.mainBundle.infoDictionary[@"EHRAuthHandoffDiagnosticsCompiled"] boolValue]){
+        NSDictionary *handoff=last[@"authHandoff"];
+        XCTAssertEqualObjects(handoff[@"preparedStatus"],@0);
+        XCTAssertEqualObjects(handoff[@"schemaVersion"],@2);
+        XCTAssertEqualObjects(handoff[@"eventCapacity"],@32);
+        XCTAssertEqualObjects(handoff[@"eventCount"],@0);
+        XCTAssertEqualObjects(handoff[@"events"],@[]);
+        XCTAssertEqualObjects(handoff[@"appleSuccesses"],@0);
+        XCTAssertEqualObjects(handoff[@"managedCredentialEntries"],@0);
+        XCTAssertEqualObjects(handoff[@"loginEntries"],@0);
+        XCTAssertEqualObjects(handoff[@"typeObservations"],@0);
+        XCTAssertEqualObjects(handoff[@"observerFaults"],@0);
+        XCTAssertEqualObjects(diagnostics[@"authHandoff"][@"preparedStatus"],@0);
+    }
     if([NSBundle.mainBundle.infoDictionary[@"EHRAuthRetryGuardActivationRequested"] boolValue]){
         NSDictionary *guard=last[@"authRetryGuard"];
         XCTAssertTrue([guard[@"startupRequested"] boolValue]);
@@ -168,6 +191,30 @@ NSDictionary *status() {
     XCTAssertEqualObjects(gameStartProof[@"realGameOwnerInvoked"],@NO);
     XCTAssertEqualObjects(gameStartProof[@"originalMoveNextInvoked"],@NO);
     XCTAssertEqualObjects(gameStartProof[@"realHostFactoryInvoked"],@NO);
+#endif
+#if EHR_EXERCISE_AUTH_HANDOFF
+    auto handoffProbe=reinterpret_cast<NSDictionary *(*)(void)>(helperExport("EHRAuthHandoffDiagnosticsSelfTest"));
+    NSDictionary *handoffProof=handoffProbe?handoffProbe():@{@"success":@NO};
+    NSData *handoffData=[NSJSONSerialization dataWithJSONObject:handoffProof options:NSJSONWritingPrettyPrinted error:nil];
+    NSLog(@"EHR_AUTH_HANDOFF_PROOF %@",[[NSString alloc] initWithData:handoffData encoding:NSUTF8StringEncoding]);
+    XCTAttachment *handoffAttachment=[XCTAttachment attachmentWithData:handoffData uniformTypeIdentifier:@"public.json"];
+    handoffAttachment.name=@"EHRAuthHandoffProof.json";handoffAttachment.lifetime=XCTAttachmentLifetimeKeepAlways;[self addAttachment:handoffAttachment];
+    XCTAssertTrue([handoffProof[@"success"] boolValue],@"%@",handoffProof);
+    XCTAssertEqualObjects(handoffProof[@"status"],@0);
+    XCTAssertEqualObjects(handoffProof[@"preparedStatus"],@0);
+    XCTAssertGreaterThanOrEqual([handoffProof[@"checks"] unsignedIntValue],87u);
+    XCTAssertEqualObjects(handoffProof[@"failures"],@0);
+    XCTAssertEqualObjects(handoffProof[@"realAuthenticationInvoked"],@NO);
+    XCTAssertEqualObjects(handoffProof[@"credentialsRead"],@NO);
+    XCTAssertEqualObjects(handoffProof[@"networkOperations"],@NO);
+    XCTAssertEqualObjects(handoffProof[@"isolatedRecorder"],@YES);
+    XCTAssertEqualObjects(handoffProof[@"runtimeExecutableWrites"],@NO);
+    XCTAssertEqualObjects(handoffProof[@"eventCapacity"],@32);
+    XCTAssertEqualObjects(handoffProof[@"eventRingBounded"],@YES);
+    XCTAssertEqualObjects(handoffProof[@"middleAppleTypePreserved"],@YES);
+    XCTAssertEqualObjects(handoffProof[@"unknownScalarRedacted"],@YES);
+    for(NSString *key in @[@"actualCredentialReads",@"originalAuthCalls",@"networkRequests",@"accountActions"])
+        XCTAssertEqualObjects(handoffProof[key],@0);
 #endif
 #if EHR_EXERCISE_TOUCH_SHORTCUTS
     void *touchModule=nullptr,*touchHelper=nullptr;

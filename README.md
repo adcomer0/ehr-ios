@@ -1,6 +1,6 @@
 # EHR iOS — native integration research
 
-An experimental, all-local iOS port of [Endless Host Roles](https://github.com/Gurge44/EndlessHostRoles), intended to let an iPhone host EHR games for vanilla Among Us players. **This is a research prototype. Authentication fails, menus can lag, and multiplayer and complete role behavior remain unverified. It is not a finished release.**
+An experimental, all-local iOS port of [Endless Host Roles](https://github.com/Gurge44/EndlessHostRoles), intended to let an iPhone host EHR games for vanilla Among Us players. **This is a research prototype. Authentication fails, and the latest vanilla-peer test disconnected the host. It is not a finished release.**
 
 ## How it works
 
@@ -8,19 +8,26 @@ EHR's C# source is compiled ahead of time with **.NET NativeAOT** into an ARM64 
 
 There is no BepInEx Unity/IL2CPP plugin loader running on the phone and no embedded .NET JIT. Some BepInEx Core configuration/logging APIs and Harmony-compatible source descriptors remain as compile-time/AOT dependencies. This is not a Windows DLL copied into an iOS app. See [the architecture](docs/ARCHITECTURE.md) for the ABI, ownership, coroutine, hook and loader details.
 
-## Current state: build 49 reaches a physical game
+## Current state: build-51 diagnostics, physical game start reached
 
 - The full selected EHR source compiles for `ios-arm64`: 796 C# inputs; the 224 resource names/hashes are catalogued separately.
 - Signed startup on an Apple Silicon Mac loads EHR once, initializes 5,049 options and activates 292 permitted bindings from 298 metadata targets. Six account/consent-related patches are deliberately excluded.
-- A physical iPhone can open an Online lobby, configure settings and reach a game in build 49. The user reported an immediate win; the trace reached intro, ship initialization, game start and game end. A normal multiplayer round and vanilla-peer compatibility have not been validated.
+- A physical iPhone can open an Online lobby, configure settings and reach a game in build 49. The user confirmed that test was solo; its early win is consistent with EHR's low-player end conditions. The trace reached intro, ship initialization, game start and game end.
+- In build 50, a vanilla peer joined and the modded host disconnected; the remaining vanilla client became host. A normal multiplayer round has not been validated. Build 51 adds the original numeric disconnect reason; the cause is still under investigation.
 - Build 48's phone diagnostic showed immediate retirement of completed coroutine slots, two active entries and no recorded callback failures during the black screen. The earlier 256-entry exhaustion did not recur in that reproduction.
 - The pinned native game inlines host-start iterator construction, bypassing EHR's patched host factory. Build 49 adapts the exact native yield through the existing EHR factory and callbacks. The phone recorded one replacement and one host-factory call, with no adapter or source callback failures.
 - Apple authorization is followed by EOS result 7000. The explicitly enabled development retry guard stopped the repeated sheets during the phone test, but successful backend authentication remains unresolved.
+- Build 51 records a bounded numeric history of the Apple-to-EOS handoff. It preserves the original calls and collects no token contents or account IDs. See [authentication diagnostics](docs/AUTH_HANDOFF_DIAGNOSTICS.md).
 - UIKit touch controls, mobile input, audio, static source components and bounded numeric diagnostics are implemented. Compiled role source is not evidence that every role works in play.
 
 Read [known failures and evidence](docs/KNOWN_ISSUES.md). No protection against bans or account/progression loss is established. Use a disposable test identity; keep valuable accounts outside testing.
 
 Build 49 passed signed iOS-on-Mac startup, its owned native game-start adapter probe and the real-runtime 1,024-retained-carrier check, plus touch/audio/cleanup probes. The separate phone observation confirms one real-owner host-start path. See [the validation scope](docs/BUILD49_VALIDATION.md); complete rounds, peers and all roles still need testing.
+
+Build 51 passed signed Mac runtime checks and 294 owned regression tests. Its
+isolated authentication-recorder probe passed 87 checks without starting sign-in.
+See [build-51 validation](docs/BUILD51_VALIDATION.md). Upgrades from 49 to 50 and
+50 to 51 were verified over Wi-Fi on the test iPhone.
 
 ## Repository contents
 
