@@ -82,7 +82,10 @@ returned zero and activation was enabled; the retained-carrier and failure-clean
 checks also passed. No real owner, original `MoveNext`, real host factory, Unity
 object creation or executable memory write was used by this probe.
 
-Physical build 49 game-start verification remains pending. The latest physical
-build 48 reproduction still reached a black screen when starting a game. The
-owned runtime proof does not establish real-owner host-start, role assignment or
-multiplayer success. See [known issues](KNOWN_ISSUES.md).
+The separate physical build-49 observation recorded one real-owner replacement
+and one factory call, with zero adapter failures. Its host replacement, custom
+intro, allowed ship initialization, game-start and game-end routes completed;
+the user reported entering a game and winning immediately. The earlier build-48
+black screen did not recur in that attempt. This does not establish every role,
+player combination or a normal multiplayer round. See
+[the validation scope](BUILD49_VALIDATION.md) and [known issues](KNOWN_ISSUES.md).

@@ -1,6 +1,6 @@
 # EHR iOS — native integration research
 
-An experimental, all-local iOS port of [Endless Host Roles](https://github.com/Gurge44/EndlessHostRoles), intended to let an iPhone host EHR games for vanilla Among Us players. **This is a research prototype. Authentication fails, menus can lag, and starting a game can produce a black screen. It is not a finished playable release.**
+An experimental, all-local iOS port of [Endless Host Roles](https://github.com/Gurge44/EndlessHostRoles), intended to let an iPhone host EHR games for vanilla Among Us players. **This is a research prototype. Authentication fails, menus can lag, and multiplayer and complete role behavior remain unverified. It is not a finished release.**
 
 ## How it works
 
@@ -8,19 +8,19 @@ EHR's C# source is compiled ahead of time with **.NET NativeAOT** into an ARM64 
 
 There is no BepInEx Unity/IL2CPP plugin loader running on the phone and no embedded .NET JIT. Some BepInEx Core configuration/logging APIs and Harmony-compatible source descriptors remain as compile-time/AOT dependencies. This is not a Windows DLL copied into an iOS app. See [the architecture](docs/ARCHITECTURE.md) for the ABI, ownership, coroutine, hook and loader details.
 
-## Current state: native build 49, physical baseline 48
+## Current state: build 49 reaches a physical game
 
 - The full selected EHR source compiles for `ios-arm64`: 796 C# inputs; the 224 resource names/hashes are catalogued separately.
 - Signed startup on an Apple Silicon Mac loads EHR once, initializes 5,049 options and activates 292 permitted bindings from 298 metadata targets. Six account/consent-related patches are deliberately excluded.
-- A physical iPhone can open an Online lobby and configure settings. Starting a game remains unreliable; end-to-end gameplay and vanilla-peer compatibility have not been validated.
+- A physical iPhone can open an Online lobby, configure settings and reach a game in build 49. The user reported an immediate win; the trace reached intro, ship initialization, game start and game end. A normal multiplayer round and vanilla-peer compatibility have not been validated.
 - Build 48's phone diagnostic showed immediate retirement of completed coroutine slots, two active entries and no recorded callback failures during the black screen. The earlier 256-entry exhaustion did not recur in that reproduction.
-- The pinned native game inlines host-start iterator construction, bypassing EHR's patched host factory. Build 49 adapts the exact native yield through the existing EHR factory and callbacks. Signed runtime tests pass; real-owner game start still needs phone verification.
+- The pinned native game inlines host-start iterator construction, bypassing EHR's patched host factory. Build 49 adapts the exact native yield through the existing EHR factory and callbacks. The phone recorded one replacement and one host-factory call, with no adapter or source callback failures.
 - Apple authorization is followed by EOS result 7000. The explicitly enabled development retry guard stopped the repeated sheets during the phone test, but successful backend authentication remains unresolved.
 - UIKit touch controls, mobile input, audio, static source components and bounded numeric diagnostics are implemented. Compiled role source is not evidence that every role works in play.
 
 Read [known failures and evidence](docs/KNOWN_ISSUES.md). No protection against bans or account/progression loss is established. Use a disposable test identity; keep valuable accounts outside testing.
 
-Build 49 passed signed iOS-on-Mac startup, its owned native game-start adapter probe and the real-runtime 1,024-retained-carrier check, plus touch/audio/cleanup probes. See [the validation scope](docs/BUILD49_VALIDATION.md). These probes do not run a real lobby or establish playable rounds.
+Build 49 passed signed iOS-on-Mac startup, its owned native game-start adapter probe and the real-runtime 1,024-retained-carrier check, plus touch/audio/cleanup probes. The separate phone observation confirms one real-owner host-start path. See [the validation scope](docs/BUILD49_VALIDATION.md); complete rounds, peers and all roles still need testing.
 
 ## Repository contents
 

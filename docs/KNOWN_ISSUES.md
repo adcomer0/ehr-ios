@@ -1,6 +1,6 @@
 # Known issues and build-49 work
 
-This snapshot is incomplete. Physical build 48 reached Online lobby hosting and mod settings, then a black screen after starting the game. Build 49 contains the native game-start adaptation below and has passed signed runtime probes, but is awaiting phone verification. Full rounds, victory/meeting transitions, every role and vanilla-peer combinations remain unverified.
+This snapshot is incomplete. Physical build 48 reached Online lobby hosting and mod settings, then a black screen after starting the game. Physical build 49 reached a game and the user reported an immediate win. Its trace reached custom intro, ship initialization, game start and game end without new source failures. Player-count and winner-condition interpretation remain pending; a normal multiplayer round, meetings, every role and vanilla-peer combinations remain unverified.
 
 ## Confirmed native coroutine capacity pressure
 
@@ -16,7 +16,7 @@ The phone trace recorded `CoStartGame` and ship initialization, but no `CoStartG
 
 Build 49 adds an optional native adapter after the original parent `MoveNext`. It recognizes only the exact host yield, checks matching owners and untouched state, invokes the existing patched host factory once, then publishes an active production iterator through the public reference-field API. Activation, owners and iterator fields are checked again before commit. Other yields remain unchanged. See [the adapter](IOS_GAME_START_ITERATOR.md) and [build-49 validation](BUILD49_VALIDATION.md).
 
-The adapter passed synthetic owner/reentrancy cases and an owned probe in the actual signed runtime. That probe deliberately avoids real game owners and scene/network operations. It establishes native metadata, field access, replacement and cleanup behavior; it does not prove that the physical game-start black screen is resolved.
+The adapter passed synthetic owner/reentrancy cases and an owned probe in the actual signed runtime. That probe deliberately avoids real game owners and scene/network operations. The separate physical build-49 trace then recorded one successful real-owner replacement and one host-factory call. The custom host coroutine and intro completed, and `ShipStatus.Begin` allowed the original after source role setup. The earlier black screen did not recur in that attempt; this does not certify every player/role/map combination.
 
 ## Earlier game-start native exception
 
@@ -26,7 +26,7 @@ Build 47's `GameStartManager.Start` recorded one dispatched failure with retaine
 
 Apple authorization callbacks can complete, but the original EOS platform login returned 7000 (`EOS_Connect_ExternalTokenValidationFailed`). This proves token validation failed, not a particular audience/expiry/provider cause. The original game then automatically retries platform sign-in, producing repeated Apple sheets. Successful account authentication and progression safety are unverified.
 
-No token contents were read, no success was fabricated and no online/account permission checks were removed. This snapshot includes a default-disabled retry-failure guard. A development build can explicitly opt in after exact runtime metadata preparation succeeds. It routes one synchronous same-owner automatic retry after normal result 7000 to the original native failure handler. In the build-48 phone test, the Apple sheet stopped repeating after one attempt; diagnostics still recorded one Apple success followed by one EOS 7000 result. The guard does not make the backend accept a token. See [the guard](AUTH_RETRY_GUARD.md). Use disposable test identities; valuable accounts remain outside testing.
+No token contents were read, no success was fabricated and no online/account permission checks were removed. This snapshot includes a default-disabled retry-failure guard. A development build can explicitly opt in after exact runtime metadata preparation succeeds. It routes one synchronous same-owner automatic retry after normal result 7000 to the original native failure handler. The build-48 phone test stopped repeating the Apple sheet after one attempt. Build 49 still recorded one Apple success followed by one EOS 7000 result. The guard does not make the backend accept a token. See [the guard](AUTH_RETRY_GUARD.md). Use disposable test identities; valuable accounts remain outside testing.
 
 ## Other boundaries
 

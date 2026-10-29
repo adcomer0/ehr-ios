@@ -68,9 +68,9 @@ startup proof to show the adapter prepared successfully and enabled after full
 source startup. The separate owned native iterator probe must also pass on the
 signed runtime before delivery. Build 49 passed this iOS-on-Mac metadata/barrier
 probe with 46 checks and exact root conservation; it did not invoke a real game
-owner, the original game-start iterator body or the real host factory. Physical
-build 49 host-start remains unverified; the latest physical build 48 test still
-black-screened on Start. These gates supplement the existing four-binary,
+owner, the original game-start iterator body or the real host factory. A separate
+physical build-49 observation reached host start, intro and a game-end callback;
+multiplayer and full role behavior remain unverified. These gates supplement the existing four-binary,
 startup, exact-device and signing checks.
 
 Signing tools require explicit `--team-id` and `--bundle-id` values. `--team-name` can add an exact organization assertion. Use a separate test app identity and your own provisioning; the official game's bundle identity is rejected. No certificate/profile/device values are supplied. See [portable tooling](PORTABLE_TOOLING.md) for parameter flow. Do not uninstall the official game, import its container, reset account data or bypass consent/authentication to work around failures.

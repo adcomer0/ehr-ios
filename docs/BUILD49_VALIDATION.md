@@ -50,14 +50,32 @@ The protected upgrade tool requires the matching signed startup and owned
 adapter proof for a candidate compiled with this adapter. Maps, game binaries,
 profiles, device identifiers and raw runtime reports stay outside Git.
 
+## Physical observation
+
+An upgrade from build 48 to 49 was confirmed on the exact test iPhone, preserving
+the existing separate app. The user then reported reaching a game and winning
+immediately. Its numeric cache recorded one adapter replacement, one real host
+factory call, zero adapter failures and zero source callback failures. The host
+replacement, custom intro, allowed original `ShipStatus.Begin`, role-display,
+game-start and game-end routes completed. The end arrived about 13 seconds after
+host setup began. This is a successful real-owner host-start observation; the
+exact winner condition still needs player-count/settings context.
+
+With USB unplugged, the exact paired device connected over the local network
+with its developer tunnel and services ready. An exact own-app query confirmed
+build 49 and the own numeric cache was read over that wireless connection.
+This verifies wireless development access; a subsequent wireless upgrade has
+not yet been performed.
+
 ## Still unverified
 
-Build 49 has not yet been verified in a physical lobby. The owned probes do not
-establish real-owner game start, intro, a complete round, meetings/victory,
-vanilla-peer joining or every role's behavior. Settings lag may have other causes.
+A normal multiplayer round, meetings, vanilla-peer joining and every role's
+behavior remain unverified. A single role-setting RPC is not sufficient evidence
+of initial role assignment; end-game processing also sends ghost-role updates.
+Settings lag may have other causes.
 
-Physical build 48 stopped repeating the Apple sheet after one attempt, but its
-normal backend result was still EOS 7000. Backend authentication, online
+Physical build 49 still recorded Apple authorization success followed by normal
+EOS result 7000, and the user reported sign-in failure. Backend authentication, online
 discovery, account/progression safety and protection from bans remain unresolved.
 The retry guard changes the failure flow only. Valuable accounts remain outside
 testing; no authentication success or online permission is fabricated.
