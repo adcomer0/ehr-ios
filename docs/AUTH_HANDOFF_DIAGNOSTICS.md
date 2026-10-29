@@ -109,6 +109,41 @@ It therefore **cannot establish that the Apple request used the wrong type**.
 Schema 2 preserves the intermediate type event while it remains within the
 32-event history. It cannot reconstruct missing build-50 events retroactively.
 
+### Observed phone trace in build 51
+
+The build-51 phone trace retains all 13 events with no ring overwrites,
+observation faults, unknown scalar observations or out-of-scope marshal calls:
+
+| Sequence | Observation |
+| --- | --- |
+| 1–3 | Initial guest login, scope 1, credential type 10. |
+| 4 | One positive Apple authorization callback. |
+| 5–6 | One managed `OnGetCredentials` entry and ordinary return. |
+| 7–9 | Connect login, scope 2, credential type **11 (`AppleIdToken`)**, ordinary return. |
+| 10 | One normal EOS result: **7000**, observation status 0. |
+| 11–13 | Later fallback login, scope 3, credential type 10, ordinary return. |
+
+This confirms that the observed Apple-path request selected the correct
+credential enum. The later device-ID fallback explains the last-value 10; it is
+not evidence of a wrong Apple credential type. The managed callback completed
+and the Connect request began about 0.625 seconds after the Apple completion;
+the normal EOS result followed about 0.378 seconds later. The trace does not
+show a long client handoff delay.
+
+A read-only comparison of nine relevant build-51 authentication method bodies
+also matches the original game, excluding only the three expected observer
+entry branches. This includes the identity-token decoder, UTF-8 handoff,
+credential-type getter and original EOS marshalers. API-version constants remain
+the statically verified 1 and 2; they have not become live observations.
+
+No concrete local implementation defect is established by this evidence.
+Missing managed callback delivery and wrong credential-enum selection are not
+supported explanations for this attempt. The trace does not inspect the token
+payload or prove its issuance time, freshness, signature, audience, nonce, or
+acceptance by the configured provider. Those validation questions remain open;
+correct enum selection alone cannot distinguish them. No token, audience, nonce
+or permission substitution is justified by the result.
+
 ## Validation limits
 
 The owned forwarding fixture covers unchanged arguments/original-once behavior,
@@ -131,9 +166,9 @@ python3 -m unittest discover -s tests -p 'test_auth_handoff_*.py' -v
 Focused owned tests, strict iOS ARM64 compilation and signed build-51 Mac runtime
 validation passed. The actual isolated recorder probe passed 87 checks and all
 four candidate executables remained unchanged. Build 51 was then confirmed as
-a wireless phone upgrade from 50. Its phone authentication trace is still
-pending. Compilation, metadata readiness and isolated fixtures do not prove
-successful sign-in or account progression safety.
+a wireless phone upgrade from 50. Its observed phone trace above still ends in
+EOS 7000, so authentication remains unsuccessful. Compilation, metadata
+readiness and isolated fixtures do not prove account progression safety.
 
 ## Legitimate publisher configuration check
 
@@ -152,16 +187,22 @@ Local signing/capability success alone cannot establish backend acceptance.
 
 The concrete question for the publisher's authorized backend administrator is:
 
-> Does the Apple identity-provider configuration for `${EOS_PRODUCT}`, enabled
-> in `${EOS_SANDBOX}` and used by `${EOS_DEPLOYMENT}`, legitimately accept the
-> native client identifier `${NATIVE_BUNDLE_ID}` under the intended Apple
-> developer relationship? If not, what authorized app identity and integration
-> configuration should this distribution use?
+> Is `${NATIVE_BUNDLE_ID}` an accepted native Apple client for `${EOS_PRODUCT}`,
+> enabled in `${EOS_SANDBOX}` and used by `${EOS_DEPLOYMENT}`, under the intended
+> Apple developer relationship: **yes or no**? If no, what authorized app
+> identity/configuration should this distribution use? If yes, can the owner or
+> Epic support provide a redacted validation-failure category for this attempt?
 
 Epic configures external identity providers for a product and enables them per
 sandbox. Request a categorical configuration result or sanitized support
 correlation, not private keys, client secrets, tokens or user identities.
-[Epic identity-provider management](https://dev.epicgames.com/docs/epic-online-services/eos-fundamentals/identity-provider-management?lang=ko)
+[Epic identity-provider management](https://dev.epicgames.com/docs/epic-online-services/eos-fundamentals/identity-provider-management)
+
+Provider acceptance is the next legitimate configuration check, not a proven
+cause of this 7000. A more specific rejection category depends on what the
+publisher's or Epic's authorized tooling exposes; the public client result
+alone does not supply it. No account linking, account reset or credential
+inspection is required to ask that configuration question.
 
 An unrelated EOS product does not establish compatibility with existing game
 progression: its Product User IDs are product-specific. Apple cross-team user

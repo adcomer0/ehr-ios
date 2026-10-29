@@ -40,8 +40,23 @@ The protected installer requires the matching startup, bounded isolated proof,
 exact-device/profile coverage and four tested binary pins. Its Mac proof also
 requires zero observed disconnect/authentication activity. The build-49-to-50
 phone upgrade was verified over the local-network developer connection, followed
-by a confirmed build-50-to-51 wireless upgrade. Phone authentication and peer-join
-observations for the new build-51 diagnostics are still pending.
+by a confirmed build-50-to-51 wireless upgrade.
+
+## Physical build-51 observations
+
+The bounded history retained one Apple authorization success, the original
+managed credential callback and a Connect login with credential enum 11
+(`AppleIdToken`). The normal EOS callback then reported 7000, followed by a
+separate device-ID fallback using enum 10. All 13 events fit without overwrites,
+unknown credential types or observer faults. This rules out interpreting the
+last fallback enum as the Apple request's credential type. It does not establish
+the backend's specific token-validation failure.
+
+The same phone cache recorded one successful scalar disconnect observation:
+reason 10, `DisconnectReasons.Hacking` in the exact pinned game metadata.
+This establishes the server's disconnect category; it does not identify which
+message or server rule caused it. The user-facing popup described a kick.
+No enforcement or permission check has been bypassed.
 
 ## Limits
 
@@ -53,5 +68,6 @@ must not be treated as an exact request match during overlapping attempts.
 
 Authentication, normal multiplayer rounds, meetings, all roles, account/progression
 safety and protection from bans remain unresolved or unverified. The delayed
-post-disconnect name restore is a known separate cleanup defect. See
+post-disconnect name restore is a known separate cleanup defect, with a source
+repair under validation for the next build. See
 [known issues](KNOWN_ISSUES.md) and [authentication diagnostics](AUTH_HANDOFF_DIAGNOSTICS.md).

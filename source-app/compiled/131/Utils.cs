@@ -1828,6 +1828,12 @@ public static class Utils
         messages.Do(x => SendMessage(x.Text, x.SendTo, x.Title, importance: importance));
     }
 
+    private static bool CanSendSystemNetworkChat()
+    {
+        try { return DataManager.Settings?.Multiplayer?.ChatMode == QuickChatModes.FreeChatOrQuickChat; }
+        catch { return false; }
+    }
+
     public static CustomRpcSender SendMessage(string text, byte sendTo = byte.MaxValue, string title = "", bool noSplit = false, CustomRpcSender writer = null, bool final = false, bool multiple = false, MessageImportance importance = MessageImportance.Medium, bool addToHistory = true, bool force = false, bool noNumberSplit = false, bool numberSplitFinal = false, [CallerFilePath] string callerFilePath = "", [CallerLineNumber] int callerLineNumber = 0)
     {
         try
@@ -1882,6 +1888,12 @@ public static class Utils
                 SendLocally(sender);
 
                 if (addToHistory) ChatUpdatePatch.LastMessages.Add((text, sendTo, title, TimeStamp));
+                return writer;
+            }
+
+            if (!CanSendSystemNetworkChat())
+            {
+                if (sendTo == byte.MaxValue) SendLocally(sender);
                 return writer;
             }
 

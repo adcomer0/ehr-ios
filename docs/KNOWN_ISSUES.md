@@ -1,4 +1,4 @@
-# Known issues and build-51 work
+# Known issues and current native work
 
 This snapshot is incomplete. Physical build 48 reached Online lobby hosting and mod settings, then a black screen after starting the game. Physical build 49 reached a solo game and an early win, consistent with EHR's low-player end conditions. Its trace reached custom intro, ship initialization, game start and game end without new source failures. Physical build 50 then disconnected the host when a vanilla peer joined. Authentication and a normal multiplayer round remain unresolved.
 
@@ -7,21 +7,32 @@ This snapshot is incomplete. Physical build 48 reached Online lobby hosting and 
 The user created an Online lobby in build 50 and a vanilla client joined. The
 modded phone disconnected; the remaining client became host of a vanilla lobby.
 The host's disconnect callbacks completed, but their reason was not in that
-build's numeric cache. Build 51 records only the original `DisconnectReasons`
-enum at the existing validated native boundary, alongside numeric status/timing.
-It does not log the reason string, packet contents or account identifiers.
+build's numeric cache. Physical build 51 recorded reason 10,
+`DisconnectReasons.Hacking`, verified against the pinned metadata. The popup
+described a kick. This identifies the server's category, not the offending
+message or rule. The observer records only the original scalar enum at the
+existing validated native boundary, alongside numeric status/timing. It does
+not log the reason string, packet contents or account identifiers.
 
 One new native `RpcSetName` null-reference exception occurred about 240 ms after
 `DisconnectInternal` returned. It matches a four-second delayed name restore
 scheduled by the join callback without rechecking lobby validity. This is a
-separate cleanup defect and does not explain the initiating disconnect.
+separate cleanup defect and does not explain the initiating disconnect. The
+build-52 source rechecks lobby, host, game/client identity and local
+player ownership before the delayed restore, and skips it when those current
+values no longer match.
 
 The source schedules welcome messages around three seconds after a spawn. Their
 send timing is close to the disconnect, and the lower-level system-message send
-has no free-chat permission guard. Permission rejection is a hypothesis until
-the disconnect reason and permissions are established. No permission checks
-have been removed or forced, and no message behavior has been changed on that
-hypothesis. Custom-settings sync already rejects vanilla targets; keep that guard.
+previously omitted the native chat-mode gate. Build 52 now requires the same
+`FreeChatOrQuickChat` mode as native `ChatController.SendChat` before any system
+network writer creation or mutation. Missing or failed settings deny the send;
+local-only delivery remains available. This parity correction does not prove
+which rule caused the server's `Hacking` classification. No permissions are
+forced or enforcement disabled. See [the guards](MULTIPLAYER_SEND_GUARDS.md).
+Custom-settings sync already rejects vanilla targets; keep that guard. Further
+multiplayer tests should use disposable identities after a concrete invalid-send
+repair; the valuable family account remains outside testing.
 
 ## Confirmed native coroutine capacity pressure
 
@@ -50,9 +61,10 @@ Apple authorization callbacks can complete, but the original EOS platform login 
 No token contents were read, no success was fabricated and no online/account permission checks were removed. This snapshot includes a default-disabled retry-failure guard. A development build can explicitly opt in after exact runtime metadata preparation succeeds. It routes one synchronous same-owner automatic retry after normal result 7000 to the original native failure handler. The build-48 phone test stopped repeating the Apple sheet after one attempt. Build 49 still recorded one Apple success followed by one EOS 7000 result. The guard does not make the backend accept a token. See [the guard](AUTH_RETRY_GUARD.md). Use disposable test identities; valuable accounts remain outside testing.
 
 Build 50 also recorded Apple success followed by EOS 7000 and a later device-ID
-fallback. Its last-observed credential enum belongs to that later fallback;
-it does not establish the enum used for the rejected Apple request. Build 51
-retains a 32-event numeric history to preserve that distinction. See
+fallback. Physical build 51's 13-event history confirms the Apple request used
+enum 11 (`AppleIdToken`), then EOS returned 7000, and the later device-ID
+fallback used enum 10. The original last-only field described that fallback.
+The bounded observer recorded no unknown types, overwrites or faults. See
 [handoff diagnostics](AUTH_HANDOFF_DIAGNOSTICS.md). The rejection cause remains
 unproven; publisher/provider configuration may require confirmation.
 
