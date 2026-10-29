@@ -571,12 +571,29 @@ internal static class OnPlayerJoinedPatch
                 LateTask.New(Options.AutoSetFactionMinMaxSettings, 2f, log: false);
 
             RpcSetNameWaitTimer?.Dispose();
+            RpcSetNameWaitTimer = null;
+            var scheduledClient = AmongUsClient.Instance;
+            var scheduledPlayer = PlayerControl.LocalPlayer;
+            if (!scheduledClient || scheduledClient.GameState != InnerNetClient.GameStates.Joined || !scheduledClient.AmHost || !scheduledPlayer) return;
+
+            int scheduledGameId = scheduledClient.GameId;
+            int scheduledClientId = scheduledClient.ClientId;
+            var scheduledNetworkMode = scheduledClient.NetworkMode;
+            uint scheduledNetId = scheduledPlayer.NetId;
+
             RpcSetNameWaitTimer = new CountdownTimer(4f, () =>
             {
                 RpcSetNameWaitTimer = null;
-                if (AmongUsClient.Instance.IsGameStarted) return;
-                Utils.ApplySuffix(PlayerControl.LocalPlayer, out string name);
-                PlayerControl.LocalPlayer.RpcSetName(name);
+                var currentClient = AmongUsClient.Instance;
+                if (!currentClient || currentClient.GameState != InnerNetClient.GameStates.Joined || !currentClient.AmHost
+                    || currentClient.GameId != scheduledGameId || currentClient.ClientId != scheduledClientId
+                    || currentClient.NetworkMode != scheduledNetworkMode) return;
+
+                var currentPlayer = PlayerControl.LocalPlayer;
+                if (!currentPlayer || currentPlayer.OwnerId != scheduledClientId || currentPlayer.NetId != scheduledNetId || currentPlayer.Data is null) return;
+
+                Utils.ApplySuffix(currentPlayer, out string name);
+                currentPlayer.RpcSetName(name);
             }, cancelOnMeeting: false, cancelOnGameEnd: false);
         }
     }

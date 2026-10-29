@@ -50,6 +50,43 @@ internal static unsafe partial class NativePatchRuntime
     private static bool bound;
     private static Dictionary<ulong,NativePatchDefinition> definitions=new();
 
+    // The dispatcher and its immediate native reader use the same thread. Only
+    // fixed numeric facts survive the invocation; no exception/GC root is kept.
+    private struct FailureRecord
+    {
+        internal ulong Sequence,Target;
+        internal uint Stage,Callback,Argument,Kind,Status,Original;
+    }
+    [ThreadStatic] private static FailureRecord lastFailure;
+    [ThreadStatic] private static ulong failureSequence;
+
+    private static void RecordFailure(ulong target,Exception error,EHRPatchFailureStage stage,int callback,int argument,EHRStaticPatchFrame? frame,int status)
+    {
+        uint kind=error is NativeGameException?1u:error is RuntimeGatewayException?2u:
+            error is InvalidCastException?3u:error is ArgumentException?4u:
+            error is NotSupportedException?5u:error is InvalidOperationException?6u:7u;
+        ulong sequence=unchecked(++failureSequence);if(sequence==0)sequence=++failureSequence;
+        lastFailure=new(){Sequence=sequence,Target=target,Stage=(uint)stage,
+            Callback=callback<0?0:checked((uint)callback+1),Argument=argument<0?0:checked((uint)argument+1),
+            Kind=kind,Status=unchecked((uint)status),Original=frame?.OriginalEntered==true?1u:0u};
+    }
+
+    // Independent optional export: all existing tables and V2 proof stay fixed.
+    // [version,words,sequenceLo,sequenceHi,targetLo,targetHi,stage,
+    // callbackIndex+1,argumentIndex+1,exceptionKind,status,originalEntered].
+    [UnmanagedCallersOnly(EntryPoint="ehr_source_patch_failure_v1")]
+    internal static int CopyFailure(ulong target,uint* words,nuint count)
+    {
+        if(words==null||count!=12||((nuint)words&3)!=0)return 4;
+        for(int i=0;i<12;++i)words[i]=0;
+        FailureRecord value=lastFailure;
+        if(target==0||value.Sequence==0||value.Target!=target)return 3;
+        words[0]=1;words[1]=12;words[2]=(uint)value.Sequence;words[3]=(uint)(value.Sequence>>32);
+        words[4]=(uint)value.Target;words[5]=(uint)(value.Target>>32);words[6]=value.Stage;
+        words[7]=value.Callback;words[8]=value.Argument;words[9]=value.Kind;words[10]=value.Status;words[11]=value.Original;
+        return 0;
+    }
+
     // Called only by the main-thread source bootstrap after all facade tables
     // are ready. Build the complete candidate set before publishing any bridge.
     internal static void Configure(IEnumerable<NativePatchDefinition> source)
@@ -182,6 +219,7 @@ internal static unsafe partial class NativePatchRuntime
     internal static int DispatchV2(ulong id,ulong receiver,ulong* arguments,nuint count,ulong* result,ulong* exception,ulong* refResults,nuint refCount,
         NativePatchDispatchProofV2* proof,nuint proofBytes)
     {
+        lastFailure=default;
         if(count>128||refCount!=count||proof==null||proofBytes!=32||sizeof(NativePatchDispatchProofV2)!=32||!ValidSpan(proof,32,4))return 4;
         if(RangesOverlap(proof,32,result,8)||RangesOverlap(proof,32,exception,8)||RangesOverlap(proof,32,arguments,count*8)||RangesOverlap(proof,32,refResults,count*8))return 4;
         return DispatchCore(id,receiver,arguments,count,result,exception,refResults,refCount,proof);
@@ -189,6 +227,7 @@ internal static unsafe partial class NativePatchRuntime
 
     private static int DispatchCore(ulong id,ulong receiver,ulong* arguments,nuint count,ulong* result,ulong* exception,ulong* refResults,nuint refCount,NativePatchDispatchProofV2* proof)
     {
+        lastFailure=default;
         if(result==null||exception==null||result==exception||count>128||refCount!=count||
             (count!=0&&(arguments==null||refResults==null)))return 4;
         if(Overlap(result,8,exception,8)||Overlap(arguments,count*8,result,8)||Overlap(arguments,count*8,exception,8)||
@@ -196,6 +235,8 @@ internal static unsafe partial class NativePatchRuntime
         if(proof!=null)*proof=new(){AbiVersion=2,ByteSize=32};
         *result=0;*exception=0;for(nuint i=0;i<count;++i)refResults[i]=0;
         NativePatchDefinition? definition=null;EHRStaticPatchFrame? frame=null;Exception? failure=null;
+        EHRPatchFailureStage stage=EHRPatchFailureStage.Ready;int argument=-1;
+        EHRPatchFailureStage failureStage=EHRPatchFailureStage.None;int failureCallback=-1,failureArgument=-1;
         try
         {
             FacadeRuntime.RequireReady();
@@ -205,33 +246,54 @@ internal static unsafe partial class NativePatchRuntime
             // From this point the bridge accepted a configured call and may
             // execute source work. Native failure policy cannot retry original.
             if(proof!=null)proof->DispatcherEntered=1;
+            stage=EHRPatchFailureStage.ReceiverDecode;
             object? instance=definition.InstanceType==null?null:ElementCodecs.Get(definition.InstanceType).Read(FacadeRuntime.RetainToken(receiver));
             var values=new object?[count];
-            for(int i=0;i<values.Length;++i)values[i]=definition.OutputArguments[i]?NativeDefault(definition.ArgumentTypes[i]):
-                ElementCodecs.Get(definition.ArgumentTypes[i]).Read(FacadeRuntime.RetainToken(arguments[i]));
+            stage=EHRPatchFailureStage.ArgumentDecode;
+            for(int i=0;i<values.Length;++i)
+            {argument=i;values[i]=definition.OutputArguments[i]?NativeDefault(definition.ArgumentTypes[i]):
+                ElementCodecs.Get(definition.ArgumentTypes[i]).Read(FacadeRuntime.RetainToken(arguments[i]));}
+            argument=-1;
             frame=new EHRStaticPatchFrame(instance,values,definition.ArgumentNames);
+            stage=EHRPatchFailureStage.ResultDefault;
             if(definition.ValueResult)frame.Result=NativeDefault(definition.ResultType!);
+            stage=EHRPatchFailureStage.BindingDispatch;
             definition.Binding.Execute(frame,f=>Original(definition,f,proof));
         }
-        catch(Exception error){failure=error;}
+        catch(Exception error)
+        {
+            failure=error;
+            if(frame!=null&&ReferenceEquals(frame.Exception,error)&&frame.FailureStage!=EHRPatchFailureStage.None)
+            {failureStage=frame.FailureStage;failureCallback=frame.FailureCallbackIndex;}
+            else {failureStage=stage;failureArgument=argument;}
+        }
         // Preserve original/prefix ref writes even when an exception survives
         // finalizers. Native callers copy these outputs before raising it.
         try
         {
             if(definition!=null&&frame!=null)
             {
+                stage=EHRPatchFailureStage.RefCopyback;
                 for(int i=0;i<frame.Arguments.Length;++i)if(definition.ByReference[i])
-                {using var boxed=ElementCodecs.Get(definition.ArgumentTypes[i]).Box(frame.Arguments[i]);refResults[i]=boxed.Detach();}
+                {argument=i;using var boxed=ElementCodecs.Get(definition.ArgumentTypes[i]).Box(frame.Arguments[i]);refResults[i]=boxed.Detach();}
+                argument=-1;stage=EHRPatchFailureStage.ResultBox;
                 if(failure==null&&definition.ResultType!=null){using var boxed=ElementCodecs.Get(definition.ResultType).Box(frame.Result);*result=boxed.Detach();}
             }
+            stage=EHRPatchFailureStage.NativeExceptionExport;
             if(failure is NativeGameException native){using var owned=native.RetainNativeException();*exception=owned.Detach();}
-            return failure is RuntimeGatewayException gateway?gateway.Status:failure==null?0:6;
+            int status=failure is RuntimeGatewayException gateway?gateway.Status:failure==null?0:6;
+            // Publish only after all potentially nested work. A native reader
+            // immediately after return cannot see a nested/previous call here.
+            if(failure!=null)RecordFailure(id,failure,failureStage,failureCallback,failureArgument,frame,status);
+            else lastFailure=default;
+            return status;
         }
-        catch
+        catch(Exception error)
         {
             try{FacadeRuntime.Release(*result);}catch{}*result=0;
             try{FacadeRuntime.Release(*exception);}catch{}*exception=0;
             for(nuint i=0;i<count;++i){try{FacadeRuntime.Release(refResults[i]);}catch{}refResults[i]=0;}
+            RecordFailure(id,error,stage,-1,argument,frame,6);
             return 6;
         }
     }

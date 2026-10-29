@@ -1,6 +1,15 @@
 #import "EHRFullSourceRuntime.h"
 #include "EHRRuntimeDiagnostics.h"
 #include "EHRAppleAuthDiagnostics.h"
+#if EHR_HAS_AUTH_HANDOFF
+#include "EHRAuthHandoffDiagnostics.h"
+#endif
+#if EHR_HAS_GAME_START_ITERATOR
+#include "EHRGameStartIteratorAdapter.h"
+#endif
+#if EHR_HAS_AUTH_RETRY_GUARD
+#include "EHRAuthRetryGuard.h"
+#endif
 #if EHR_HAS_EOS_LOGIN_DIAGNOSTICS
 #include "EHREOSLoginDiagnostics.h"
 #endif
@@ -103,7 +112,17 @@ NSDictionary *EHRFullSourceCopyRuntimeStatus(void) {
             @"activeBindings":@(app.active_bindings),@"loadAttempts":@(app.load_attempts),@"dynamicCodeFlags":@(app.dynamic_code_flags),
             @"optionsLoaded":@(app.options_is_loaded_observed),@"optionCount":@(app.option_count),@"postLoadTasksComplete":@(app.options_post_load_completed)};}}
     result[@"numericDiagnostics"]=EHRRuntimeDiagnosticsCopyStatus();
+#if EHR_HAS_GAME_START_ITERATOR
+    result[@"gameStartIterator"]=EHRGameStartIteratorCopyStatus();
+#endif
+#if EHR_HAS_AUTH_RETRY_GUARD
+    // Own counters only. Do not prepare/activate a guard or read an account.
+    result[@"authRetryGuard"]=EHRAuthRetryGuardCopyStatus();
+#endif
     result[@"eosLoginObserverStatus"]=@(s.eosObserverStatus);
+#if EHR_HAS_AUTH_HANDOFF
+    result[@"authHandoff"]=EHRAuthHandoffDiagnosticsCopyStatus();
+#endif
     if(s.status){
         auto copy=reinterpret_cast<int32_t(*)(uint8_t *,size_t,size_t *)>(fullExport("ehr_source_application_copy_error_v1"));
         uint8_t error[8192]{};size_t needed=0;
@@ -126,11 +145,20 @@ NSDictionary *EHRFullSourceBindRuntime(void) {
 #if EHR_HAS_EOS_LOGIN_DIAGNOSTICS
     s.eosObserverStatus=EHREOSLoginDiagnosticsPrepare();
 #endif
+#if EHR_HAS_AUTH_HANDOFF
+    // Passive metadata preparation must never change game/auth startup outcome.
+    (void)EHRAuthHandoffDiagnosticsPrepare();
+#endif
+#if EHR_HAS_AUTH_RETRY_GUARD
+    // Signed opt-in controls only the retry UX guard; no auth is started here.
+    EHRAuthRetryGuardStart([NSBundle.mainBundle.infoDictionary[@"EHRAuthRetryGuardActivationRequested"] boolValue]?1:0);
+#endif
     s.attempted=true;s.stage=@"full_source_module";diagnosticStage(2);
     try {
         if(!locateOwnImage()){s.status=EHR_RUNTIME_NOT_FOUND;throw std::runtime_error("full source image missing");}
         // This export distinguishes the full assembly from the small proof image.
         required<int32_t(*)(void)>("ehr_source_application_load_v1");
+        check(EHRNativePatchBindFailureDiagnostics(required<EHRSourcePatchFailureV1>("ehr_source_patch_failure_v1")));
         s.stage=@"facade_tables";diagnosticStage(3);EHRManagedFacadeTables f{};EHRManagedFacadeMakeTables(&f);
         check(bindTable("ehr_generated_bind_gateway",f.gateway));check(bindTable("ehr_generated_bind_extensions",f.extensions));
         check(bindTable("ehr_generated_bind_reflection",f.reflection));check(bindTable("ehr_generated_bind_lifetime",f.lifetime));
@@ -189,7 +217,15 @@ NSDictionary *EHRFullSourceLoadApplication(void) {
     if(!NSThread.isMainThread)return @{@"status":@(EHR_RUNTIME_WRONG_THREAD)};
     EHRFullSourcePrepareApplication();auto &s=state();if(!s.ready||s.status||s.loadAttempted)return EHRFullSourceCopyRuntimeStatus();
     s.loadAttempted=true;s.stage=@"load_source_application";diagnosticStage(13);
-    try{s.status=required<decltype(&ehr_source_application_load_v1)>("ehr_source_application_load_v1")();}
+    try{
+        s.status=required<decltype(&ehr_source_application_load_v1)>("ehr_source_application_load_v1")();
+#if EHR_HAS_GAME_START_ITERATOR
+        // The parent iterator hook may replace a yielded host factory only
+        // while the complete source callback set is active.
+        if(!s.status)s.status=EHRGameStartIteratorPrepare();
+        if(!s.status)s.status=EHRGameStartIteratorSetEnabled(1);
+#endif
+    }
     catch(...){s.status=EHR_RUNTIME_UNSUPPORTED;}
     if(s.status){
         NSMutableDictionary *cleanup=[EHRFullSourceFailureCleanup() mutableCopy];

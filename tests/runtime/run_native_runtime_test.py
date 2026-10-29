@@ -93,20 +93,26 @@ def validate_candidate_pins(candidate, path):
     return supplied
 
 
-def select_physical_device(inventory, requested):
+def select_physical_device(inventory, requested, *, expected_product_type="iPhone18,2"):
+    if not isinstance(expected_product_type, str) or not re.fullmatch(r"iPhone[1-9][0-9]*,[1-9][0-9]*", expected_product_type):
+        raise ValueError("Expected product type must be an exact physical iPhone model")
     devices = inventory.get("result", {}).get("devices", [])
     matches = [d for d in devices if d.get("hardwareProperties", {}).get("udid") == requested["udid"]]
     if len(matches) != 1:
         raise ValueError("Exact physical iPhone is not uniquely visible to CoreDevice")
     device = matches[0]
     hardware, connection = device.get("hardwareProperties", {}), device.get("connectionProperties", {})
-    if hardware.get("productType") != "iPhone18,2" or hardware.get("platform") != "iOS":
-        raise ValueError("Destination is not the requested physical iPhone 17 Pro Max")
+    if hardware.get("productType") != expected_product_type or hardware.get("platform") != "iOS":
+        raise ValueError("Destination is not the exact requested physical iPhone model")
+    if "reality" in hardware and hardware["reality"] != "physical":
+        raise ValueError("Destination explicitly identifies a nonphysical iPhone")
     if connection.get("transportType") not in ("wired", "localNetwork") or connection.get("pairingState") != "paired":
         raise ValueError("Physical iPhone must already be paired and reachable by USB or network")
     identifier = device.get("identifier")
     if not isinstance(identifier, str) or requested["identifier"] not in (None, identifier):
         raise ValueError("CoreDevice identity differs from the private device input")
+    if sum(d.get("identifier") == identifier for d in devices) != 1:
+        raise ValueError("Exact CoreDevice identity is not uniquely visible")
     return device
 
 
@@ -167,6 +173,22 @@ def prepare_project(source_root, test_source, output, team, bundle_id):
         shutil.copy2(source_root / relative, target)
     shutil.copytree(source_root / "app/Assets.xcassets", project / "app/Assets.xcassets")
     (project / "NativeRuntimeTests.mm").write_text(test_source.read_text().replace("__EHR_TEST_APP_BUNDLE_ID__", bundle_id))
+    if '#include "AuthRetryMetadataProof.inc"' in test_source.read_text():
+        shutil.copy2(source_root / "tests/AuthRetryMetadataProof.inc", project / "AuthRetryMetadataProof.inc")
+    if '#include "IteratorRetirementProof.inc"' in test_source.read_text():
+        shutil.copy2(source_root / "tests/runtime/IteratorRetirementProof.inc", project / "IteratorRetirementProof.inc")
+        # The production callback header includes its public gateway sibling.
+        # Give the test target the actual native directory without duplicating
+        # that header under a second path (which would defeat pragma once).
+        project_settings = pbx.read_text()
+        marker = 'CLANG_CXX_LANGUAGE_STANDARD = "c++17";'
+        if project_settings.count(marker) != 2:
+            raise ValueError("Runtime project is missing its two shared C++ settings")
+        pbx.write_text(project_settings.replace(marker, 'HEADER_SEARCH_PATHS = "$(SRCROOT)/native"; ' + marker))
+        for relative in ("native/include/EHRManagedIteratorProductionV1.h", "native/include/EHRManagedIteratorV1.h"):
+            target = project / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source_root / relative, target)
     return project
 
 
@@ -333,6 +355,10 @@ def main():
             continue
         friendly = ("EHRNativeXCTestSnapshot.json" if value.get("schema") == "ehr.live-runtime.v1"
                     else "EHRFullSourceFailureCleanupProof.json" if value.get("schema") == "ehr.full-source-failure-cleanup-proof.v1"
+                    else "EHRAuthRetryMetadataProof.json" if value.get("schema") == "ehr.auth-retry-metadata-proof.v1"
+                    else "EHRIteratorRetirementProof.json" if value.get("schema") == "ehr.actual-iterator-retirement-proof.v1"
+                    else "EHRGameStartIteratorProof.json" if value.get("schema") == "ehr.game-start-iterator-proof.v1"
+                    else "EHRAuthHandoffProof.json" if value.get("schema") == "ehr.auth-handoff-proof.v1"
                     else "EHRSourceAudioProof.json" if value.get("schema") == "ehr.full-source-audio-proof.v1"
                     else "EHRSourceAudioLoaderProof.json" if value.get("schema") == "ehr.full-source-audio-loader-proof.v1"
                     else "EHRSourceActionOwnershipProof.json" if value.get("schema") == "ehr.full-source-action-ownership-proof.v1"

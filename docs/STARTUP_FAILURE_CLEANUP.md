@@ -8,7 +8,7 @@ The current source load creates Unity components and starts source coroutines be
 
 Executing Step/Reset is marked for deferred retirement. The source callback finishes before Cancel, and a retiring MoveNext returns false. Cleanup may report deferred entries while that callback is still running. Repeating cleanup is supported; restarting this failed plugin is not.
 
-The existing production table remains 72 bytes and status remains 104 bytes. The separate native failure helper adds an 88-byte report. Weak carrier identity tombstones intentionally remain while Unity or another native owner can retain the carrier; otherwise its next native call could enter the underlying ArrayList implementation. They retain no source, current, or owner/Coroutine association roots after cancellation and are removed by the existing bounded GC sweep. The owned fixture releases external roots, collects carriers, and proves all registry/weak/current/association roots zero afterward.
+The existing production table remains 72 bytes and status remains 104 bytes. The separate native failure helper adds an 88-byte report. [Terminal carrier markers](ITERATOR_RETIREMENT.md) now preserve later terminal native calls while allowing immediate registry/weak-handle retirement after cancellation. Publication failure retains a safe bounded routed tombstone for retry. No source, current or owner/Coroutine association roots survive normal retirement. The owned fixture proves registry/weak/current/association roots zero even while external roots still retain completed carriers.
 
 The cleanup is integrated in the canonical native source. No new compilation
 unit, managed ABI or native scheduler hook was added. FullRuntime invokes it only

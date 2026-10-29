@@ -32,6 +32,13 @@ typedef struct EHRManagedPatchDispatchProofV2 {
 } EHRManagedPatchDispatchProofV2;
 int32_t ehr_source_patch_dispatch_v2(uint64_t,uint64_t,const uint64_t *,size_t,
     uint64_t *,uint64_t *,uint64_t *,size_t,EHRManagedPatchDispatchProofV2 *,size_t);
+// Optional independent numeric diagnostic export; no existing ABI is resized.
+// Read on the same thread immediately after a failing dispatch. Exactly12words:
+// version1,words12,sequenceLo/Hi,targetLo/Hi,stage,callbackIndex+1,
+// argumentIndex+1,exceptionKind,status,originalEntered. Zero index means none.
+// Wrong target/no current record returns NOT_FOUND3 without consuming it.
+// Each new dispatch invalidates older records. No text, pointer or GC token.
+int32_t ehr_source_patch_failure_v1(uint64_t,uint32_t *,size_t);
 int32_t ehr_source_patch_fixture_fail_setup(uint64_t,uint64_t,uint32_t);
 int32_t ehr_source_patch_fixture_setup(uint64_t,uint64_t);
 int32_t ehr_source_patch_fixture_clear(void);

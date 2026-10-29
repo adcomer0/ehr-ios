@@ -19,10 +19,59 @@
 #include <cstdlib>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <vector>
 
 namespace {
 constexpr size_t MaxSites=512,MaxParameters=128,MaxValue=4096,MaxGenerations=32;
+constexpr uint64_t DisconnectTarget=UINT64_C(4572440378919572041),DisconnectCounterLimit=1000000;
+struct DisconnectState {
+    uint64_t matched=0,count=0,unavailable=0,tick=0;
+    int32_t reason=0,status=EHR_RUNTIME_NOT_READY,dispatch=EHR_RUNTIME_NOT_READY;
+    bool hasReason=false;
+};
+DisconnectState disconnectState;
+std::mutex disconnectMutex;
+std::atomic<uint64_t> disconnectFaults{0};
+void disconnectIncrement(uint64_t &value) noexcept {if(value<DisconnectCounterLimit)++value;}
+void disconnectFault() noexcept {
+    auto value=disconnectFaults.load(std::memory_order_relaxed);
+    while(value<DisconnectCounterLimit&&!disconnectFaults.compare_exchange_weak(value,value+1,std::memory_order_relaxed)){}
+}
+void disconnectRecord(int32_t status,int32_t reason,int32_t dispatch) noexcept {
+    try {std::lock_guard<std::mutex> lock(disconnectMutex);auto &s=disconnectState;
+        disconnectIncrement(s.matched);disconnectIncrement(status==EHR_RUNTIME_OK?s.count:s.unavailable);
+        s.tick=EHRDiagnosticTick();s.status=status;s.dispatch=dispatch;s.hasReason=status==EHR_RUNTIME_OK;
+        s.reason=s.hasReason?reason:0;
+    }catch(...){disconnectFault();}
+}
+// The source catalog and generated typed site declare precisely one Int32
+// enum value and one reference argument here. The observer inspects only the
+// first scalar after InvokePrepared's ordinary argument validation completes.
+struct DisconnectObservation {
+    const EHRNativePatchSiteV1 &site;EHRNativePatchOutcomeV1 &outcome;
+    int32_t status=EHR_RUNTIME_NOT_READY,reason=0;bool captured=false;
+    ~DisconnectObservation() noexcept {
+        if(site.target_id==DisconnectTarget)
+            disconnectRecord(captured?status:(outcome.status==EHR_RUNTIME_OK?EHR_RUNTIME_NOT_READY:outcome.status),reason,outcome.status);
+    }
+    void capture(const EHRNativePatchArgumentV1 *arguments,size_t count) noexcept {
+        if(site.target_id!=DisconnectTarget)return;
+        captured=true;status=EHR_RUNTIME_TYPE_MISMATCH;
+        if(site.method_rva!=UINT64_C(0x1dc97ac)||site.metadata_token!=UINT32_C(0x06003c41)||site.signature_flags!=1||
+            count!=2||site.parameter_count!=2||!site.parameters||!arguments||!site.owner||!site.owner->runtime_name||
+            strcmp(site.owner->runtime_name,"InnerNet.InnerNetClient")||site.owner->kind!=1||site.owner->size!=8||
+            !site.result||site.result->kind!=0)return;
+        const auto &p=site.parameters[0],&text=site.parameters[1];const auto &a=arguments[0];
+        if(!p.type||!p.type->runtime_name||!p.type->enum_underlying||p.flags!=1||p.type->kind!=2||
+            p.type->size!=sizeof(int32_t)||p.type->alignment!=alignof(int32_t)||p.type->flags!=16||
+            strcmp(p.type->runtime_name,"DisconnectReasons")||strcmp(p.type->enum_underlying,"System.Int32")||
+            !text.type||!text.type->runtime_name||text.flags!=0||text.type->kind!=1||text.type->size!=sizeof(void*)||
+            strcmp(text.type->runtime_name,"System.String")||!a.input||a.size!=sizeof(int32_t)||a.output||
+            reinterpret_cast<uintptr_t>(a.input)%alignof(int32_t))return;
+        memcpy(&reason,a.input,sizeof(reason));status=EHR_RUNTIME_OK;
+    }
+};
 struct API {
     uint32_t (*method_get_param_count)(const void *),(*method_get_token)(const void *),(*method_get_flags)(const void *,uint32_t *);
     const void *(*method_get_param)(const void *,uint32_t),*(*method_get_return_type)(const void *),*(*class_get_type)(const void *);
@@ -96,6 +145,7 @@ const void *installedOriginal(const EHRNativePatchSiteV1 &site) {
 }
 struct Prepared {const EHRNativePatchSiteV1 *site;EHRManagedPatchSignatureV1 signature;std::vector<EHRManagedPatchParameterV1> parameters;std::vector<const void *> classes;};
 std::map<uint64_t,const EHRNativePatchSiteV1 *> compiled;
+std::atomic<EHRSourcePatchFailureV1> sourceFailure{nullptr};
 std::map<uint64_t,std::shared_ptr<const Prepared>> prepared;
 using Active=std::vector<uint64_t>;std::vector<std::unique_ptr<Active>> generations;std::atomic<const Active *> active{nullptr};
 bool typeName(API &a,const void *type,const char *expected) {
@@ -163,6 +213,13 @@ EHRRuntimeStatus EHRNativePatchRegisterCompiled(const EHRNativePatchSiteV1 *cons
     try {std::map<uint64_t,const EHRNativePatchSiteV1 *> next;for(size_t i=0;i<count;++i){auto *s=sites[i];if(!s||!s->target_id||!s->handler||!s->framework_uuid||!s->result||s->parameter_count>MaxParameters||(s->parameter_count&&!s->parameters)||!next.emplace(s->target_id,s).second)return EHR_RUNTIME_BAD_ARGUMENT;}compiled.swap(next);return EHR_RUNTIME_OK;}catch(...){return EHR_RUNTIME_LIMIT;}
 }
 void EHRNativePatchMakeTargetsTable(EHRManagedPatchTargetsV1 *table){if(table)*table={1,sizeof(*table),validate,activate,deactivate};}
+EHRRuntimeStatus EHRNativePatchBindFailureDiagnostics(EHRSourcePatchFailureV1 callback) {
+    if(!NSThread.isMainThread)return EHR_RUNTIME_WRONG_THREAD;
+    if(!callback)return EHR_RUNTIME_BAD_ARGUMENT;
+    auto previous=sourceFailure.load(std::memory_order_acquire);
+    if(previous&&previous!=callback)return EHR_RUNTIME_BAD_ARGUMENT;
+    sourceFailure.store(callback,std::memory_order_release);return EHR_RUNTIME_OK;
+}
 uintptr_t EHRNativePatchOriginal(const EHRNativePatchSiteV1 &site){const void *value=installedOriginal(site);if(!value)abort();return reinterpret_cast<uintptr_t>(value);}
 bool EHRNativePatchShouldDispatch(const EHRNativePatchSiteV1 &site){
     if(!NSThread.isMainThread){ehr_diagnostics::state().checked(EHRDiagnosticTick(),site.target_id,site.method_rva,false,false);return false;}
@@ -175,6 +232,7 @@ bool EHRNativePatchShouldDispatch(const EHRNativePatchSiteV1 &site){
 
 EHRNativePatchOutcomeV1 EHRNativePatchInvokePrepared(const EHRNativePatchSiteV1 &site,void *receiver,const EHRNativePatchArgumentV1 *arguments,size_t count,void *result,size_t resultBytes) {
     EHRNativePatchOutcomeV1 outcome{EHR_RUNTIME_NOT_READY,false,0,{}};
+    DisconnectObservation disconnect{site,outcome};
     struct Trace {EHRDiagnosticRouteScope scope;EHRNativePatchOutcomeV1 &value;
         Trace(const EHRNativePatchSiteV1 &s,EHRNativePatchOutcomeV1 &v):scope(s.target_id,s.method_rva),value(v){}
         ~Trace(){scope.status=value.status;scope.flags=(value.dispatcher_entered?1:0)|(value.exception?2:0)|
@@ -196,6 +254,7 @@ EHRNativePatchOutcomeV1 EHRNativePatchInvokePrepared(const EHRNativePatchSiteV1 
         if(input.output){trace.scope.at(7,uint32_t(i+1));if(!valid(input.output,input.size,d.type->alignment)||overlap(input.output,input.size,result,resultBytes)){outcome.status=EHR_RUNTIME_BAD_ARGUMENT;return outcome;}for(size_t j=0;j<i;++j)if(arguments[j].output&&overlap(input.output,input.size,arguments[j].output,arguments[j].size)){outcome.status=EHR_RUNTIME_BAD_ARGUMENT;return outcome;}}}
     for(size_t i=0;i<count;++i)if(arguments[i].output)for(size_t j=0;j<count;++j)
         if(i!=j&&(site.parameters[j].flags&2)&&overlap(arguments[i].output,arguments[i].size,arguments[j].input,arguments[j].size)){trace.scope.at(8,uint32_t(i+1));outcome.status=EHR_RUNTIME_BAD_ARGUMENT;return outcome;}
+    disconnect.capture(arguments,count);
     // Reserve ownership bookkeeping BEFORE allocations or source entry.
     trace.scope.at(9);
     Roots roots;std::vector<uint8_t> copies;std::array<size_t,MaxParameters> offsets{};size_t copyBytes=0;
@@ -219,6 +278,11 @@ EHRNativePatchOutcomeV1 EHRNativePatchInvokePrepared(const EHRNativePatchSiteV1 
     // and every NativeAOT frame return. Copybacks happen even on that path.
     struct ExceptionRoot {uint64_t token;~ExceptionRoot(){if(token)ehr_runtime_object_release(token);}} exceptionRoot{error};
     outcome.exception=error;auto transfer=[&](){exceptionRoot.token=0;return outcome;};
+    // Optional diagnostics cannot alter the saved outcome or escape past owned
+    // output/exception roots, even if a faulty observer throws natively.
+    if(outcome.status){@try{try{if(auto copy=sourceFailure.load(std::memory_order_acquire)){
+        uint32_t words[12]{};if(copy(site.target_id,words,12)==0)EHRDiagnosticSourceFailure(site.target_id,outcome.status,words,12);
+    }}catch(...) {}}@catch(__unused NSException *failure){}}
     if(!outcome.dispatcher_entered){outcome.exception=0;return outcome;}
     if(outcome.proof.abi_version!=2||outcome.proof.byte_size!=32||outcome.proof.target_found!=1||outcome.proof.dispatcher_entered!=1){trace.scope.at(16);outcome.status=EHR_RUNTIME_TYPE_MISMATCH;return transfer();}
     alignas(8) uint8_t returnedBytes[MaxValue]{};void *returnedObject=nullptr;
@@ -239,10 +303,19 @@ EHRNativePatchOutcomeV1 EHRNativePatchInvokePrepared(const EHRNativePatchSiteV1 
     if(outcome.status==EHR_RUNTIME_OK&&expectedResult){if(site.result->kind==1)memcpy(result,&returnedObject,8);else memcpy(result,returnedBytes,expectedResult);}
     return transfer();
 }
+extern "C" NSDictionary *EHRNativeDisconnectCopyStatus(void) {
+    DisconnectState s;{std::lock_guard<std::mutex> lock(disconnectMutex);s=disconnectState;}
+    return @{@"schemaVersion":@1,@"targetMatches":@(s.matched),@"count":@(s.count),@"unavailable":@(s.unavailable),
+        @"hasReason":@(s.hasReason?1:0),@"reason":@(s.reason),@"lastStatus":@(s.status),
+        @"lastDispatchStatus":@(s.dispatch),@"monotonicNs":@(s.tick),@"observerFaults":@(disconnectFaults.load(std::memory_order_relaxed))};
+}
 void EHRNativePatchFinish(EHRNativePatchOutcomeV1 outcome) {
     if(!outcome.dispatcher_entered)abort();
-    if(outcome.exception){struct Release{uint64_t token;~Release(){ehr_runtime_object_release(token);}} release{outcome.exception};void *exception=nullptr;API *a=api();if(!a||EHRRuntimeIteratorBorrow(outcome.exception,&exception)!=EHR_RUNTIME_OK||!exception)abort();a->raise_exception(exception);abort();}
-    if(outcome.status!=EHR_RUNTIME_OK)EHRRuntimeIteratorRaise(static_cast<EHRRuntimeStatus>(outcome.status));
+    EHRNativeRaiseOwnedFailure(outcome.status,outcome.exception);
+}
+void EHRNativeRaiseOwnedFailure(int32_t status,EHRRuntimeToken owned_exception) {
+    if(owned_exception){struct Release{uint64_t token;~Release(){ehr_runtime_object_release(token);}} release{owned_exception};void *exception=nullptr;API *a=api();if(!a||EHRRuntimeIteratorBorrow(owned_exception,&exception)!=EHR_RUNTIME_OK||!exception)abort();a->raise_exception(exception);abort();}
+    if(status!=EHR_RUNTIME_OK)EHRRuntimeIteratorRaise(static_cast<EHRRuntimeStatus>(status));
 }
 EHRRuntimeStatus EHRNativePatchBoxBorrowedValue(EHRRuntimeToken token,const EHRNativePatchTypeV1 &expected,void *payload,size_t count,EHRRuntimeToken *owned) {
     if(!owned)return EHR_RUNTIME_BAD_ARGUMENT;*owned=0;

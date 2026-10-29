@@ -4,6 +4,10 @@
 // All raw pointers stay native. Main-thread calls pin+validate the live weak
 // identity for the entire entry operation; worker calls never execute source.
 bool EHRProductionIteratorOwnsIdentity(void *identity);
+// Native-only main-thread cache query, no IL2CPP calls or lifecycle mutation.
+// Caller holds a validated pin on the actual receiver. Unlike OwnsIdentity,
+// terminal markers, closing/executing entries and sealed runtime are rejected.
+bool EHRProductionIteratorHasActiveIdentity(void *identity);
 bool EHRProductionIteratorMoveNext(void *identity,bool *result);
 bool EHRProductionIteratorCurrent(void *identity,void **result);
 bool EHRProductionIteratorReset(void *identity);

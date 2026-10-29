@@ -12,7 +12,9 @@ disposing a proxy releases that root and never cancels Unity scheduling. A CWT
 preserves exact source identity for repeated wraps and Main.StopCoroutine(source).
 The native bounded main-thread weak sweep closes abandoned registrations once.
 Terminal native identity remains a tombstone: MoveNext=false, Current invalid,
-Reset unsupported. Managed registration is removed before source Dispose, even
+Reset unsupported. Its [private carrier marker](ITERATOR_RETIREMENT.md) now lets
+the bounded native registry retire completed entries without waiting for GC.
+Managed registration is removed before source Dispose, even
 if Dispose throws. Nested CLR iterators become actual child carriers; ancestry
 and native current-root cycles are rejected instead of retaining a cycle.
 

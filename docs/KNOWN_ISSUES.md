@@ -1,25 +1,87 @@
-# Known issues in development build 47
+# Known issues and current native work
 
-This snapshot is incomplete. A physical test reached Online lobby hosting and mod settings, encountered lag, then a black screen after Start → Start Immediately. Full rounds, victory/meeting transitions, every role and vanilla-peer combinations remain unverified.
+This snapshot is incomplete. Physical build 48 reached Online lobby hosting and mod settings, then a black screen after starting the game. Physical build 49 reached a solo game and an early win, consistent with EHR's low-player end conditions. Its trace reached custom intro, ship initialization, game start and game end without new source failures. Physical build 50 then disconnected the host when a vanilla peer joined. Following build-52 delivery, the user reports playing a match with a vanilla peer. Authentication, multiplayer stability and full role behavior remain unresolved or unverified.
+
+## Later gameplay observation
+
+The subsequent host numeric cache contains player join, host-start/ship and
+player-spawn progress. It also records null references in
+`GameStartManager.Start` / `CheckSettingsDiffs` and ten
+`MapRoomDoorsStartPatch.Postfix` cast exceptions. The map-door source attempts
+two strict sibling-system casts; those failures need a separate source/bridge
+review. No game-end route is recorded. Its disconnect reason is 16 (`Destroy`).
+The cache does not contain an explicit build identity. These facts corroborate
+gameplay progress and remaining defects without proving the complete round or
+which build emitted it. See [the validation limits](BUILD52_VALIDATION.md).
+
+## Vanilla-peer join disconnect
+
+The user created an Online lobby in build 50 and a vanilla client joined. The
+modded phone disconnected; the remaining client became host of a vanilla lobby.
+The host's disconnect callbacks completed, but their reason was not in that
+build's numeric cache. Physical build 51 recorded reason 10,
+`DisconnectReasons.Hacking`, verified against the pinned metadata. The popup
+described a kick. This identifies the server's category, not the offending
+message or rule. The observer records only the original scalar enum at the
+existing validated native boundary, alongside numeric status/timing. It does
+not log the reason string, packet contents or account identifiers.
+
+One new native `RpcSetName` null-reference exception occurred about 240 ms after
+`DisconnectInternal` returned. It matches a four-second delayed name restore
+scheduled by the join callback without rechecking lobby validity. This is a
+separate cleanup defect and does not explain the initiating disconnect. The
+build-52 source rechecks lobby, host, game/client identity and local
+player ownership before the delayed restore, and skips it when those current
+values no longer match.
+
+The source schedules welcome messages around three seconds after a spawn. Their
+send timing is close to the disconnect, and the lower-level system-message send
+previously omitted the native chat-mode gate. Build 52 now requires the same
+`FreeChatOrQuickChat` mode as native `ChatController.SendChat` before any system
+network writer creation or mutation. Missing or failed settings deny the send;
+local-only delivery remains available. This parity correction does not prove
+which rule caused the server's `Hacking` classification. No permissions are
+forced or enforcement disabled. See [the guards](MULTIPLAYER_SEND_GUARDS.md).
+Custom-settings sync already rejects vanilla targets; keep that guard. Further
+multiplayer tests should use disposable identities after a concrete invalid-send
+repair; the valuable family account remains outside testing.
 
 ## Confirmed native coroutine capacity pressure
 
 The bounded numeric diagnostic recorded category 18 at count/limit 256, usually with one active source and 255 terminal carrier tombstones. Deferred release backlog was zero in those records and gateway roots were below their separate 65,536 limit. New coroutine registrations failed; repeated sender/scheduler failures followed. Later collection/sweeping reduced the count, so the final snapshot alone hides the earlier exhaustion.
 
-The options sender creates short-lived helper iterators continuously. The bridge keeps completed carrier identities as weak tombstones until collection. Their capacity/lifecycle design needs correction; simply treating every status 8 as the same limit or raising every bound is not a diagnosis. This capacity pressure is confirmed; it does not explain every possible black-screen path.
+The options sender creates short-lived helper iterators continuously. Build 47 kept completed carrier identities as weak tombstones until collection. Build 48 retires their registry slots immediately after publishing a private terminal marker in the exact validated carrier's existing field. The active limit stays 256, and failed publication retains the safe bounded fallback. Owned stress fixtures retain 1,024 completed carriers beside one active carrier without filling the registry. See [terminal retirement](ITERATOR_RETIREMENT.md) for the runtime validation and evidence limits. This capacity pressure is confirmed; it does not explain every possible black-screen path.
 
-## Game-start native exception
+In the build-48 phone reproduction, 2,941 carriers had been created and 2,939 closed and retired, leaving two active entries and no retained terminal entries. No callback failures or capacity guards were recorded. The black screen persisted through a different game-start path.
 
-`GameStartManager.Start` recorded one dispatched failure with retained native exception and original participation. That route has map-icon callbacks and a start callback. The evidence does not yet identify which original/nested operation produced the exception. See [sanitized route facts](RUNTIME_BUG_FACTS_47.md).
+## Native host-start factory bypass
+
+The phone trace recorded `CoStartGame` and ship initialization, but no `CoStartGameHost` factory route or intro. Inspection of the pinned native parent `MoveNext` confirms it directly constructs the host iterator at its host yields, bypassing the patched method entry. The EHR host-start replacement therefore never runs at that boundary.
+
+Build 49 adds an optional native adapter after the original parent `MoveNext`. It recognizes only the exact host yield, checks matching owners and untouched state, invokes the existing patched host factory once, then publishes an active production iterator through the public reference-field API. Activation, owners and iterator fields are checked again before commit. Other yields remain unchanged. See [the adapter](IOS_GAME_START_ITERATOR.md) and [build-49 validation](BUILD49_VALIDATION.md).
+
+The adapter passed synthetic owner/reentrancy cases and an owned probe in the actual signed runtime. That probe deliberately avoids real game owners and scene/network operations. The separate physical build-49 trace then recorded one successful real-owner replacement and one host-factory call. The custom host coroutine and intro completed, and `ShipStatus.Begin` allowed the original after source role setup. The earlier black screen did not recur in that attempt; this does not certify every player/role/map combination.
+
+## Earlier game-start native exception
+
+Build 47's `GameStartManager.Start` recorded one dispatched failure with retained native exception and original participation. That route has map-icon callbacks and a start callback. The evidence does not identify which original/nested operation produced the exception. Build 48 adds bounded numeric source callback/stage and native method/exception metadata diagnostics while preserving the original exception and call behavior. The build-48 phone reproduction recorded a successful `GameStartManager.Start` and no failure details. See [sanitized route facts](RUNTIME_BUG_FACTS_47.md) and [failure diagnostics](NATIVE_PATCH_FAILURE_DIAGNOSTICS.md).
 
 ## Apple/EOS authentication
 
 Apple authorization callbacks can complete, but the original EOS platform login returned 7000 (`EOS_Connect_ExternalTokenValidationFailed`). This proves token validation failed, not a particular audience/expiry/provider cause. The original game then automatically retries platform sign-in, producing repeated Apple sheets. Successful account authentication and progression safety are unverified.
 
-No token contents were read, no success was fabricated and no online/account permission checks were removed. A separate default-disabled retry-failure UX experiment is staged privately and is **not part of this snapshot**. It would not make the backend accept a token. Use disposable test identities; valuable accounts remain outside testing.
+No token contents were read, no success was fabricated and no online/account permission checks were removed. This snapshot includes a default-disabled retry-failure guard. A development build can explicitly opt in after exact runtime metadata preparation succeeds. It routes one synchronous same-owner automatic retry after normal result 7000 to the original native failure handler. The build-48 phone test stopped repeating the Apple sheet after one attempt. Build 49 still recorded one Apple success followed by one EOS 7000 result. The guard does not make the backend accept a token. See [the guard](AUTH_RETRY_GUARD.md). Use disposable test identities; valuable accounts remain outside testing.
+
+Build 50 also recorded Apple success followed by EOS 7000 and a later device-ID
+fallback. Physical build 51's 13-event history confirms the Apple request used
+enum 11 (`AppleIdToken`), then EOS returned 7000, and the later device-ID
+fallback used enum 10. The original last-only field described that fallback.
+The bounded observer recorded no unknown types, overwrites or faults. See
+[handoff diagnostics](AUTH_HANDOFF_DIAGNOSTICS.md). The rejection cause remains
+unproven; publisher/provider configuration may require confirmation.
 
 ## Other boundaries
 
-`GetConnectionData` has a predispatch missing-receiver observation. Its unentered path calls the unchanged original once; this is not evidence that a source handshake body failed. Source review also identified settings-build cleanup after coroutine faults as an independent concern; a later experimental fix is not included here.
+`GetConnectionData` has a predispatch missing-receiver observation. Its unentered path calls the unchanged original once; this is not evidence that a source handshake body failed. Build 48 also adds generation-guarded settings-build cleanup after completion, disposal or a fault. It cannot remove a replacement generation's coroutine handle. See [settings cleanup](SETTINGS_BUILD_CLEANUP.md).
 
 Most detailed documents are implementation-stage notes, including earlier milestones and fixture commands. This file, README, ARCHITECTURE and BUILDING describe the public snapshot's current scope. Native maps are build-specific, and portability to a new game version requires a fresh ABI/image validation.

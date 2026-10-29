@@ -10,6 +10,15 @@ namespace EHR;
 
 internal enum EHRStaticPatchKind { Prefix, Postfix, Finalizer }
 
+// Stable numeric failure locations. These contain no exception text or values.
+internal enum EHRPatchFailureStage : uint
+{
+    None = 0, Ready = 1, ReceiverDecode = 2, ArgumentDecode = 3,
+    ResultDefault = 4, Prefix = 5, Original = 6, Postfix = 7,
+    Finalizer = 8, RefCopyback = 9, ResultBox = 10,
+    NativeExceptionExport = 11, BindingDispatch = 12,
+}
+
 internal sealed class EHRStaticPatchFrame
 {
     internal object? Instance;
@@ -22,6 +31,11 @@ internal sealed class EHRStaticPatchFrame
     internal bool OriginalEntered;
     internal Exception? Exception;
     internal bool Consumed;
+    internal EHRPatchFailureStage DiagnosticStage, FailureStage;
+    internal int DiagnosticCallbackIndex = -1, FailureCallbackIndex = -1;
+
+    internal void CaptureFailureOrigin()
+    { FailureStage = DiagnosticStage; FailureCallbackIndex = DiagnosticCallbackIndex; }
 
     internal EHRStaticPatchFrame(object? instance, object?[] arguments, string[] names)
     {
@@ -88,7 +102,29 @@ internal sealed class EHRStaticPatchDescriptor
         EHRStaticTargetSpec[] targets, Action<EHRStaticPatchFrame> invoke, Func<bool>? prepare)
     { Id = id; ClassId = classId; Owner = owner; Kind = kind; Priority = priority; Index = index;
       AffectsOriginal = affectsOriginal; AssemblyScan = assemblyScan; Before = before; After = after;
-      Targets = targets; Invoke = invoke; Prepare = prepare; }
+      Targets = targets; Prepare = prepare;
+      Invoke = frame =>
+      {
+          frame.DiagnosticStage = kind switch
+          {
+              EHRStaticPatchKind.Prefix => EHRPatchFailureStage.Prefix,
+              EHRStaticPatchKind.Postfix => EHRPatchFailureStage.Postfix,
+              _ => EHRPatchFailureStage.Finalizer,
+          };
+          frame.DiagnosticCallbackIndex = index;
+          Exception? previous = frame.Exception;
+          try { invoke(frame); }
+          finally
+          {
+              // Finalizers may replace/suppress the surviving exception. A
+              // throwing exception-path finalizer is still suppressed below.
+              if (kind == EHRStaticPatchKind.Finalizer && !ReferenceEquals(previous, frame.Exception))
+              {
+                  frame.FailureStage = frame.Exception == null ? EHRPatchFailureStage.None : EHRPatchFailureStage.Finalizer;
+                  frame.FailureCallbackIndex = frame.Exception == null ? -1 : index;
+              }
+          }
+      }; }
 }
 
 internal sealed class EHRStaticPatchBinding
@@ -136,14 +172,20 @@ internal sealed class EHRStaticPatchBinding
             // HarmonyX 2.10.2 deliberately executes every prefix, including
             // mutating prefixes after a bool prefix has skipped the original.
             foreach (EHRStaticPatchDescriptor prefix in Prefixes) if (enabled.Contains(prefix)) prefix.Invoke(frame);
-            if (frame.RunOriginal) { frame.OriginalEntered = true; original(frame); }
+            if (frame.RunOriginal)
+            {
+                frame.OriginalEntered = true;
+                frame.DiagnosticStage = EHRPatchFailureStage.Original;
+                frame.DiagnosticCallbackIndex = -1;
+                original(frame);
+            }
             foreach (EHRStaticPatchDescriptor postfix in Postfixes) if (enabled.Contains(postfix)) postfix.Invoke(frame);
         }
-        catch (Exception error) { frame.Exception = error; failed = true; }
+        catch (Exception error) { frame.Exception = error; frame.CaptureFailureOrigin(); failed = true; }
         if (!failed)
         {
             try { foreach (EHRStaticPatchDescriptor finalizer in Finalizers) if (enabled.Contains(finalizer)) finalizer.Invoke(frame); }
-            catch (Exception error) { frame.Exception = error; failed = true; }
+            catch (Exception error) { frame.Exception = error; frame.CaptureFailureOrigin(); failed = true; }
         }
         // HarmonyX retries the finalizer sequence on the exception path. Errors
         // from that sequence are suppressed, preserving the current exception.

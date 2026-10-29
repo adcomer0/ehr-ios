@@ -25,9 +25,12 @@ typedef struct EHRManagedIteratorProductionV1 {
     int32_t (*is_main)(void);
     int32_t (*copy_status)(EHRProductionIteratorStatusV1 *,size_t bytes);
 } EHRManagedIteratorProductionV1;
-// Acquire returns a NEW strong root for an active live entry:7 terminal,9 gone.
-// Successful engine Stop precedes Close/CloseMatching. Close keeps a native
-// identity tombstone until the carrier is collected. Owner/Coroutine associations
+// Acquire returns a NEW strong root for an active live entry:7 previously issued
+// and closed/collected,9 never issued. Close is idempotent for issued IDs. A fixed
+// contiguous ID range records this distinction without a growing history map.
+// Successful engine Stop precedes Close/CloseMatching. Close marks the exact
+// native carrier terminal and retires its registry slot; publication failure
+// retains a safe routed tombstone for retry. Owner/Coroutine associations
 // are weak matching keys; their wrapper GC alone never cancels Unity scheduling.
 // Sweep is main-thread, bounded1..256, and cancels an abandoned source exactly once.
 __attribute__((visibility("default")))

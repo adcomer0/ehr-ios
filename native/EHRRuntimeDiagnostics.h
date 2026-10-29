@@ -5,6 +5,16 @@ inline uint64_t EHRDiagnosticTick() noexcept {timespec value{};clock_gettime(CLO
 inline void EHRDiagnosticLimit(uint32_t category,uint64_t count,uint64_t limit) noexcept {
  ehr_diagnostics::state().guard(EHRDiagnosticTick(),category,count,limit,ehr_diagnostics::context);
 }
+// Validate the independent owned numeric export before retaining any fields.
+inline bool EHRDiagnosticSourceFailure(uint64_t target,int32_t status,const uint32_t *words,size_t count) noexcept {
+ if(!target||!words||count!=12||words[0]!=1||words[1]!=12||!status||
+    (uint64_t(words[4])|(uint64_t(words[5])<<32))!=target||
+    words[6]>12||words[7]>4096||words[8]>128||words[9]<1||words[9]>7||words[10]!=uint32_t(status)||words[11]>1)return false;
+ ehr_diagnostics::FailureDetail value;value.kind=1;value.source_sequence=uint64_t(words[2])|(uint64_t(words[3])<<32);
+ if(!value.source_sequence)return false;
+ value.stage=words[6];value.callback=words[7];value.argument=words[8];value.exception_kind=words[9];value.status=status;value.original_entered=words[11];
+ auto origin=ehr_diagnostics::context;origin.target=target;ehr_diagnostics::state().failureDetail(EHRDiagnosticTick(),value,origin);return true;
+}
 // Flags: entered1, native exception2, original attempted4, runtime entered8,
 // original permit consumed16, original hook consumed32, target found64.
 struct EHRDiagnosticRouteScope {

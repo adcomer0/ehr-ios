@@ -67,6 +67,39 @@ class PhysicalDestinationTests(unittest.TestCase):
             self.assertEqual((project / "NativeRuntimeTests.mm").read_text(),
                              '@"org.example.ehrfixture"; // own assertion\n')
 
+    def test_auth_metadata_proof_include_is_copied_without_game_inputs(self):
+        with tempfile.TemporaryDirectory() as temp:
+            base=Path(temp);source=base/"Source";source.mkdir()
+            for relative in runner.SOURCE_FILES:
+                target=source/relative;target.parent.mkdir(parents=True,exist_ok=True)
+                target.write_text("Own fixture source\n")
+            (source/"app/Assets.xcassets").mkdir()
+            (source/"tests").mkdir()
+            (source/"tests/AuthRetryMetadataProof.inc").write_text("// own metadata proof fixture\n")
+            test=base/"OwnTest.mm";test.write_text('#include "AuthRetryMetadataProof.inc"\n')
+            output=base/"Output";output.mkdir()
+            project=runner.prepare_project(source,test,output,"ABCDEFGHIJ","org.example.ehrfixture")
+            self.assertEqual((project/"AuthRetryMetadataProof.inc").read_text(),"// own metadata proof fixture\n")
+
+    def test_iterator_retirement_include_and_public_headers_are_copied(self):
+        with tempfile.TemporaryDirectory() as temp:
+            base=Path(temp);source=base/"Source";source.mkdir()
+            for relative in runner.SOURCE_FILES:
+                target=source/relative;target.parent.mkdir(parents=True,exist_ok=True)
+                target.write_text("Own fixture source\n")
+            (source/"app/Assets.xcassets").mkdir()
+            inputs={"tests/runtime/IteratorRetirementProof.inc":"// own retirement proof fixture\n",
+                    "native/include/EHRManagedIteratorProductionV1.h":"// own production table fixture\n",
+                    "native/include/EHRManagedIteratorV1.h":"// own callback table fixture\n"}
+            for relative,value in inputs.items():
+                target=source/relative;target.parent.mkdir(parents=True,exist_ok=True);target.write_text(value)
+            test=base/"OwnTest.mm";test.write_text('#include "IteratorRetirementProof.inc"\n')
+            output=base/"Output";output.mkdir()
+            project=runner.prepare_project(source,test,output,"ABCDEFGHIJ","org.example.ehrfixture")
+            self.assertEqual((project/"IteratorRetirementProof.inc").read_text(),inputs["tests/runtime/IteratorRetirementProof.inc"])
+            for relative in tuple(inputs)[1:]:self.assertEqual((project/relative).read_text(),inputs[relative])
+            self.assertEqual((project/"EHRRuntimeProbe.xcodeproj/project.pbxproj").read_text().count('HEADER_SEARCH_PATHS = "$(SRCROOT)/native";'),2)
+
     def test_generated_xctest_paid_team(self):
         with tempfile.TemporaryDirectory() as temp:
             bundle = Path(temp); (bundle / "Info.plist").write_bytes(plistlib.dumps({"CFBundleIdentifier": "org.example.ehrfixture.nativeruntimetests"}))
@@ -104,6 +137,32 @@ class PhysicalDestinationTests(unittest.TestCase):
             runner.select_physical_device({"result": {"devices": [device(), device()]}}, requested)
         with self.assertRaisesRegex(ValueError, "identity differs"):
             runner.select_physical_device({"result": {"devices": [device()]}}, {"udid": UDID, "identifier": "different"})
+
+    def test_explicit_model_keeps_exact_physical_identity_and_rejects_coredevice_alias(self):
+        requested={"udid":UDID,"identifier":IDENTIFIER}
+        own=device("localNetwork",product="iPhone17,1")
+        self.assertEqual(runner.select_physical_device({"result":{"devices":[own]}},requested,expected_product_type="iPhone17,1"),own)
+        with self.assertRaisesRegex(ValueError,"model"):
+            runner.select_physical_device({"result":{"devices":[own]}},requested)
+        for model in ("*","iPad13,11","iPhone18,*","iPhone018,2",None):
+            with self.subTest(model=model),self.assertRaisesRegex(ValueError,"exact physical iPhone model"):
+                runner.select_physical_device({"result":{"devices":[own]}},requested,expected_product_type=model)
+        alias=device();alias['hardwareProperties']['udid']='00000000-0000000000000002'
+        with self.assertRaisesRegex(ValueError,"CoreDevice identity is not uniquely"):
+            runner.select_physical_device({"result":{"devices":[device(),alias]}},requested)
+        wrong=device();wrong['hardwareProperties']['platform']='macOS'
+        with self.assertRaisesRegex(ValueError,"physical iPhone"):
+            runner.select_physical_device({"result":{"devices":[wrong]}},requested)
+
+    def test_explicit_nonphysical_reality_rejected_with_missing_field_compatibility(self):
+        requested={"udid":UDID,"identifier":IDENTIFIER}
+        physical=device("localNetwork");physical['hardwareProperties']['reality']='physical'
+        self.assertEqual(runner.select_physical_device({"result":{"devices":[physical]}},requested),physical)
+        self.assertEqual(runner.select_physical_device({"result":{"devices":[device()]}},requested)['identifier'],IDENTIFIER)
+        for reality in ('simulated','virtual',None,''):
+            invalid=device();invalid['hardwareProperties']['reality']=reality
+            with self.subTest(reality=reality),self.assertRaisesRegex(ValueError,"explicitly identifies a nonphysical"):
+                runner.select_physical_device({"result":{"devices":[invalid]}},requested)
 
     def test_candidate_pins_exact_all_four_and_tamper(self):
         with tempfile.TemporaryDirectory() as temp:

@@ -18,6 +18,15 @@
 #ifndef EHR_EXERCISE_TOUCH_SHORTCUTS
 #define EHR_EXERCISE_TOUCH_SHORTCUTS 0
 #endif
+#ifndef EHR_EXERCISE_ITERATOR_RETIREMENT
+#define EHR_EXERCISE_ITERATOR_RETIREMENT 0
+#endif
+#ifndef EHR_EXERCISE_GAME_START_ITERATOR
+#define EHR_EXERCISE_GAME_START_ITERATOR 0
+#endif
+#ifndef EHR_EXERCISE_AUTH_HANDOFF
+#define EHR_EXERCISE_AUTH_HANDOFF 0
+#endif
 
 namespace {
 void *helperExport(const char *name) {
@@ -57,6 +66,9 @@ NSDictionary *status() {
     return nil;
 }
 }
+#if EHR_EXERCISE_ITERATOR_RETIREMENT
+#include "IteratorRetirementProof.inc"
+#endif
 @interface NativeRuntimeTests:XCTestCase
 @end
 @implementation NativeRuntimeTests
@@ -90,6 +102,10 @@ NSDictionary *status() {
     XCTAssertGreaterThan([diagnostics[@"writtenSequence"] unsignedLongLongValue],0ULL);
     XCTAssertGreaterThan([diagnostics[@"routes"] count],0u);
     XCTAssertEqualObjects(diagnostics[@"guardLimit"],@32);
+    XCTAssertEqualObjects(diagnostics[@"failureDetailLimit"],@32);
+    XCTAssertNotNil(diagnostics[@"failureDetailTotal"]);
+    XCTAssertTrue([diagnostics[@"failureDetails"] isKindOfClass:NSArray.class]);
+    XCTAssertLessThanOrEqual([diagnostics[@"failureDetails"] count],32u);
     XCTAssertEqualObjects(diagnostics[@"gateway"][@"loaded"],@1);
     XCTAssertEqualObjects(diagnostics[@"gateway"][@"rootLimit"],@65536);
     XCTAssertGreaterThan([diagnostics[@"gateway"][@"samples"] unsignedLongLongValue],0ULL);
@@ -101,8 +117,47 @@ NSDictionary *status() {
         XCTAssertNotNil(route[@"lastArgument"]);
     }
     XCTAssertEqualObjects(diagnostics[@"appleAuth"][@"installStatus"],@0);
+    if([NSBundle.mainBundle.infoDictionary[@"EHRNetworkDiagnosticsCompiled"] boolValue]){
+        NSDictionary *network=diagnostics[@"networkDisconnect"];
+        XCTAssertEqualObjects(network[@"schemaVersion"],@1);
+        for(NSString *key in @[@"targetMatches",@"count",@"hasReason",@"observerFaults"])
+            XCTAssertEqualObjects(network[key],@0);
+    }
     if([NSBundle.mainBundle.infoDictionary[@"EHREOSLoginDiagnosticsEnabled"] boolValue])
         XCTAssertEqualObjects(last[@"eosLoginObserverStatus"],@0);
+    if([NSBundle.mainBundle.infoDictionary[@"EHRAuthHandoffDiagnosticsCompiled"] boolValue]){
+        NSDictionary *handoff=last[@"authHandoff"];
+        XCTAssertEqualObjects(handoff[@"preparedStatus"],@0);
+        XCTAssertEqualObjects(handoff[@"schemaVersion"],@2);
+        XCTAssertEqualObjects(handoff[@"eventCapacity"],@32);
+        XCTAssertEqualObjects(handoff[@"eventCount"],@0);
+        XCTAssertEqualObjects(handoff[@"events"],@[]);
+        XCTAssertEqualObjects(handoff[@"appleSuccesses"],@0);
+        XCTAssertEqualObjects(handoff[@"managedCredentialEntries"],@0);
+        XCTAssertEqualObjects(handoff[@"loginEntries"],@0);
+        XCTAssertEqualObjects(handoff[@"typeObservations"],@0);
+        XCTAssertEqualObjects(handoff[@"observerFaults"],@0);
+        XCTAssertEqualObjects(diagnostics[@"authHandoff"][@"preparedStatus"],@0);
+    }
+    if([NSBundle.mainBundle.infoDictionary[@"EHRAuthRetryGuardActivationRequested"] boolValue]){
+        NSDictionary *guard=last[@"authRetryGuard"];
+        XCTAssertTrue([guard[@"startupRequested"] boolValue]);
+        XCTAssertEqualObjects(guard[@"preparedStatus"],@0);
+        XCTAssertEqualObjects(guard[@"startupPrepareStatus"],@0);
+        XCTAssertEqualObjects(guard[@"startupEnableStatus"],@0);
+        XCTAssertTrue([guard[@"enabled"] boolValue]);
+        XCTAssertEqualObjects(guard[@"failureHandlerEntries"],@0);
+        XCTAssertEqualObjects(guard[@"failureHandlerCompleted"],@0);
+    }
+    if([NSBundle.mainBundle.infoDictionary[@"EHRGameStartIteratorCompiled"] boolValue]){
+        NSDictionary *adapter=last[@"gameStartIterator"];
+        XCTAssertEqualObjects(adapter[@"preparedStatus"],@0);
+        XCTAssertEqualObjects(adapter[@"enabled"],@YES);
+        XCTAssertEqualObjects(adapter[@"failures"],@0);
+        XCTAssertEqualObjects(adapter[@"factoryCalls"],@0);
+        XCTAssertEqualObjects(diagnostics[@"gameStartIterator"][@"preparedStatus"],@0);
+        XCTAssertEqualObjects(diagnostics[@"gameStartIterator"][@"enabled"],@YES);
+    }
     XCTAssertEqual([last[@"status"] intValue],0,@"%@",last);
     XCTAssertEqual([app[@"state"] unsignedIntValue],3u,@"%@",last);
     XCTAssertEqual([app[@"loadAttempts"] unsignedIntValue],1u);
@@ -113,6 +168,54 @@ NSDictionary *status() {
     XCTAssertTrue([app[@"optionsLoaded"] boolValue],@"%@",last);
     XCTAssertGreaterThan([app[@"optionCount"] unsignedIntValue],0u);
     XCTAssertTrue([app[@"postLoadTasksComplete"] boolValue],@"%@",last);
+#if EHR_EXERCISE_ITERATOR_RETIREMENT
+    // Own native ArrayList carriers only; warm the fixed marker before later
+    // ownership baselines. No Unity scheduling, account or network action.
+    NSDictionary *retirement=EHRRuntimeIteratorRetirementProof();
+    NSData *retirementData=[NSJSONSerialization dataWithJSONObject:retirement options:NSJSONWritingPrettyPrinted error:nil];
+    NSLog(@"EHR_ITERATOR_RETIREMENT_PROOF %@",[[NSString alloc] initWithData:retirementData encoding:NSUTF8StringEncoding]);
+    XCTAttachment *retirementAttachment=[XCTAttachment attachmentWithData:retirementData uniformTypeIdentifier:@"public.json"];
+    retirementAttachment.name=@"EHRIteratorRetirementProof.json";retirementAttachment.lifetime=XCTAttachmentLifetimeKeepAlways;[self addAttachment:retirementAttachment];
+    XCTAssertTrue([retirement[@"success"] boolValue],@"%@",retirement);
+#endif
+#if EHR_EXERCISE_GAME_START_ITERATOR
+    auto gameStartProbe=reinterpret_cast<NSDictionary *(*)(void)>(helperExport("EHRGameStartIteratorSelfTest"));
+    NSDictionary *gameStartProof=gameStartProbe?gameStartProbe():@{@"success":@NO};
+    NSData *gameStartData=[NSJSONSerialization dataWithJSONObject:gameStartProof options:NSJSONWritingPrettyPrinted error:nil];
+    NSLog(@"EHR_GAME_START_ITERATOR_PROOF %@",[[NSString alloc] initWithData:gameStartData encoding:NSUTF8StringEncoding]);
+    XCTAttachment *gameStartAttachment=[XCTAttachment attachmentWithData:gameStartData uniformTypeIdentifier:@"public.json"];
+    gameStartAttachment.name=@"EHRGameStartIteratorProof.json";gameStartAttachment.lifetime=XCTAttachmentLifetimeKeepAlways;[self addAttachment:gameStartAttachment];
+    XCTAssertTrue([gameStartProof[@"success"] boolValue],@"%@",gameStartProof);
+    XCTAssertEqualObjects(gameStartProof[@"rootAccountingBalanced"],@YES);
+    XCTAssertEqualObjects(gameStartProof[@"fixtureNullOwner"],@YES);
+    XCTAssertEqualObjects(gameStartProof[@"realGameOwnerInvoked"],@NO);
+    XCTAssertEqualObjects(gameStartProof[@"originalMoveNextInvoked"],@NO);
+    XCTAssertEqualObjects(gameStartProof[@"realHostFactoryInvoked"],@NO);
+#endif
+#if EHR_EXERCISE_AUTH_HANDOFF
+    auto handoffProbe=reinterpret_cast<NSDictionary *(*)(void)>(helperExport("EHRAuthHandoffDiagnosticsSelfTest"));
+    NSDictionary *handoffProof=handoffProbe?handoffProbe():@{@"success":@NO};
+    NSData *handoffData=[NSJSONSerialization dataWithJSONObject:handoffProof options:NSJSONWritingPrettyPrinted error:nil];
+    NSLog(@"EHR_AUTH_HANDOFF_PROOF %@",[[NSString alloc] initWithData:handoffData encoding:NSUTF8StringEncoding]);
+    XCTAttachment *handoffAttachment=[XCTAttachment attachmentWithData:handoffData uniformTypeIdentifier:@"public.json"];
+    handoffAttachment.name=@"EHRAuthHandoffProof.json";handoffAttachment.lifetime=XCTAttachmentLifetimeKeepAlways;[self addAttachment:handoffAttachment];
+    XCTAssertTrue([handoffProof[@"success"] boolValue],@"%@",handoffProof);
+    XCTAssertEqualObjects(handoffProof[@"status"],@0);
+    XCTAssertEqualObjects(handoffProof[@"preparedStatus"],@0);
+    XCTAssertGreaterThanOrEqual([handoffProof[@"checks"] unsignedIntValue],87u);
+    XCTAssertEqualObjects(handoffProof[@"failures"],@0);
+    XCTAssertEqualObjects(handoffProof[@"realAuthenticationInvoked"],@NO);
+    XCTAssertEqualObjects(handoffProof[@"credentialsRead"],@NO);
+    XCTAssertEqualObjects(handoffProof[@"networkOperations"],@NO);
+    XCTAssertEqualObjects(handoffProof[@"isolatedRecorder"],@YES);
+    XCTAssertEqualObjects(handoffProof[@"runtimeExecutableWrites"],@NO);
+    XCTAssertEqualObjects(handoffProof[@"eventCapacity"],@32);
+    XCTAssertEqualObjects(handoffProof[@"eventRingBounded"],@YES);
+    XCTAssertEqualObjects(handoffProof[@"middleAppleTypePreserved"],@YES);
+    XCTAssertEqualObjects(handoffProof[@"unknownScalarRedacted"],@YES);
+    for(NSString *key in @[@"actualCredentialReads",@"originalAuthCalls",@"networkRequests",@"accountActions"])
+        XCTAssertEqualObjects(handoffProof[key],@0);
+#endif
 #if EHR_EXERCISE_TOUCH_SHORTCUTS
     void *touchModule=nullptr,*touchHelper=nullptr;
     for(uint32_t i=0;i<_dyld_image_count();++i){const char *path=_dyld_get_image_name(i);if(!path)continue;
@@ -216,6 +319,8 @@ NSDictionary *status() {
     XCTAssertTrue([cleanup[@"sourceTouchHidden"] boolValue]);
     XCTAssertTrue([cleanup[@"sourceStatesReleased"] boolValue]);
     XCTAssertTrue([cleanup[@"registrationSealed"] boolValue]);
+    if([NSBundle.mainBundle.infoDictionary[@"EHRGameStartIteratorCompiled"] boolValue])
+        XCTAssertEqualObjects(cleanup[@"gameStartIteratorDisabled"],@YES);
     XCTAssertEqual([cleanup[@"activeSources"] unsignedLongLongValue],0ULL);
     XCTAssertEqual([cleanup[@"currentRoots"] unsignedLongLongValue],0ULL);
     XCTAssertEqual([cleanup[@"associationWeakRoots"] unsignedLongLongValue],0ULL);

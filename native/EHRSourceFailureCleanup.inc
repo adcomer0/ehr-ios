@@ -3,6 +3,9 @@
 #include "EHRSourceComponents.h"
 #include "EHRNativePatchThunks.h"
 #include "EHRTouchUI.h"
+#if EHR_HAS_GAME_START_ITERATOR
+#include "EHRGameStartIteratorAdapter.h"
+#endif
 
 NSDictionary *EHRFullSourceFailureCleanup(void){
     if(!NSThread.isMainThread)return @{@"success":@NO,@"status":@(EHR_RUNTIME_WRONG_THREAD)};
@@ -10,8 +13,14 @@ NSDictionary *EHRFullSourceFailureCleanup(void){
     static bool cleaning=false;
     if(cleaning)return @{@"success":@NO,@"inProgress":@YES,@"status":@(EHR_RUNTIME_NOT_READY)};
     cleaning=true;struct Guard{bool&value;~Guard(){value=false;}}guard{cleaning};
-    int32_t deactivated=EHR_RUNTIME_MANAGED_EXCEPTION,iterators=EHR_RUNTIME_MANAGED_EXCEPTION,touchHidden=EHR_RUNTIME_MANAGED_EXCEPTION;
+    int32_t deactivated=EHR_RUNTIME_MANAGED_EXCEPTION,iterators=EHR_RUNTIME_MANAGED_EXCEPTION,touchHidden=EHR_RUNTIME_MANAGED_EXCEPTION,gameStartDisabled=EHR_RUNTIME_OK;
     EHRProductionIteratorFailureV1 before{},after{};NSDictionary *components=nil;
+#if EHR_HAS_GAME_START_ITERATOR
+    // Stop yielding replacement source work before deactivating its callbacks.
+    @try{try{gameStartDisabled=EHRGameStartIteratorSetEnabled(0);}
+        catch(...){gameStartDisabled=EHR_RUNTIME_LIMIT;}}
+    @catch(__unused NSException*e){gameStartDisabled=EHR_RUNTIME_MANAGED_EXCEPTION;}
+#endif
     @try{try{EHRManagedPatchTargetsV1 targets{};EHRNativePatchMakeTargetsTable(&targets);
         deactivated=targets.abi_version==1&&targets.byte_size==sizeof(targets)&&targets.deactivate?targets.deactivate():EHR_RUNTIME_BAD_ARGUMENT;
     }catch(...){deactivated=EHR_RUNTIME_LIMIT;}}@catch(__unused NSException*e){deactivated=EHR_RUNTIME_MANAGED_EXCEPTION;}
@@ -30,9 +39,10 @@ NSDictionary *EHRFullSourceFailureCleanup(void){
         &&components[@"nativeWeakSelfTokens"]!=nil&&[components[@"nativeWeakSelfTokens"] unsignedLongLongValue]==0
         &&components[@"pluginOwnerRooted"]!=nil&&![components[@"pluginOwnerRooted"] boolValue];
     const bool pending=after.deferred!=0;
-    const bool success=deactivated==0&&touchHidden==0&&iterators==0&&finalStatus==0&&statesReleased&&!pending
+    const bool success=gameStartDisabled==0&&deactivated==0&&touchHidden==0&&iterators==0&&finalStatus==0&&statesReleased&&!pending
         &&after.active_sources==0&&after.current_roots==0&&after.association_weak_roots==0;
     return @{@"success":@(success),@"targetsDeactivated":@(deactivated==0),@"targetStatus":@(deactivated),@"sourceTouchHidden":@(touchHidden==0),@"touchStatus":@(touchHidden),
+        @"gameStartIteratorDisabled":@(gameStartDisabled==0),@"gameStartIteratorStatus":@(gameStartDisabled),
         @"iteratorStatus":@(iterators?iterators:finalStatus),@"components":components?:@{},@"sourceStatesReleased":@(statesReleased),
         @"registrationSealed":@(after.sealed!=0),@"deferred":@(after.deferred),@"activeSources":@(after.active_sources),
         @"currentRoots":@(after.current_roots),@"associationWeakRoots":@(after.association_weak_roots),

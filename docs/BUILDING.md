@@ -29,7 +29,7 @@ python3 tools/materialize_source_snapshot.py \
 
 python3 tools/build_source_application.py build \
   --manifest "$EHR_OUTPUT/source-inputs.json" \
-  --output "$EHR_OUTPUT/Managed47" \
+  --output "$EHR_OUTPUT/Managed" \
   --dotnet "$EHR_DOTNET" \
   --native-binder native/EHRFullSourceRuntime.mm \
   --omit-debug-symbols
@@ -37,7 +37,7 @@ python3 tools/build_source_application.py build \
 
 Use fresh output paths. The materializer checks the exact upstream commit, tracked contained resource paths and every C# and resource hash. It does not copy resource assets into this repository or access a game/account. `build-proof.json` records the resulting library hash and required exports; a successful source build does not establish gameplay correctness. To review only the emitted project, add `--emit-only` to the builder.
 
-`source-app/manifest.json` selects the actual 796 C# inputs for build 47. The separate reusable `managed/` tree and source-transform tools are not automatically substituted for those files. Intentional edits require updating the selection/hashes and revalidating the generated dispatcher/native contracts.
+`source-app/manifest.json` selects the actual 796 C# inputs for build 52. The separate reusable `managed/` tree and source-transform tools are not automatically substituted for those files. Intentional edits require updating the selection/hashes and revalidating the generated dispatcher/native contracts.
 
 ## Native generation and signing
 
@@ -52,7 +52,41 @@ The native pipeline is implemented in these tools:
 
 Run each tool with `--help` for its actual input schema. Intermediate native maps, component-class association reports and generated thunk inputs are produced locally from the selected game and source inventory. They are not bundled as private reports or raw game metadata. Automating their entire regeneration from the public snapshot remains contribution work.
 
+The optional iOS host-factory inlining adapter has one additional local input.
+Generate it with `tools/prepare_game_start_iterator_map.py --framework FRAMEWORK
+--metadata METADATA --pins SOURCE_PIN_REPORT --output PRIVATE_MAP`, then add
+`--game-start-iterator-map PRIVATE_MAP` to the existing full-profile build. Use
+actual local paths in place of these placeholders and a fresh map outside Git.
+The pin report comes from `map_native_methods.py` for those same source bytes.
+The builder also requires the normal full native catalog, target map, thunk
+inputs, production iterator map, static-class plan, managed library and signing
+inputs. This option does not regenerate or replace those inputs. See the
+[complete adapter generation example](IOS_GAME_START_ITERATOR.md#generate-and-select-the-optional-adapter).
+
+When selected, the signed `EHRGameStartIteratorCompiled` flag requires the passed
+startup proof to show the adapter prepared successfully and enabled after full
+source startup. The separate owned native iterator probe must also pass on the
+signed runtime before delivery. Build 49 passed this iOS-on-Mac metadata/barrier
+probe with 46 checks and exact root conservation; it did not invoke a real game
+owner, the original game-start iterator body or the real host factory. A separate
+physical build-49 observation reached host start, intro and a game-end callback;
+multiplayer and full role behavior remain unverified. These gates supplement the existing four-binary,
+startup, exact-device and signing checks.
+
 Signing tools require explicit `--team-id` and `--bundle-id` values. `--team-name` can add an exact organization assertion. Use a separate test app identity and your own provisioning; the official game's bundle identity is rejected. No certificate/profile/device values are supplied. See [portable tooling](PORTABLE_TOOLING.md) for parameter flow. Do not uninstall the official game, import its container, reset account data or bypass consent/authentication to work around failures.
+
+For an additional test phone, use the installer's explicit first-install mode
+only after exact-device provisioning and matching Mac validation. See
+[additional-device installation](DEVICE_INSTALLATION.md). Upgrade-only remains
+the default, and first installation never launches the app.
+
+The optional passive authentication probe adds `--auth-handoff-map PRIVATE_MAP`.
+Generate that private map with `tools/prepare_auth_handoff_map.py` for the same
+read-only source framework, metadata and pin report. Selection requires the full
+source profile, existing EOS result map and platform sign-in capabilities. It
+adds no authentication request and changes no credential or permission. See
+[the complete diagnostic scope](AUTH_HANDOFF_DIAGNOSTICS.md). Full builds also
+record the scalar reason at the existing validated disconnect boundary.
 
 ## Checks and evidence
 

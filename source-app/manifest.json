@@ -540,7 +540,7 @@
     },
     {
       "path": "compiled/131/Utils.cs",
-      "sha256": "f77cfce5ae488159ff5b4346002005b63ce7dd55f471489b96bcca93c13a3c19"
+      "sha256": "149c70f39b018f7f6a1d87ac146058cde6465d3e1ffc999c9635d252a84e8e9f"
     },
     {
       "path": "compiled/132/Zoom.cs",
@@ -644,7 +644,7 @@
     },
     {
       "path": "compiled/157/GameOptionsMenuPatch.cs",
-      "sha256": "8f0c225439e6b56546b5e6da120d4acc981c7d6bc4f547176ffac1b735e3feee"
+      "sha256": "e831dcd6ffecbd7f496cf819e4193216fff55a2e7c979fdab7615f9f02025ee7"
     },
     {
       "path": "compiled/158/GameOptionsPatch.cs",
@@ -756,7 +756,7 @@
     },
     {
       "path": "compiled/185/PlayerJoinAndLeftPatch.cs",
-      "sha256": "6e5ebce67772f0ee7339ce9e4a2576513797e885411848d70f82e1efb814638c"
+      "sha256": "47c0d1b31e44d7059a492742a7b59aa7d7ef0f45f82c55659f26ad837f646a6a"
     },
     {
       "path": "compiled/186/RandomSpawnPatch.cs",
@@ -2956,7 +2956,7 @@
     },
     {
       "path": "compiled/735/StaticPatchRuntime.cs",
-      "sha256": "5c4834ab761c12ad7d13e7ce5613e00277d3bf9a788612cfb277638cc9d353be"
+      "sha256": "d13a0bf351d19fd79c70f624abbfef78c7d1857a7108057384a2183280442a2d"
     },
     {
       "path": "compiled/736/NativeValues.cs",
@@ -3060,7 +3060,7 @@
     },
     {
       "path": "compiled/761/NativePatchRuntime.cs",
-      "sha256": "39cd8ce1334ae4a4f70b3abdaf698927f5a772be591f4c108de7f5f7cd25aa23"
+      "sha256": "7b703f416a806a1d9342ece3fe12a3ee407efc4299e34f385da8c57d48adb94f"
     },
     {
       "path": "compiled/762/NativePatchCatalog.g.cs",

@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""Upgrade the explicitly identified test app only after matching a passed Mac startup proof.
+"""Install the explicitly identified test app only after matching a passed Mac startup proof.
 
 Never uninstalls, reads app containers, changes pairing/security, signs code,
 accepts game terms, or operates accounts. All CoreDevice output stays private.
+The default requires an upgrade; an explicit first install requires app absence
+and never launches the app.
 """
 from __future__ import annotations
 
@@ -62,6 +64,12 @@ def build_number(value):
     return tuple(int(part) for part in value.split(".")) + (0,) * (4 - len(value.split(".")))
 
 
+def iphone_product_type(value):
+    require(isinstance(value, str) and re.fullmatch(r"iPhone[1-9][0-9]*,[1-9][0-9]*", value),
+            "expected_product_type_must_be_exact_iphone")
+    return value
+
+
 def verify_candidate(candidate, udid, runtime, verifier, *, team_id, bundle_id, team_name=None):
     result = verifier(candidate, udid, team_id=team_id, bundle_id=bundle_id, team_name=team_name)
     for relative in runtime.RELATIVE_BINARIES:
@@ -70,6 +78,66 @@ def verify_candidate(candidate, udid, runtime, verifier, *, team_id, bundle_id, 
         match = re.search(r"^TeamIdentifier=(.+)$", details.stderr, re.M)
         require(match is not None and match.group(1) == team_id, "tested_binary_signing_team_differs")
     return result
+
+
+def validate_game_start_iterator_proof(attachments):
+    path = attachments / "EHRGameStartIteratorProof.json"
+    require(path.is_file() and not path.is_symlink()
+            and path.resolve().parent == attachments.resolve(), "game_start_iterator_self_test_missing")
+    try:
+        proof = json.loads(path.read_text())
+    except (OSError, UnicodeError, ValueError) as error:
+        raise Rejected("game_start_iterator_self_test_invalid") from error
+    require(isinstance(proof, dict), "game_start_iterator_self_test_invalid")
+    require(proof.get("schema") == "ehr.game-start-iterator-proof.v1"
+            and proof.get("success") is True and type(proof.get("status")) is int
+            and proof["status"] == 0 and type(proof.get("stage")) is int and proof["stage"] == 0
+            and proof.get("rootAccountingBalanced") is True
+            and proof.get("fixtureNullOwner") is True
+            and all(proof.get(key) is False for key in (
+                "realGameOwnerInvoked", "originalMoveNextInvoked", "realHostFactoryInvoked",
+                "unityObjectCreated", "runtimeExecutableWrites")), "game_start_iterator_self_test_not_passed")
+    counts = ("checks", "factorySeamCalls", "cancelCallsBefore", "cancelCallsAfter", "rootsBefore", "rootsAfter",
+              "deferredReleasedBefore", "deferredReleasedAfter", "deferredEnqueuedBefore", "deferredEnqueuedAfter",
+              "deferredDequeuedBefore", "deferredDequeuedAfter")
+    require(all(type(proof.get(key)) is int and 0 <= proof[key] <= (1 << 64) - 1 for key in counts),
+            "game_start_iterator_self_test_counts_invalid")
+    require(46 <= proof["checks"] <= (1 << 32) - 1 and proof["factorySeamCalls"] == 6
+            and proof["cancelCallsAfter"] == proof["cancelCallsBefore"] + 1,
+            "game_start_iterator_self_test_counts_invalid")
+    # Deferred finalizer releases can reduce the baseline while the own probe
+    # runs. Match the native test's accounting rather than requiring raw totals
+    # equal or trusting its success flag alone.
+    require(all(proof["deferred" + name + "After"] >= proof["deferred" + name + "Before"]
+                for name in ("Released", "Enqueued", "Dequeued"))
+            and all(proof["deferredReleased" + side] <= proof["deferredDequeued" + side]
+                    <= proof["deferredEnqueued" + side] for side in ("Before", "After"))
+            and proof["rootsAfter"] + proof["deferredReleasedAfter"] - proof["deferredReleasedBefore"]
+                    == proof["rootsBefore"], "game_start_iterator_self_test_root_accounting_invalid")
+
+
+def validate_auth_handoff_proof(attachments):
+    path = attachments / "EHRAuthHandoffProof.json"
+    require(path.is_file() and not path.is_symlink()
+            and path.resolve().parent == attachments.resolve(), "auth_handoff_self_test_missing")
+    try:
+        proof = json.loads(path.read_text())
+    except (OSError, UnicodeError, ValueError) as error:
+        raise Rejected("auth_handoff_self_test_invalid") from error
+    require(isinstance(proof, dict), "auth_handoff_self_test_invalid")
+    require(proof.get("schema") == "ehr.auth-handoff-proof.v1"
+            and proof.get("success") is True and type(proof.get("status")) is int and proof["status"] == 0
+            and type(proof.get("preparedStatus")) is int and proof["preparedStatus"] == 0
+            and type(proof.get("failures")) is int and proof["failures"] == 0
+            and type(proof.get("checks")) is int and 87 <= proof["checks"] <= (1 << 32) - 1
+            and proof.get("isolatedRecorder") is True
+            and proof.get("eventCapacity") == 32 and proof.get("eventRingBounded") is True
+            and proof.get("middleAppleTypePreserved") is True and proof.get("unknownScalarRedacted") is True
+            and all(proof.get(key) is False for key in (
+                "realAuthenticationInvoked", "credentialsRead", "networkOperations", "runtimeExecutableWrites"))
+            and all(type(proof.get(key)) is int and proof[key] == 0 for key in (
+                "actualCredentialReads", "originalAuthCalls", "networkRequests", "accountActions")),
+            "auth_handoff_self_test_not_passed")
 
 
 def validate_mac_proof(candidate, summary_path, runtime, *, team_id, bundle_id):
@@ -114,8 +182,35 @@ def validate_mac_proof(candidate, summary_path, runtime, *, team_id, bundle_id):
     require(profile_pin == summary.get("candidate_profile_sha256"), "profile_differs_from_mac_test")
     info = plistlib.loads((candidate / "Info.plist").read_bytes())
     version_proof = proof.get("applicationVersion", {})
+    if info.get("EHRNetworkDiagnosticsCompiled"):
+        network = status.get("numericDiagnostics", {}).get("networkDisconnect", {})
+        require(isinstance(network, dict) and network.get("schemaVersion") == 1
+                and all(type(network.get(key)) is int and network[key] == 0 for key in (
+                    "targetMatches", "count", "hasReason", "observerFaults")),
+                "network_disconnect_startup_not_ready")
     if info.get("EHREOSLoginDiagnosticsEnabled"):
         require(status.get("eosLoginObserverStatus") == 0, "eos_login_observer_not_ready")
+    if info.get("EHRAuthHandoffDiagnosticsCompiled"):
+        handoff = status.get("authHandoff", {})
+        require(isinstance(handoff, dict) and type(handoff.get("preparedStatus")) is int
+                and handoff["preparedStatus"] == 0
+                and handoff.get("schemaVersion") == 2 and handoff.get("eventCapacity") == 32
+                and handoff.get("eventCount") == 0 and handoff.get("events") == []
+                and all(type(handoff.get(key)) is int and handoff[key] == 0 for key in (
+                    "appleSuccesses", "managedCredentialEntries", "loginEntries", "typeObservations",
+                    "observerFaults")), "auth_handoff_startup_not_ready")
+        validate_auth_handoff_proof(attachments)
+    if info.get("EHRAuthRetryGuardActivationRequested"):
+        guard = status.get("authRetryGuard", {})
+        require(info.get("EHRAuthRetryGuardCompiled") is True and isinstance(guard, dict)
+                and guard.get("startupRequested") is True and guard.get("preparedStatus") == 0
+                and guard.get("startupPrepareStatus") == 0 and guard.get("startupEnableStatus") == 0
+                and guard.get("enabled") is True, "auth_retry_guard_startup_not_ready")
+    if info.get("EHRGameStartIteratorCompiled"):
+        adapter = status.get("gameStartIterator", {})
+        require(isinstance(adapter, dict) and adapter.get("preparedStatus") == 0
+                and adapter.get("enabled") is True, "game_start_iterator_startup_not_ready")
+        validate_game_start_iterator_proof(attachments)
     require(version_proof.get("success") is True and version_proof.get("status") == 0
             and version_proof.get("value") == info.get("EHRReferenceGameVersion")
             == info.get("CFBundleShortVersionString") == version_proof.get("expected")
@@ -211,7 +306,10 @@ class DeviceRunner:
 
 
 def execute(candidate, summary_path, private_file, output, runtime, verifier,
-            runner, summary, preflight_only=False, launch=False, *, team_id, bundle_id):
+            runner, summary, preflight_only=False, launch=False, *, team_id, bundle_id,
+            initial_install=False, expected_product_type="iPhone18,2"):
+    expected_product_type = iphone_product_type(expected_product_type)
+    require(not (initial_install and launch), "initial_install_never_launches")
     validate_identity(team_id, bundle_id)
     evidence = validate_mac_proof(candidate, summary_path, runtime, team_id=team_id, bundle_id=bundle_id)
     requested = runtime.load_physical_device_file(private_file)
@@ -223,12 +321,14 @@ def execute(candidate, summary_path, private_file, output, runtime, verifier,
     summary.update(local_candidate_verified=True, passed_mac_startup=True,
                    same_four_tested_binaries=True, exact_phone_profile_coverage=True,
                    candidate_build=evidence["build"], option_count=evidence["options"],
-                   active_patch_targets=evidence["active_targets"])
+                   active_patch_targets=evidence["active_targets"],
+                   install_mode="initial_install" if initial_install else "upgrade",
+                   expected_product_type=expected_product_type)
     try:
         inventory = runner.call("device-inventory", ["list", "devices"])
         receipt_result(inventory, "list.devices")
         try:
-            device = runtime.select_physical_device(inventory, requested)
+            device = runtime.select_physical_device(inventory, requested, expected_product_type=expected_product_type)
         except ValueError:
             summary["status"] = "exact_paired_iphone_unreachable_or_not_ready"
             return summary
@@ -237,7 +337,7 @@ def execute(candidate, summary_path, private_file, output, runtime, verifier,
         detail = receipt_result(details, "device.info.details")
         require(detail.get("identifier") == identifier
                 and detail.get("hardwareProperties", {}).get("udid") == requested["udid"]
-                and detail.get("hardwareProperties", {}).get("productType") == "iPhone18,2", "details_identity_differs")
+                and detail.get("hardwareProperties", {}).get("productType") == expected_product_type, "details_identity_differs")
         connection, properties = detail.get("connectionProperties", {}), detail.get("deviceProperties", {})
         require(connection.get("pairingState") == "paired"
                 and connection.get("transportType") in ("wired", "localNetwork"), "details_pairing_or_transport_differs")
@@ -254,16 +354,22 @@ def execute(candidate, summary_path, private_file, output, runtime, verifier,
     except DeviceCommandFailure:
         summary["status"] = "paired_iphone_services_unreachable"
         return summary
-    if before is None:
-        summary["status"] = "upgrade_requires_existing_exact_app"
-        return summary
-    summary["previous_build"] = before.get("bundleVersion")
-    if build_number(evidence["build"]) <= build_number(before.get("bundleVersion")):
-        summary["status"] = "candidate_build_not_newer"
-        return summary
-    summary["upgrade_ready"] = True
+    if initial_install:
+        if before is not None:
+            summary["status"] = "initial_install_requires_absent_exact_app"
+            return summary
+        summary["initial_install_ready"] = True
+    else:
+        if before is None:
+            summary["status"] = "upgrade_requires_existing_exact_app"
+            return summary
+        summary["previous_build"] = before.get("bundleVersion")
+        if build_number(evidence["build"]) <= build_number(before.get("bundleVersion")):
+            summary["status"] = "candidate_build_not_newer"
+            return summary
+        summary["upgrade_ready"] = True
     if preflight_only:
-        summary["status"] = "ready_for_upgrade"
+        summary["status"] = "ready_for_initial_install" if initial_install else "ready_for_upgrade"
         return summary
     assert_unchanged(candidate, evidence, runtime)
     summary["install_attempted"] = True
@@ -277,7 +383,7 @@ def execute(candidate, summary_path, private_file, output, runtime, verifier,
     require(after is not None and after.get("bundleVersion") == evidence["build"]
             and after.get("version") == evidence["version"], "installed_version_not_confirmed")
     assert_unchanged(candidate, evidence, runtime)
-    summary.update(installed_version_confirmed=True, status="upgrade_installed")
+    summary.update(installed_version_confirmed=True, status="initial_install_installed" if initial_install else "upgrade_installed")
     if launch:
         summary["launch_attempted"] = True
         data = runner.call("launch", ["device", "process", "launch", "--device", identifier, "--activate", bundle_id])
@@ -301,18 +407,24 @@ def main(argv=None):
     parser.add_argument("--bundle-id", required=True)
     parser.add_argument("--team-name", help="Optional exact provisioning team-name assertion")
     parser.add_argument("--preflight-only", action="store_true")
+    parser.add_argument("--initial-install", action="store_true", help="Require the exact test app to be absent; never launch it")
+    parser.add_argument("--expected-product-type", type=iphone_product_type, default="iPhone18,2",
+                        help="Exact physical iPhone model from the identified device inventory (default: iPhone18,2)")
     parser.add_argument("--launch", action="store_true", help="Optional plain foreground launch; no game UI or account interaction")
     args = parser.parse_args(argv)
     validate_identity(args.team_id, args.bundle_id, args.team_name)
     if args.preflight_only and args.launch:
         parser.error("Preflight never launches an app")
+    if args.initial_install and args.launch:
+        parser.error("Initial installation never launches an app")
     output = args.output_root.resolve()
     require(not output.exists() and outside_git(output), "output_must_be_new_outside_git")
     require(output != args.candidate_app.resolve() and args.candidate_app.resolve() not in output.parents,
             "output_must_not_be_inside_candidate")
     output.mkdir(parents=True, mode=0o700)
     output.chmod(0o700)
-    summary = {"schema": "ehr.protected-iphone-upgrade.v1", "status": "not_started", "upgrade_ready": False,
+    summary = {"schema": "ehr.protected-iphone-initial-install.v1" if args.initial_install else "ehr.protected-iphone-upgrade.v1", "status": "not_started", "upgrade_ready": False,
+               "initial_install_ready": False,
                "install_attempted": False, "installation_succeeded": False, "installed_version_confirmed": False,
                "launch_attempted": False, "normal_foreground_launch_succeeded": False, "process_observed_running": False,
                "preflight_only": args.preflight_only, "uninstall_performed": False, "container_access_performed": False,
@@ -324,7 +436,8 @@ def main(argv=None):
         strict_verify = lambda app, udid: verify_candidate(app, udid, runtime, verifier, team_id=args.team_id, bundle_id=args.bundle_id, team_name=args.team_name)
         execute(args.candidate_app.resolve(), args.mac_runtime_summary.resolve(), args.device_id_file,
                 output, runtime, strict_verify, DeviceRunner(output), summary, args.preflight_only, args.launch,
-                team_id=args.team_id, bundle_id=args.bundle_id)
+                team_id=args.team_id, bundle_id=args.bundle_id, initial_install=args.initial_install,
+                expected_product_type=args.expected_product_type)
         if not args.preflight_only and not summary["installation_succeeded"]:
             exit_code = 3
     except Exception as error:

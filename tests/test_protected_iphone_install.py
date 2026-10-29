@@ -5,6 +5,8 @@ import plistlib
 import tempfile
 import sys
 import unittest
+from contextlib import redirect_stderr
+import io
 from unittest.mock import patch
 from types import SimpleNamespace
 
@@ -28,11 +30,11 @@ def receipt(command, result):
 
 
 class OwnDeviceRunner:
-    def __init__(self, disconnected=False):
-        self.calls=[]; self.disconnected=disconnected
+    def __init__(self, disconnected=False, *, absent=False, product_type='iPhone18,2'):
+        self.calls=[]; self.disconnected=disconnected;self.absent=absent;self.product_type=product_type
     def call(self, name, arguments, seconds=20):
         self.calls.append((name,arguments))
-        hardware={'udid':OWN_UDID,'productType':'iPhone18,2','platform':'iOS'}
+        hardware={'udid':OWN_UDID,'productType':self.product_type,'platform':'iOS'}
         connection={'pairingState':'paired','transportType':'localNetwork','tunnelState':'connected'}
         if name=='device-inventory':
             return receipt('list.devices', {'devices':[] if self.disconnected else
@@ -43,8 +45,9 @@ class OwnDeviceRunner:
                 'developerModeStatus':'enabled','ddiServicesAvailable':True}})
         if name in ('installed-before','installed-after'):
             return receipt('device.info.apps', {'deviceIdentifier':OWN_DEVICE,'matchingBundleIdentifier':BUNDLE,
-                'apps':[{'bundleIdentifier':BUNDLE,'bundleVersion':'24.1' if name.endswith('before') else '36',
-                         'version':'1.0','url':'file:///Own/Installed.app'}]})
+                'apps':[] if self.absent and name=='installed-before' else
+                    [{'bundleIdentifier':BUNDLE,'bundleVersion':'24.1' if name.endswith('before') else '36',
+                      'version':'1.0','url':'file:///Own/Installed.app'}]})
         if name=='install':
             return receipt('device.install.app', {'deviceIdentifier':OWN_DEVICE,'installedApplications':[{'bundleID':BUNDLE}]})
         if name=='launch':
@@ -98,6 +101,41 @@ class InstallerGuards(unittest.TestCase):
         summary={'status':'not_started','installation_succeeded':False}
         return M.execute(self.app,self.summary,self.device,self.output,runtime,self.verifier,runner,summary,team_id=TEAM,bundle_id=BUNDLE,**options)
 
+    def enable_game_start_adapter(self):
+        path=self.app/'Info.plist';info=plistlib.loads(path.read_bytes())
+        info['EHRGameStartIteratorCompiled']=True;path.write_bytes(plistlib.dumps(info))
+        proof=json.loads(self.proof.read_text());proof['status']['gameStartIterator']={'preparedStatus':0,'enabled':True}
+        self.proof.write_text(json.dumps(proof))
+
+    def write_game_start_proof(self,**changes):
+        proof={'schema':'ehr.game-start-iterator-proof.v1','success':True,'status':0,'stage':0,
+            'checks':46,'factorySeamCalls':6,'rootsBefore':12,'rootsAfter':12,'rootAccountingBalanced':True,
+            'deferredReleasedBefore':100,'deferredReleasedAfter':100,'deferredEnqueuedBefore':100,
+            'deferredEnqueuedAfter':100,'deferredDequeuedBefore':100,'deferredDequeuedAfter':100,
+            'cancelCallsBefore':1,'cancelCallsAfter':2,'fixtureNullOwner':True,'realGameOwnerInvoked':False,
+            'originalMoveNextInvoked':False,'realHostFactoryInvoked':False,'unityObjectCreated':False,
+            'runtimeExecutableWrites':False}
+        proof.update(changes)
+        path=self.proof.with_name('EHRGameStartIteratorProof.json');path.write_text(json.dumps(proof))
+        return path
+
+    def enable_auth_handoff(self):
+        path=self.app/'Info.plist';info=plistlib.loads(path.read_bytes())
+        info['EHRAuthHandoffDiagnosticsCompiled']=True;path.write_bytes(plistlib.dumps(info))
+        proof=json.loads(self.proof.read_text());proof['status']['authHandoff']={'preparedStatus':0,'schemaVersion':2,
+            'eventCapacity':32,'eventCount':0,'events':[],
+            'appleSuccesses':0,'managedCredentialEntries':0,'loginEntries':0,'typeObservations':0,'observerFaults':0}
+        self.proof.write_text(json.dumps(proof))
+
+    def write_auth_handoff_proof(self,**changes):
+        proof={'schema':'ehr.auth-handoff-proof.v1','success':True,'status':0,'preparedStatus':0,'checks':87,'failures':0,
+            'eventCapacity':32,'eventRingBounded':True,'middleAppleTypePreserved':True,'unknownScalarRedacted':True,
+            'isolatedRecorder':True,'realAuthenticationInvoked':False,'credentialsRead':False,'networkOperations':False,
+            'runtimeExecutableWrites':False,'actualCredentialReads':0,'originalAuthCalls':0,'networkRequests':0,'accountActions':0}
+        proof.update(changes)
+        path=self.proof.with_name('EHRAuthHandoffProof.json');path.write_text(json.dumps(proof))
+        return path
+
     def test_changed_binary_or_profile_rejected_before_any_device_operation(self):
         for path in (runtime.RELATIVE_BINARIES[2], 'embedded.mobileprovision'):
             target=self.app/path;before=target.read_bytes();target.write_bytes(before+b'changed')
@@ -126,6 +164,126 @@ class InstallerGuards(unittest.TestCase):
             with self.subTest(status=status),self.assertRaisesRegex(M.Rejected,'eos_login_observer_not_ready'):
                 self.run_fixture(runner)
             self.assertEqual(runner.calls,[])
+
+    def test_network_disconnect_scalar_capture_requires_untouched_mac_startup(self):
+        path=self.app/'Info.plist';info=plistlib.loads(path.read_bytes());info['EHRNetworkDiagnosticsCompiled']=True
+        path.write_bytes(plistlib.dumps(info));original=json.loads(self.proof.read_text())
+        ready={'schemaVersion':1,'targetMatches':0,'count':0,'hasReason':0,'observerFaults':0}
+        for network in (None,{},dict(ready,schemaVersion=0),dict(ready,count=1),
+                        dict(ready,targetMatches=1),dict(ready,hasReason=1),dict(ready,observerFaults=1)):
+            proof=json.loads(json.dumps(original));proof['status']['numericDiagnostics']={'networkDisconnect':network}
+            self.proof.write_text(json.dumps(proof));runner=OwnDeviceRunner()
+            with self.subTest(network=network),self.assertRaisesRegex(M.Rejected,'network_disconnect_startup_not_ready'):
+                self.run_fixture(runner)
+            self.assertEqual(runner.calls,[]);self.assertEqual(self.verified,[])
+        proof=json.loads(json.dumps(original));proof['status']['numericDiagnostics']={'networkDisconnect':ready}
+        self.proof.write_text(json.dumps(proof));runner=OwnDeviceRunner(disconnected=True)
+        self.assertIn('unreachable',self.run_fixture(runner,preflight_only=True)['status'])
+        self.assertEqual([c[0]for c in runner.calls],['device-inventory'])
+
+    def test_requested_auth_guard_requires_actual_prepared_enabled_startup_before_device_access(self):
+        path=self.app/'Info.plist';info=plistlib.loads(path.read_bytes())
+        info['EHRAuthRetryGuardActivationRequested']=True;info['EHRAuthRetryGuardCompiled']=True
+        path.write_bytes(plistlib.dumps(info));original=json.loads(self.proof.read_text())
+        ready={'startupRequested':True,'preparedStatus':0,'startupPrepareStatus':0,'startupEnableStatus':0,'enabled':True}
+        cases=[None,{},dict(ready,startupRequested=False),dict(ready,preparedStatus=1),
+               dict(ready,startupPrepareStatus=5),dict(ready,startupEnableStatus=7),dict(ready,enabled=False)]
+        for guard in cases:
+            proof=json.loads(json.dumps(original))
+            if guard is not None:proof['status']['authRetryGuard']=guard
+            self.proof.write_text(json.dumps(proof));runner=OwnDeviceRunner()
+            with self.subTest(guard=guard),self.assertRaisesRegex(M.Rejected,'auth_retry_guard_startup_not_ready'):
+                self.run_fixture(runner)
+            self.assertEqual(runner.calls,[])
+        proof=json.loads(json.dumps(original));proof['status']['authRetryGuard']=ready
+        self.proof.write_text(json.dumps(proof));runner=OwnDeviceRunner(disconnected=True)
+        summary=self.run_fixture(runner,preflight_only=True)
+        self.assertIn('unreachable',summary['status']);self.assertEqual([c[0]for c in runner.calls],['device-inventory'])
+
+    def test_auth_handoff_requires_passed_preparation_without_auth_actions_before_device_access(self):
+        self.enable_auth_handoff();self.write_auth_handoff_proof();original=json.loads(self.proof.read_text())
+        ready=original['status']['authHandoff']
+        for handoff in (None,{},dict(ready,preparedStatus=1),dict(ready,preparedStatus=False),
+                        dict(ready,observerFaults=1),dict(ready,loginEntries=1),dict(ready,typeObservations=1)):
+            proof=json.loads(json.dumps(original));proof['status']['authHandoff']=handoff
+            self.proof.write_text(json.dumps(proof));runner=OwnDeviceRunner()
+            with self.subTest(handoff=handoff),self.assertRaisesRegex(M.Rejected,'auth_handoff_startup_not_ready'):
+                self.run_fixture(runner)
+            self.assertEqual(runner.calls,[]);self.assertEqual(self.verified,[])
+
+    def test_auth_handoff_requires_isolated_numeric_probe_before_device_access(self):
+        self.enable_auth_handoff();runner=OwnDeviceRunner()
+        with self.assertRaisesRegex(M.Rejected,'auth_handoff_self_test_missing'):self.run_fixture(runner)
+        self.assertEqual(runner.calls,[])
+        for values in ({'schema':'own.unrelated-proof'},{'success':False},{'status':6},{'checks':86},
+                       {'eventCapacity':33},{'eventRingBounded':False},{'middleAppleTypePreserved':False},
+                       {'preparedStatus':1},{'failures':1},{'originalAuthCalls':1},{'accountActions':1},
+                       {'runtimeExecutableWrites':True},{'actualCredentialReads':1},{'networkRequests':1},
+                       {'checks':True},{'isolatedRecorder':False},{'realAuthenticationInvoked':True},
+                       {'credentialsRead':True},{'networkOperations':True}):
+            self.write_auth_handoff_proof(**values);runner=OwnDeviceRunner()
+            with self.subTest(values=values),self.assertRaisesRegex(M.Rejected,'auth_handoff_self_test_not_passed'):
+                self.run_fixture(runner)
+            self.assertEqual(runner.calls,[]);self.assertEqual(self.verified,[])
+        self.write_auth_handoff_proof();runner=OwnDeviceRunner(disconnected=True)
+        self.assertIn('unreachable',self.run_fixture(runner,preflight_only=True)['status'])
+        self.assertEqual([c[0]for c in runner.calls],['device-inventory'])
+
+    def test_compiled_game_start_adapter_requires_ready_enabled_actual_startup_before_device_access(self):
+        path=self.app/'Info.plist';info=plistlib.loads(path.read_bytes())
+        info['EHRGameStartIteratorCompiled']=True;path.write_bytes(plistlib.dumps(info))
+        original=json.loads(self.proof.read_text());ready={'preparedStatus':0,'enabled':True}
+        for adapter in (None,{},dict(ready,preparedStatus=1),dict(ready,enabled=False)):
+            proof=json.loads(json.dumps(original))
+            if adapter is not None:proof['status']['gameStartIterator']=adapter
+            self.proof.write_text(json.dumps(proof));runner=OwnDeviceRunner()
+            with self.subTest(adapter=adapter),self.assertRaisesRegex(M.Rejected,'game_start_iterator_startup_not_ready'):
+                self.run_fixture(runner)
+            self.assertEqual(runner.calls,[])
+        proof=json.loads(json.dumps(original));proof['status']['gameStartIterator']=ready
+        self.proof.write_text(json.dumps(proof));self.write_game_start_proof();runner=OwnDeviceRunner(disconnected=True)
+        self.assertIn('unreachable',self.run_fixture(runner,preflight_only=True)['status'])
+        self.assertEqual([c[0]for c in runner.calls],['device-inventory'])
+
+    def test_compiled_game_start_adapter_rejects_absent_or_invalid_self_test_before_device_access(self):
+        self.enable_game_start_adapter();runner=OwnDeviceRunner()
+        with self.assertRaisesRegex(M.Rejected,'game_start_iterator_self_test_missing'):self.run_fixture(runner)
+        self.assertEqual(runner.calls,[]);self.assertEqual(self.verified,[])
+        path=self.proof.with_name('EHRGameStartIteratorProof.json')
+        for content in ('{', '[]', '{}', 'null'):
+            path.write_text(content);runner=OwnDeviceRunner()
+            with self.subTest(content=content),self.assertRaisesRegex(M.Rejected,'game_start_iterator_self_test'):
+                self.run_fixture(runner)
+            self.assertEqual(runner.calls,[]);self.assertEqual(self.verified,[])
+
+    def test_compiled_game_start_adapter_rejects_failed_incomplete_or_actionful_probe(self):
+        self.enable_game_start_adapter()
+        cases=[{'schema':'own.unrelated-proof'}, {'success':False}, {'status':6}, {'status':False}, {'stage':1},
+               {'checks':45}, {'checks':True}, {'factorySeamCalls':5}, {'cancelCallsAfter':1},
+               {'rootAccountingBalanced':False}, {'fixtureNullOwner':False}]
+        for flag in ('realGameOwnerInvoked','originalMoveNextInvoked','realHostFactoryInvoked',
+                     'unityObjectCreated','runtimeExecutableWrites'):
+            cases.extend(({flag:True},{flag:None}))
+        for values in cases:
+            self.write_game_start_proof(**values);runner=OwnDeviceRunner()
+            with self.subTest(values=values),self.assertRaisesRegex(M.Rejected,'game_start_iterator_self_test'):
+                self.run_fixture(runner)
+            self.assertEqual(runner.calls,[]);self.assertEqual(self.verified,[])
+
+    def test_compiled_game_start_adapter_verifies_actual_root_and_deferred_counts(self):
+        self.enable_game_start_adapter()
+        for values in ({'rootsAfter':13}, {'rootsBefore':None}, {'deferredReleasedAfter':99},
+                       {'deferredEnqueuedAfter':99}, {'deferredDequeuedAfter':99},
+                       {'deferredReleasedAfter':101}, {'rootsAfter':'12'}, {'rootsBefore':-1}):
+            self.write_game_start_proof(**values);runner=OwnDeviceRunner()
+            with self.subTest(values=values),self.assertRaisesRegex(M.Rejected,'game_start_iterator_self_test'):
+                self.run_fixture(runner)
+            self.assertEqual(runner.calls,[]);self.assertEqual(self.verified,[])
+        self.write_game_start_proof(rootsAfter=10,deferredReleasedAfter=102,
+                                   deferredDequeuedAfter=102,deferredEnqueuedAfter=102)
+        runner=OwnDeviceRunner(disconnected=True)
+        self.assertIn('unreachable',self.run_fixture(runner,preflight_only=True)['status'])
+        self.assertEqual([c[0]for c in runner.calls],['device-inventory'])
 
     def test_failed_or_non_full_startup_and_wrong_paid_team_are_rejected(self):
         before=self.proof.read_text();proof=json.loads(before)
@@ -187,6 +345,97 @@ class InstallerGuards(unittest.TestCase):
         wrong=receipt('device.info.apps',{'deviceIdentifier':OWN_DEVICE,'matchingBundleIdentifier':BUNDLE,
             'apps':[{'bundleIdentifier':'own.foreign.app'}]})
         with self.assertRaisesRegex(M.Rejected,'installed_bundle'):M.installed_app(wrong,OWN_DEVICE,bundle_id=BUNDLE)
+
+    def test_explicit_initial_install_requires_absence_and_never_launches_or_queries_other_apps(self):
+        runner=OwnDeviceRunner(absent=True);summary=self.run_fixture(runner,initial_install=True)
+        self.assertEqual(summary['status'],'initial_install_installed');self.assertTrue(summary['initial_install_ready'])
+        self.assertTrue(summary['installed_version_confirmed']);self.assertNotIn('previous_build',summary)
+        self.assertEqual(summary['install_mode'],'initial_install')
+        self.assertEqual([c[0]for c in runner.calls],['device-inventory','device-details','installed-before','install','installed-after'])
+        for name,args in runner.calls:
+            self.assertNotIn('uninstall',args);self.assertNotIn('copy',args);self.assertNotIn('launch',args)
+            self.assertNotIn('--include-container-paths',args)
+            if name.startswith('installed-'):self.assertEqual(args[-2:],['--bundle-id',BUNDLE])
+        self.assertNotIn(OWN_DEVICE,json.dumps(summary));self.assertNotIn(OWN_UDID,json.dumps(summary))
+        existing=OwnDeviceRunner();summary=self.run_fixture(existing,initial_install=True)
+        self.assertEqual(summary['status'],'initial_install_requires_absent_exact_app')
+        self.assertNotIn('install',[c[0]for c in existing.calls])
+
+    def test_initial_install_preflight_and_launch_conflict_are_nonmutating(self):
+        runner=OwnDeviceRunner(absent=True);summary=self.run_fixture(runner,initial_install=True,preflight_only=True)
+        self.assertEqual(summary['status'],'ready_for_initial_install');self.assertFalse(summary['installation_succeeded'])
+        self.assertEqual([c[0]for c in runner.calls],['device-inventory','device-details','installed-before'])
+        runner=OwnDeviceRunner(absent=True);self.verified.clear()
+        with self.assertRaisesRegex(M.Rejected,'initial_install_never_launches'):
+            self.run_fixture(runner,initial_install=True,launch=True)
+        self.assertEqual(runner.calls,[]);self.assertEqual(self.verified,[])
+        output=self.root/'UntouchedCLIOutput'
+        args=['--source-root',str(CANONICAL),'--candidate-app',str(self.app),
+              '--mac-runtime-summary',str(self.summary),'--device-id-file',str(self.device),
+              '--output-root',str(output),'--team-id',TEAM,'--bundle-id',BUNDLE,
+              '--initial-install','--launch']
+        with redirect_stderr(io.StringIO()),self.assertRaises(SystemExit) as error:M.main(args)
+        self.assertEqual(error.exception.code,2);self.assertFalse(output.exists())
+
+    def test_initial_install_keeps_exact_profile_coverage_and_installed_version_proof(self):
+        runner=OwnDeviceRunner(absent=True);self.signing['requested_device_covered']=False
+        with self.assertRaisesRegex(M.Rejected,'exact_phone_paid_signature'):
+            self.run_fixture(runner,initial_install=True)
+        self.assertEqual(runner.calls,[]);self.signing['requested_device_covered']=True
+        original=OwnDeviceRunner.call
+        class WrongInstalled(OwnDeviceRunner):
+            def call(inner,name,args,seconds=20):
+                value=original(inner,name,args,seconds)
+                if name=='installed-after':value['result']['apps'][0]['bundleVersion']='35'
+                return value
+        runner=WrongInstalled(absent=True)
+        with self.assertRaisesRegex(M.Rejected,'installed_version_not_confirmed'):
+            self.run_fixture(runner,initial_install=True)
+        self.assertEqual([c[0]for c in runner.calls],['device-inventory','device-details','installed-before','install','installed-after'])
+
+    def test_explicit_exact_iphone_model_is_required_in_both_inventory_and_details(self):
+        runner=OwnDeviceRunner(absent=True,product_type='iPhone17,1')
+        summary=self.run_fixture(runner,initial_install=True,preflight_only=True,expected_product_type='iPhone17,1')
+        self.assertEqual(summary['status'],'ready_for_initial_install');self.assertEqual(summary['expected_product_type'],'iPhone17,1')
+        runner=OwnDeviceRunner(absent=True,product_type='iPhone17,1')
+        self.assertIn('unreachable',self.run_fixture(runner,initial_install=True)['status'])
+        self.assertEqual([c[0]for c in runner.calls],['device-inventory'])
+        original=OwnDeviceRunner.call
+        class WrongDetails(OwnDeviceRunner):
+            def call(inner,name,args,seconds=20):
+                value=original(inner,name,args,seconds)
+                if name=='device-details':value['result']['hardwareProperties']['productType']='iPhone18,2'
+                return value
+        runner=WrongDetails(absent=True,product_type='iPhone17,1')
+        with self.assertRaisesRegex(M.Rejected,'details_identity_differs'):
+            self.run_fixture(runner,initial_install=True,expected_product_type='iPhone17,1')
+        self.assertEqual([c[0]for c in runner.calls],['device-inventory','device-details'])
+        for invalid in ('*','iPhone18,*','iPad13,11','iPhone018,2','iPhone18,0',None):
+            runner=OwnDeviceRunner(absent=True);self.verified.clear()
+            with self.subTest(model=invalid),self.assertRaisesRegex(M.Rejected,'expected_product_type'):
+                self.run_fixture(runner,initial_install=True,expected_product_type=invalid)
+            self.assertEqual(runner.calls,[]);self.assertEqual(self.verified,[])
+
+    def test_initial_install_rejects_ambiguous_identity_and_nonphysical_or_unpaired_inventory(self):
+        original=OwnDeviceRunner.call
+        for variant in ('duplicate_udid','duplicate_identifier','wrong_platform','unpaired','same_machine'):
+            class InvalidInventory(OwnDeviceRunner):
+                def call(inner,name,args,seconds=20):
+                    value=original(inner,name,args,seconds)
+                    if name=='device-inventory':
+                        rows=value['result']['devices'];row=rows[0]
+                        if variant.startswith('duplicate'):
+                            extra=json.loads(json.dumps(row))
+                            if variant=='duplicate_identifier':extra['hardwareProperties']['udid']='FEDCBA98-0123456789ABCDEF'
+                            rows.append(extra)
+                        elif variant=='wrong_platform':row['hardwareProperties']['platform']='macOS'
+                        elif variant=='unpaired':row['connectionProperties']['pairingState']='unpaired'
+                        else:row['connectionProperties']['transportType']='sameMachine'
+                    return value
+            runner=InvalidInventory(absent=True)
+            with self.subTest(variant=variant):
+                summary=self.run_fixture(runner,initial_install=True)
+                self.assertIn('unreachable',summary['status']);self.assertEqual([c[0]for c in runner.calls],['device-inventory'])
 
 
 if __name__=='__main__':unittest.main()

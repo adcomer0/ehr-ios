@@ -42,6 +42,9 @@ struct EHRNativePatchOutcomeV1 {
 // Compile-time immutable site registration, on main before binding TargetsV1.
 // No site is activated by registration, preparation or Validate.
 EHRRuntimeStatus EHRNativePatchRegisterCompiled(const EHRNativePatchSiteV1 *const *,size_t);
+using EHRSourcePatchFailureV1=int32_t(*)(uint64_t,uint32_t *,size_t);
+// Pure numeric own-image callback; no existing managed table ABI changes.
+EHRRuntimeStatus EHRNativePatchBindFailureDiagnostics(EHRSourcePatchFailureV1);
 EHRRuntimeStatus EHRNativeGeneratedRegisterCompiled(); // supplied by generated .inc
 void EHRNativePatchMakeTargetsTable(EHRManagedPatchTargetsV1 *);
 uintptr_t EHRNativePatchOriginal(const EHRNativePatchSiteV1 &);
@@ -54,6 +57,10 @@ EHRNativePatchOutcomeV1 EHRNativePatchInvokePrepared(const EHRNativePatchSiteV1 
 // Rethrows rooted native exceptions or constructs a real native exception for
 // CLR-only failure, only after all NativeAOT frames have returned.
 void EHRNativePatchFinish(EHRNativePatchOutcomeV1);
+// Native-only failure path for adapters outside a source dispatch. Consumes
+// owned_exception and propagates it, or constructs a native fallback for a
+// nonzero status. No dispatcher participation or V2 proof is manufactured.
+void EHRNativeRaiseOwnedFailure(int32_t status,EHRRuntimeToken owned_exception);
 // Native-only bounded adapter for a real borrowed value payload (for example
 // an incoming IL2CPP value argument or a pinned object's public unbox view).
 // Only this native scope sees references in the payload. Returns one new root.
@@ -61,6 +68,9 @@ EHRRuntimeStatus EHRNativePatchBoxBorrowedValue(EHRRuntimeToken,
     const EHRNativePatchTypeV1 &,void *payload,size_t,EHRRuntimeToken *owned);
 #ifdef __OBJC__
 @class NSDictionary;
+// Own numeric recorder only; safe on the private diagnostics worker. Never
+// reads IL2CPP, a string reason, account data, objects or packet contents.
+extern "C" NSDictionary *EHRNativeDisconnectCopyStatus(void);
 // Isolated boxed value + owned string only; no target body or lobby operation.
 NSDictionary *EHRNativePatchBoxedReferenceSelfTest(const EHRNativePatchTypeV1 &,
     const char *image,const char *name_space,const char *name,const char *reference_field);

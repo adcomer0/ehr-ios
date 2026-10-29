@@ -8,11 +8,14 @@ import unittest
 
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 class RuntimeDiagnostics(unittest.TestCase):
- def run_fixture(self,name,objc=False):
+ def run_fixture(self,name,objc=False,game_start=False,auth_handoff=False,network=False):
   with tempfile.TemporaryDirectory(prefix='ehr-diagnostics-fixture-') as temp:
    output=pathlib.Path(temp)/'fixture'
-   args=['xcrun','clang++','-std=c++17','-Wall','-Wextra','-Werror','-pthread','-I',str(ROOT/'native'),str(ROOT/'tests'/name)]
+   args=['xcrun','clang++','-std=c++17','-Wall','-Wextra','-Werror','-pthread','-I',str(ROOT/'native'),'-I',str(ROOT/'native/include'),str(ROOT/'tests'/name)]
    if objc:args+=['-fobjc-arc',str(ROOT/'native/EHRRuntimeDiagnostics.mm'),'-framework','Foundation']
+   if game_start:args+=['-DEHR_HAS_GAME_START_ITERATOR=1']
+   if auth_handoff:args+=['-DEHR_HAS_AUTH_HANDOFF=1']
+   if network:args+=['-DEHR_HAS_NETWORK_DIAGNOSTICS=1']
    compiled=subprocess.run(args+['-o',str(output)],capture_output=True,text=True)
    self.assertEqual(compiled.returncode,0,compiled.stderr)
    result=subprocess.run([str(output)],check=True,capture_output=True,text=True)
@@ -44,6 +47,17 @@ class RuntimeDiagnostics(unittest.TestCase):
    self.assertEqual(result.returncode,0,result.stderr)
    proof=json.loads(subprocess.run([str(output)],capture_output=True,text=True,check=True,timeout=15).stdout)
    self.assertTrue(proof['pass']);self.assertFalse(proof['gameLoaded']);self.assertEqual(proof['realGcCalls'],0)
+ def test_native_exception_public_metadata_without_game(self):
+  with tempfile.TemporaryDirectory(prefix='ehr-exception-diag-') as temp:
+   output=pathlib.Path(temp)/'fixture'
+   command=['xcrun','clang++','-std=c++17','-Wall','-Wextra','-Werror','-fobjc-arc','-fobjc-arc-exceptions','-I',str(ROOT/'native'),'-I',str(ROOT/'native/include'),str(ROOT/'tests/native_exception_diagnostics_fixture.mm'),'-framework','Foundation','-Wl,-undefined,dynamic_lookup','-o',str(output)]
+   compiled=subprocess.run(command,capture_output=True,text=True,timeout=60)
+   self.assertEqual(compiled.returncode,0,compiled.stderr)
+   proof=json.loads(subprocess.run([str(output)],capture_output=True,text=True,check=True,timeout=15).stdout)
+   self.assertTrue(proof['pass']);self.assertFalse(proof['gameLoaded']);self.assertEqual(proof['realGcCalls'],0)
  def test_bounded_ring_threads_and_call_balance(self):self.run_fixture('runtime_diagnostics_fixture.cpp')
  def test_actual_numeric_json_schema_without_filesystem(self):self.run_fixture('runtime_diagnostics_json_fixture.mm',True)
+ def test_game_start_counter_snapshot_without_runtime_or_filesystem(self):self.run_fixture('runtime_diagnostics_json_fixture.mm',True,True)
+ def test_auth_handoff_numeric_snapshot_with_game_start_without_runtime_or_filesystem(self):self.run_fixture('runtime_diagnostics_json_fixture.mm',True,True,True)
+ def test_disconnect_scalar_snapshot_with_optional_modules_without_runtime_or_filesystem(self):self.run_fixture('runtime_diagnostics_json_fixture.mm',True,True,True,True)
 if __name__=='__main__':unittest.main()
