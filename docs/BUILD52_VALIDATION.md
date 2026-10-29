@@ -44,6 +44,19 @@ app, uninstall anything, access an app container, change pairing/security, or
 operate an account. No build-52 physical multiplayer or authentication success
 is independently certified by the installer.
 
+An additional physical test iPhone received a clean build-52 installation over
+USB using the explicit first-install mode. A new profile covering that exact
+destination was used in a separate candidate, which passed fresh matching Mac
+runtime validation before installation. The installed version was confirmed;
+the installer did not launch the app or perform account, container or uninstall
+operations.
+
+A build-53 delivery candidate uses the same selected C# library, native source,
+original game inputs and family profile, with a new package build number and
+fresh signatures/image-identity bindings. Its separate signed Mac run also
+passed. Wireless delivery verification on the additional phone is pending;
+enabling settings alone is not recorded as a successful wireless install.
+
 ## Subsequent user report and numeric observation
 
 Following delivery, the user reported playing a match with a peer using the
