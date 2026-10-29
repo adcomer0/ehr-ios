@@ -19,6 +19,7 @@ There is no BepInEx Unity/IL2CPP plugin loader running on the phone and no embed
 - Apple authorization is followed by EOS result 7000. The explicitly enabled development retry guard stopped the repeated sheets during the phone test, but successful backend authentication remains unresolved.
 - Build 51's bounded numeric history confirms the correct Apple credential type before EOS 7000, followed by a separate guest fallback. It preserves the original calls and collects no token contents or account IDs. Successful sign-in remains unresolved in build 52. See [authentication diagnostics](docs/AUTH_HANDOFF_DIAGNOSTICS.md).
 - UIKit touch controls, mobile input, audio, static source components and bounded numeric diagnostics are implemented. Compiled role source is not evidence that every role works in play.
+- The startup status control is a compact `EHR` badge at the top center, leaving the game's upper-right settings area clear. Tap it for status and exports, or drag it to another position. Its position stays within the safe area when the screen rotates.
 
 Read [known failures and evidence](docs/KNOWN_ISSUES.md). No protection against bans or account/progression loss is established. Use a disposable test identity; keep valuable accounts outside testing.
 
