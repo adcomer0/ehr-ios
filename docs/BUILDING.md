@@ -75,10 +75,12 @@ startup, exact-device and signing checks.
 
 Signing tools require explicit `--team-id` and `--bundle-id` values. `--team-name` can add an exact organization assertion. Use a separate test app identity and your own provisioning; the official game's bundle identity is rejected. No certificate/profile/device values are supplied. See [portable tooling](PORTABLE_TOOLING.md) for parameter flow. Do not uninstall the official game, import its container, reset account data or bypass consent/authentication to work around failures.
 
-For an additional test phone, use the installer's explicit first-install mode
+For an additional test iPhone or iPad, use the installer's explicit first-install mode
 only after exact-device provisioning and matching Mac validation. See
 [additional-device installation](DEVICE_INSTALLATION.md). Upgrade-only remains
-the default, and first installation never launches the app.
+the default, and first installation never launches the app. For an iPad, supply
+`--expected-product-type` with the exact model from its device inventory; this
+does not replace the private exact-device file or paid profile coverage check.
 
 The optional passive authentication probe adds `--auth-handoff-map PRIVATE_MAP`.
 Generate that private map with `tools/prepare_auth_handoff_map.py` for the same

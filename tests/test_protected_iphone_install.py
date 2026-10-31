@@ -489,11 +489,25 @@ class InstallerGuards(unittest.TestCase):
         with self.assertRaisesRegex(M.Rejected,'details_identity_differs'):
             self.run_fixture(runner,initial_install=True,expected_product_type='iPhone17,1')
         self.assertEqual([c[0]for c in runner.calls],['device-inventory','device-details'])
-        for invalid in ('*','iPhone18,*','iPad13,11','iPhone018,2','iPhone18,0',None):
+        for invalid in ('*','iPhone18,*','iPad13,*','iPhone018,2','iPhone18,0','iPad015,7','iPad15,0',None):
             runner=OwnDeviceRunner(absent=True);self.verified.clear()
             with self.subTest(model=invalid),self.assertRaisesRegex(M.Rejected,'expected_product_type'):
                 self.run_fixture(runner,initial_install=True,expected_product_type=invalid)
             self.assertEqual(runner.calls,[]);self.assertEqual(self.verified,[])
+
+    def test_explicit_exact_ipad_initial_install_preserves_no_launch_and_profile_gates(self):
+        runner=OwnDeviceRunner(absent=True,product_type='iPad15,7')
+        summary=self.run_fixture(runner,initial_install=True,expected_product_type='iPad15,7')
+        self.assertEqual(summary['status'],'initial_install_installed')
+        self.assertTrue(summary['installed_version_confirmed'])
+        self.assertEqual([c[0] for c in runner.calls],['device-inventory','device-details','installed-before','install','installed-after'])
+        self.assertNotIn('launch',[c[0] for c in runner.calls])
+        runner=OwnDeviceRunner(absent=True,product_type='iPad15,7')
+        self.assertIn('unreachable',self.run_fixture(runner,initial_install=True)['status'])
+        self.signing['requested_device_covered']=False;runner=OwnDeviceRunner(absent=True,product_type='iPad15,7')
+        with self.assertRaisesRegex(M.Rejected,'exact_phone_paid_signature'):
+            self.run_fixture(runner,initial_install=True,expected_product_type='iPad15,7')
+        self.assertEqual(runner.calls,[])
 
     def test_initial_install_rejects_ambiguous_identity_and_nonphysical_or_unpaired_inventory(self):
         original=OwnDeviceRunner.call

@@ -1,7 +1,7 @@
 # EHR Among Us: maintainer handoff
 
 This is a source and tooling handoff for the ownership-gated native iOS
-build-62 development candidate. It is not an App Store/TestFlight release artifact or evidence of
+build-63 development candidate. It is not an App Store/TestFlight release artifact or evidence of
 publisher/distribution approval. The current local profile is development
 signing for registered devices. The EHR team handles its release signing and
 authorized game-content distribution path.
@@ -38,6 +38,10 @@ consolidation upgrades the previously working app in place before removing the
 separate legacy preview, so its account and remembered key are retained.
 That user-authorized cleanup is not part of the protected installer; the public
 installer still never uninstalls or resets an app automatically.
+
+The **EHR lobbies** menu opens the official directory inside Safari view, with
+website-owned sign-in and user-controlled code copying. It does not read
+website credentials or replace stock matchmaking. See [browser contracts](IOS_LOBBY_BROWSER.md).
 
 ## Build selection
 
@@ -81,7 +85,7 @@ prompt or manual submission. The player then joined another official EHR 8.0.3
 host and stayed connected past the former version countdown. Earlier guest play had
 one user-reported match with a vanilla peer. These are not coverage of every
 role, map, network condition or device. See [known issues](KNOWN_ISSUES.md),
-[authentication evidence](ISOLATED_SIGNIN_TEST.md) and the [current validation](BUILD62_VALIDATION.md).
+[authentication evidence](ISOLATED_SIGNIN_TEST.md) and the [current validation](BUILD63_VALIDATION.md).
 
 Existing guest-to-platform migration remains intentionally unsupported by the
 first-profile route: nonempty or unknown guest identity stops it. Do not remove

@@ -64,9 +64,9 @@ def build_number(value):
     return tuple(int(part) for part in value.split(".")) + (0,) * (4 - len(value.split(".")))
 
 
-def iphone_product_type(value):
-    require(isinstance(value, str) and re.fullmatch(r"iPhone[1-9][0-9]*,[1-9][0-9]*", value),
-            "expected_product_type_must_be_exact_iphone")
+def ios_product_type(value):
+    require(isinstance(value, str) and re.fullmatch(r"(?:iPhone|iPad)[1-9][0-9]*,[1-9][0-9]*", value),
+            "expected_product_type_must_be_exact_iphone_or_ipad")
     return value
 
 
@@ -350,7 +350,7 @@ class DeviceRunner:
 def execute(candidate, summary_path, private_file, output, runtime, verifier,
             runner, summary, preflight_only=False, launch=False, *, team_id, bundle_id,
             initial_install=False, expected_product_type="iPhone18,2"):
-    expected_product_type = iphone_product_type(expected_product_type)
+    expected_product_type = ios_product_type(expected_product_type)
     require(not (initial_install and launch), "initial_install_never_launches")
     validate_identity(team_id, bundle_id)
     evidence = validate_mac_proof(candidate, summary_path, runtime, team_id=team_id, bundle_id=bundle_id)
@@ -450,8 +450,8 @@ def main(argv=None):
     parser.add_argument("--team-name", help="Optional exact provisioning team-name assertion")
     parser.add_argument("--preflight-only", action="store_true")
     parser.add_argument("--initial-install", action="store_true", help="Require the exact test app to be absent; never launch it")
-    parser.add_argument("--expected-product-type", type=iphone_product_type, default="iPhone18,2",
-                        help="Exact physical iPhone model from the identified device inventory (default: iPhone18,2)")
+    parser.add_argument("--expected-product-type", type=ios_product_type, default="iPhone18,2",
+                        help="Exact physical iPhone or iPad model from the identified device inventory (default: iPhone18,2)")
     parser.add_argument("--launch", action="store_true", help="Optional plain foreground launch; no game UI or account interaction")
     args = parser.parse_args(argv)
     validate_identity(args.team_id, args.bundle_id, args.team_name)

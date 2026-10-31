@@ -117,7 +117,7 @@ class PhysicalDestinationTests(unittest.TestCase):
             p.write_text(UDID + "\n")
             self.assertEqual(runner.load_physical_device_file(p)["udid"], UDID)
             p.write_text(IDENTIFIER)
-            with self.assertRaisesRegex(ValueError, "physical iPhone UDID"):
+            with self.assertRaisesRegex(ValueError, "physical iOS device UDID"):
                 runner.load_physical_device_file(p)
 
     def test_private_device_file_inside_git_rejected(self):
@@ -144,8 +144,8 @@ class PhysicalDestinationTests(unittest.TestCase):
         self.assertEqual(runner.select_physical_device({"result":{"devices":[own]}},requested,expected_product_type="iPhone17,1"),own)
         with self.assertRaisesRegex(ValueError,"model"):
             runner.select_physical_device({"result":{"devices":[own]}},requested)
-        for model in ("*","iPad13,11","iPhone18,*","iPhone018,2",None):
-            with self.subTest(model=model),self.assertRaisesRegex(ValueError,"exact physical iPhone model"):
+        for model in ("*","iPad13,*","iPhone18,*","iPhone018,2",None):
+            with self.subTest(model=model),self.assertRaisesRegex(ValueError,"exact physical iPhone or iPad model"):
                 runner.select_physical_device({"result":{"devices":[own]}},requested,expected_product_type=model)
         alias=device();alias['hardwareProperties']['udid']='00000000-0000000000000002'
         with self.assertRaisesRegex(ValueError,"CoreDevice identity is not uniquely"):
@@ -163,6 +163,22 @@ class PhysicalDestinationTests(unittest.TestCase):
             invalid=device();invalid['hardwareProperties']['reality']=reality
             with self.subTest(reality=reality),self.assertRaisesRegex(ValueError,"explicitly identifies a nonphysical"):
                 runner.select_physical_device({"result":{"devices":[invalid]}},requested)
+
+    def test_ipad_requires_explicit_exact_model_and_same_identity_guards(self):
+        requested={"udid":UDID,"identifier":IDENTIFIER}
+        pad=device(product="iPad15,7");pad['hardwareProperties']['reality']='physical'
+        self.assertEqual(runner.select_physical_device({"result":{"devices":[pad]}},requested,expected_product_type="iPad15,7"),pad)
+        with self.assertRaisesRegex(ValueError,"model"):
+            runner.select_physical_device({"result":{"devices":[pad]}},requested)
+        for variant in ('wrong_model','simulated','wrong_platform','unpaired','duplicate'):
+            invalid=json.loads(json.dumps(pad));rows=[invalid]
+            if variant=='wrong_model':invalid['hardwareProperties']['productType']='iPad15,8'
+            elif variant=='simulated':invalid['hardwareProperties']['reality']='simulated'
+            elif variant=='wrong_platform':invalid['hardwareProperties']['platform']='macOS'
+            elif variant=='unpaired':invalid['connectionProperties']['pairingState']='unpaired'
+            else:rows.append(pad)
+            with self.subTest(variant=variant),self.assertRaises(ValueError):
+                runner.select_physical_device({'result':{'devices':rows}},requested,expected_product_type='iPad15,7')
 
     def test_candidate_pins_exact_all_four_and_tamper(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -207,6 +223,33 @@ class PhysicalDestinationTests(unittest.TestCase):
             self.assertNotIn(UDID, json.dumps(summary)); self.assertNotIn(IDENTIFIER, json.dumps(summary))
             self.assertFalse(summary["security_or_pairing_changes_performed"])
             self.assertEqual(destination_file.stat().st_mode & 0o777, 0o600)
+
+    def test_ipad_preflight_requires_matching_xcode_model(self):
+        with tempfile.TemporaryDirectory() as temp:
+            base=Path(temp);output=base/'Output';output.mkdir();app=base/'Own.app';pins={}
+            for relative in runner.RELATIVE_BINARIES:
+                target=app/relative;target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(relative.encode());pins[relative]=runner.hash_file(target)
+            pinfile=base/'pins.json';pinfile.write_text(json.dumps(pins))
+            private=base/'device.local.json';private.write_text(json.dumps({'udid':UDID,'deviceIdentifier':IDENTIFIER}))
+            xcode_model='iPad15,7'
+            def own_run(arguments,*unused,**keywords):
+                args=[str(v) for v in arguments]
+                if args[:4]==['xcrun','devicectl','list','devices']:
+                    Path(args[-1]).write_text(json.dumps({'result':{'devices':[device(product='iPad15,7')]}}))
+                elif args[:5]==['xcrun','devicectl','device','info','details']:
+                    Path(args[-1]).write_text(json.dumps({'result':{'deviceProperties':{'bootState':'booted','developerModeStatus':'enabled','ddiServicesAvailable':True}}}))
+                elif args[:3]==['xcrun','xcdevice','list']:
+                    return json.dumps([{'identifier':UDID,'simulator':False,'available':True,'modelCode':xcode_model,'platform':'com.apple.platform.iphoneos'}])
+                elif args[0]=='codesign':return plistlib.dumps({'get-task-allow':True}).decode()
+                else:self.fail('Unexpected operation in own iPad preflight')
+                return ''
+            with patch.object(runner,'run',side_effect=own_run):
+                _,_,actual,summary=runner.physical_preflight(app,private,pinfile,output,expected_product_type='iPad15,7')
+                self.assertEqual(actual,pins);self.assertEqual(summary['product_type'],'iPad15,7')
+                self.assertNotIn(UDID,json.dumps(summary));self.assertNotIn(IDENTIFIER,json.dumps(summary))
+                xcode_model='iPad15,8'
+                with self.assertRaisesRegex(ValueError,'not available to Xcode'):
+                    runner.physical_preflight(app,private,pinfile,output,expected_product_type='iPad15,7')
 
 
 if __name__ == "__main__":
