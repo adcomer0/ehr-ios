@@ -1,6 +1,9 @@
 #import "EHRFullSourceRuntime.h"
 #include "EHRRuntimeDiagnostics.h"
 #include "EHRAppleAuthDiagnostics.h"
+#if EHR_HAS_ITCH_AUTH
+#include "EHRItchAuthProvider.h"
+#endif
 #if EHR_HAS_AUTH_HANDOFF
 #include "EHRAuthHandoffDiagnostics.h"
 #endif
@@ -39,7 +42,7 @@
 #include "EHRFullSourceStartup.generated.h"
 EHRRuntimeStatus EHRNativeGeneratedRegisterCompiled();
 namespace {
-struct BindState {bool attempted=false,ready=false,prepareAttempted=false,loadAttempted=false,starting=false;uint32_t flags=0;int32_t status=1,eosObserverStatus=EHR_RUNTIME_UNSUPPORTED;const void *image=nullptr;void *handle=nullptr;NSString *stage=@"waiting";NSString *module=nil;NSDictionary *failure=nil;NSDictionary *failureCleanup=nil;};
+struct BindState {bool attempted=false,ready=false,prepareAttempted=false,loadAttempted=false,starting=false,directoryBound=false;uint32_t flags=0;int32_t status=1,eosObserverStatus=EHR_RUNTIME_UNSUPPORTED,directoryTickStatus=0;uint64_t directoryTicks=0;int32_t(*directoryTick)(void)=nullptr;const void *image=nullptr;void *handle=nullptr;NSString *stage=@"waiting";NSString *module=nil;NSDictionary *failure=nil;NSDictionary *failureCleanup=nil;};
 BindState &state(){static BindState value;return value;}
 void diagnosticStage(uint32_t stage){auto app=ehr_diagnostics::state().snapshot().application;
     app.stage=stage;app.status=state().status;app.flags=state().flags;ehr_diagnostics::state().application(EHRDiagnosticTick(),app);}
@@ -56,6 +59,9 @@ template<class Table> int32_t bindTable(const char *name,const Table &table) {
 }
 void check(int32_t status) {state().status=status;if(status)throw std::runtime_error("native source binding failed");}
 int32_t mainThread(){return NSThread.isMainThread?1:0;}
+#if EHR_HAS_EHR_DIRECTORY
+int32_t directoryAllowed(){return EHRItchAuthProviderDirectoryAllowed()?1:0;}
+#endif
 void sourceLog(int32_t level,const uint8_t *bytes,size_t count) {
     if(!bytes||count>1024*1024)return;
     NSString *text=[[NSString alloc] initWithBytes:bytes length:count encoding:NSUTF8StringEncoding];
@@ -112,6 +118,12 @@ NSDictionary *EHRFullSourceCopyRuntimeStatus(void) {
             @"activeBindings":@(app.active_bindings),@"loadAttempts":@(app.load_attempts),@"dynamicCodeFlags":@(app.dynamic_code_flags),
             @"optionsLoaded":@(app.options_is_loaded_observed),@"optionCount":@(app.option_count),@"postLoadTasksComplete":@(app.options_post_load_completed)};}}
     result[@"numericDiagnostics"]=EHRRuntimeDiagnosticsCopyStatus();
+#if EHR_HAS_ITCH_AUTH
+    result[@"itchAuthentication"]=EHRItchAuthProviderCopyStatus();
+#endif
+#if EHR_HAS_EHR_DIRECTORY
+    result[@"websiteDirectory"]=@{@"compiled":@YES,@"bound":@(s.directoryBound),@"allowed":@(directoryAllowed()==1),@"ticks":@(s.directoryTicks),@"tickStatus":@(s.directoryTickStatus)};
+#endif
 #if EHR_HAS_GAME_START_ITERATOR
     result[@"gameStartIterator"]=EHRGameStartIteratorCopyStatus();
 #endif
@@ -134,6 +146,14 @@ NSDictionary *EHRFullSourceCopyRuntimeStatus(void) {
     return @{@"bindingsReady":@NO,@"status":@(EHR_RUNTIME_UNSUPPORTED),@"stage":@"full_source_profile_not_compiled"};
 #endif
 }
+void EHRFullSourceRefreshDirectory(void) {
+#if EHR_HAS_FULL_SOURCE && EHR_HAS_EHR_DIRECTORY
+    if(!NSThread.isMainThread)return;
+    auto &s=state();
+    if(!s.ready||s.status||!s.loadAttempted||!s.directoryBound||!s.directoryTick||directoryAllowed()!=1)return;
+    ++s.directoryTicks;s.directoryTickStatus=s.directoryTick();
+#endif
+}
 NSDictionary *EHRFullSourceBindRuntime(void) {
 #if EHR_HAS_FULL_SOURCE
     if(!NSThread.isMainThread)return @{@"bindingsReady":@NO,@"status":@(EHR_RUNTIME_WRONG_THREAD)};
@@ -142,6 +162,10 @@ NSDictionary *EHRFullSourceBindRuntime(void) {
     const auto initialized=ehr_runtime_initialize();
     if(initialized!=EHR_RUNTIME_OK)return @{@"bindingsReady":@NO,@"status":@(initialized),@"stage":@"game_runtime_not_ready"};
     EHRRuntimeDiagnosticsRecordAuthInstall(EHRAppleAuthDiagnosticsInstall());
+#if EHR_HAS_ITCH_AUTH
+    // Prepares the selected provider only. No credential or login is requested.
+    (void)EHRItchAuthProviderStart();
+#endif
 #if EHR_HAS_EOS_LOGIN_DIAGNOSTICS
     s.eosObserverStatus=EHREOSLoginDiagnosticsPrepare();
 #endif
@@ -165,6 +189,13 @@ NSDictionary *EHRFullSourceBindRuntime(void) {
         check(bindTable("ehr_generated_bind_type_names",f.typeNames));check(bindTable("ehr_generated_bind_methods",f.methods));
         check(bindTable("ehr_generated_bind_engine_colors",f.engineColors));
         const EHRSourceHostV1 core={1,sizeof(EHRSourceHostV1),mainThread,sourceLog};check(bindTable("ehr_source_host_bind_v1",core));s.flags|=1;
+#if EHR_HAS_EHR_DIRECTORY
+        // The optional directory stays denied until this app's real account
+        // completion and same-credential ownership proof both hold. Binding
+        // installs only the predicate; it never reads a key or sends a request.
+        s.directoryTick=required<int32_t(*)(void)>("ehr_source_directory_tick_v1");
+        check(required<int32_t(*)(int32_t(*)(void))>("ehr_source_directory_bind_v1")(directoryAllowed));s.directoryBound=true;
+#endif
         s.stage=@"native_callbacks";diagnosticStage(4);EHRManagedActionHostV1 action{};EHRManagedActionCallbacksV1 actionCallbacks{};EHRManagedActionMakeTable(&action);
         check(required<decltype(&ehr_action_bind_gateway)>("ehr_action_bind_gateway")(&action,sizeof(action),&actionCallbacks,sizeof(actionCallbacks)));check(EHRManagedActionSetCallbacks(&actionCallbacks));
         EHRManagedActionFamiliesV1 families{};EHRManagedActionMakeFamiliesTable(&families);check(bindTable("ehr_action_bind_families",families));

@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks><Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings>
+    <DefineConstants>$(DefineConstants);EHR_DIRECTORY_FIXTURE</DefineConstants>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="DirectoryFixture.cs" />
+    <Compile Include="LogFixture.cs" />
+    <Compile Include="$(DirectoryBodySource)" />
+    <Compile Include="$(DirectorySupportSource)" />
+    <Compile Include="$(DirectoryLogSitesSource)" />
+  </ItemGroup>
+</Project>

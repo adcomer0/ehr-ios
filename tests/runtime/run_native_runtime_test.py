@@ -359,6 +359,7 @@ def main():
                     else "EHRIteratorRetirementProof.json" if value.get("schema") == "ehr.actual-iterator-retirement-proof.v1"
                     else "EHRGameStartIteratorProof.json" if value.get("schema") == "ehr.game-start-iterator-proof.v1"
                     else "EHRAuthHandoffProof.json" if value.get("schema") == "ehr.auth-handoff-proof.v1"
+                    else "EHRItchAuthProof.json" if value.get("schema") == "ehr.itch-auth-marshal-proof.v1"
                     else "EHRSourceAudioProof.json" if value.get("schema") == "ehr.full-source-audio-proof.v1"
                     else "EHRSourceAudioLoaderProof.json" if value.get("schema") == "ehr.full-source-audio-loader-proof.v1"
                     else "EHRSourceActionOwnershipProof.json" if value.get("schema") == "ehr.full-source-action-ownership-proof.v1"

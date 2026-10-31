@@ -410,7 +410,7 @@ internal static class ChatCommands
         var canceled = false;
         Main.IsChatCommand = true;
 
-        Logger.Info(text, "SendChat");
+        Logger.Info(EHRDirectoryLog.ForLog(text), "SendChat");
 
         if (!Starspawn.IsDayBreak)
         {
@@ -434,7 +434,7 @@ internal static class ChatCommands
             {
                 if (!command.IsThisCommand(text)) continue;
 
-                Logger.Info($" Recognized command: {text}", "ChatCommand");
+                Logger.Info($" Recognized command: {EHRDirectoryLog.ForLog(text)}", "ChatCommand");
                 Main.IsChatCommand = true;
 
                 if (!command.CanUseCommand(PlayerControl.LocalPlayer, sendErrorMessage: true))
@@ -742,7 +742,7 @@ internal static class ChatCommands
     
     private static void ConfirmAuthCommand(PlayerControl player, string text, string[] args)
     {
-        Utils.SendMessage(EHRProtectedLobbyDirectoryOption.UnavailableMessage, player.PlayerId);
+        EHR.Modules.LobbySharingAPI.ConfirmAuth(player, args);
     }
 
     public static void RetributeCommand(PlayerControl player, string text, string[] args)
@@ -3477,7 +3477,7 @@ internal static class ChatCommands
             {
                 if (!command.IsThisCommand(text)) continue;
 
-                Logger.Info($" Recognized command: {text}", "ReceiveChat");
+                Logger.Info($" Recognized command: {EHRDirectoryLog.ForLog(text)}", "ReceiveChat");
                 commandEntered = true;
 
                 if (!command.CanUseCommand(player, sendErrorMessage: true))

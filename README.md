@@ -1,6 +1,6 @@
-# EHR iOS — native integration research
+# EHR Among Us — native iOS port
 
-An experimental, all-local iOS port of [Endless Host Roles](https://github.com/Gurge44/EndlessHostRoles), intended to let an iPhone host EHR games for vanilla Among Us players. **This is a research prototype. One match with a vanilla peer is now user-reported working; authentication and other runtime failures remain unresolved. It is not a finished release.**
+An all-local native iOS port of [Endless Host Roles](https://github.com/Gurge44/EndlessHostRoles), intended to let an iPhone host EHR games for vanilla Among Us players. Native itch.io account creation and remembered-key login have been observed on one test phone, alongside an earlier user-reported match with a vanilla peer. The exact ownership helper returned a correct live negative result on Mac before purchase; build 61 then verified ownership and completed game sign-in on iPhone after purchase. This development candidate remains under wider gameplay testing; see the [maintainer handoff](docs/MAINTAINER_HANDOFF.md) and [current validation](docs/BUILD62_VALIDATION.md) for packaging and distribution boundaries.
 
 ## How it works
 
@@ -8,8 +8,9 @@ EHR's C# source is compiled ahead of time with **.NET NativeAOT** into an ARM64 
 
 There is no BepInEx Unity/IL2CPP plugin loader running on the phone and no embedded .NET JIT. Some BepInEx Core configuration/logging APIs and Harmony-compatible source descriptors remain as compile-time/AOT dependencies. This is not a Windows DLL copied into an iOS app. See [the architecture](docs/ARCHITECTURE.md) for the ABI, ownership, coroutine, hook and loader details.
 
-## Current state: build-52 message guards, physical game start reached
+## Current state: native hosting and ownership-gated itch.io sign-in
 
+- Build 62 uses the verified official `ce23f0d(main)` release identity, correcting the detached-checkout tag that caused same-version host rejection. The unchanged EHR comparator remains in charge; live peer joining still needs retesting. See [release identity](docs/UPSTREAM_RELEASE_IDENTITY.md).
 - The full selected EHR source compiles for `ios-arm64`: 796 C# inputs; the 224 resource names/hashes are catalogued separately.
 - Signed startup on an Apple Silicon Mac loads EHR once, initializes 5,049 options and activates 292 permitted bindings from 298 metadata targets. Six account/consent-related patches are deliberately excluded.
 - A physical iPhone can open an Online lobby, configure settings and reach a game in build 49. The user confirmed that test was solo; its early win is consistent with EHR's low-player end conditions. The trace reached intro, ship initialization, game start and game end.
@@ -20,8 +21,21 @@ There is no BepInEx Unity/IL2CPP plugin loader running on the phone and no embed
 - Build 51's bounded numeric history confirms the correct Apple credential type before EOS 7000, followed by a separate guest fallback. It preserves the original calls and collects no token contents or account IDs. Successful sign-in remains unresolved in build 52. See [authentication diagnostics](docs/AUTH_HANDOFF_DIAGNOSTICS.md).
 - UIKit touch controls, mobile input, audio, static source components and bounded numeric diagnostics are implemented. Compiled role source is not evidence that every role works in play.
 - The startup status control is a compact `EHR` badge at the top center, leaving the game's upper-right settings area clear. Tap it for status and exports, or drag it to another position. Its position stays within the safe area when the screen rotates.
+- The exact helper correctly handled a real non-owning account on Mac, and build 61 later verified the same account on iPhone after purchase; the actual SDK returned success and the game reached full account completion. Empty owned-key objects are accepted only as a negative result, never as ownership proof.
+- Among Us ownership is required in the itch.io account behind each key. The client checks the owned-games API before login and renewal; an opaque input screen blocks game access until proof succeeds, including guest paths. Network and scope failures are distinct from a missing claimed entitlement.
+- The optional EHR website directory and `/confirmauth` now use the existing EHR service contracts behind the native ownership/full-account gate. Listing defaults off, sends the original EOS bearer only to EHR, and resumes after renewal. Live service acceptance still needs player testing. See [the directory flow](docs/IOS_LOBBY_DIRECTORY.md).
+- Build 62 passed 359 regression tests and signed Mac startup, then upgraded the existing iPhone app in place. Its post-launch numeric cache showed a fresh ownership check, actual EOS success and full account completion with zero prompts/manual submissions.
+- The branded app uses a secure key-entry screen, explicit first-account creation and automatic device-only key storage after verified completion. Open **EHR → Account** to remove the saved login and close/reopen before another sign-in. This does not delete game accounts or progress. See [the user flow](docs/ITCH_SIGN_IN.md) and [artwork](docs/ARTWORK.md).
+- The native itch.io provider completed first-profile sign-in on one physical test phone in isolated build 57. A later recorded run reused the remembered key without showing the key-entry form: EOS returned success and the original game flow reached full completion. Existing-guest migration and valuable-account safety remain unverified. See [itch.io sign-in](docs/ITCH_SIGN_IN.md) and [the phone evidence](docs/ISOLATED_SIGNIN_TEST.md).
 
 Read [known failures and evidence](docs/KNOWN_ISSUES.md). No protection against bans or account/progression loss is established. Use a disposable test identity; keep valuable accounts outside testing.
+
+The build-56 first-profile test stopped at the existing-guest guard (local 7 /
+EOS 3). Build 57 introduced a separate **EHR Sign-in Test** identity for fresh
+storage. Build 58 upgrades that working identity to **EHR Among Us**; after the
+upgrade was confirmed, the user-authorized cleanup removed the legacy preview
+from the test phone. See [the test history](docs/ISOLATED_SIGNIN_TEST.md) and
+[current delivery](docs/BUILD62_VALIDATION.md).
 
 Build 49 passed signed iOS-on-Mac startup, its owned native game-start adapter probe and the real-runtime 1,024-retained-carrier check, plus touch/audio/cleanup probes. The separate phone observation confirms one real-owner host-start path. See [the validation scope](docs/BUILD49_VALIDATION.md); complete rounds, peers and all roles still need testing.
 
@@ -36,16 +50,16 @@ See [build-52 validation](docs/BUILD52_VALIDATION.md) and the earlier
 
 | Path | Purpose |
 |---|---|
-| `source-app/` | Selected build-52 C# source snapshot and portable input manifest |
+| `source-app/` | Selected C# source snapshot and portable input manifest |
 | `managed/` | Port runtime, facades, static dispatch and source adaptation support |
 | `native/` | Original launcher, IL2CPP gateway, typed hooks, ownership and UIKit adapters |
 | `tools/` | Source preparation, metadata mapping, native generation, signing and validation tools |
 | `tests/` | Owned fixtures, metadata audits and signed-runtime XCTest harness |
-| `app/` | Earlier standalone SwiftUI/Bait simulation lab; not the full game port |
+| `app/` | Standalone lab host sources and the shared branded icon; the full game interface lives under `native/` |
 
 The snapshot includes adapted GPL EHR source and original port code, preserving source headers. [Provenance and dependencies](NOTICE.md) distinguish these from generated game API declarations.
 
-**No Among Us binaries/assets, IPA, provisioning profiles, signing keys, device identifiers, credentials or raw device/account logs are distributed here.** EHR resource assets are also omitted; obtain the exact pinned upstream checkout locally. The repository contains a fresh reviewed source snapshot, not private development history.
+**No original Among Us game binaries/assets, IPA, provisioning profiles, signing keys, device identifiers, credentials or raw device/account logs are distributed here.** The custom fan icon is original generated artwork. EHR resource assets are omitted; obtain the exact pinned upstream checkout locally. The repository contains a reviewed source snapshot, not private development history.
 
 ## Build and review
 

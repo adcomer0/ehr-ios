@@ -192,7 +192,7 @@ public abstract class OptionItem
     // Getter
     public string GetName(bool disableColor = false, bool console = false)
     {
-        if (this is EHRProtectedLobbyDirectoryOption) return EHRProtectedLobbyDirectoryOption.Label;
+        if (this is EHRLobbyDirectoryOption) return EHRLobbyDirectoryOption.Label;
         if (Name.Contains("CTA.FLAG")) return Utils.ColorString(NameColor, Translator.GetString("CTA.TeamEnabled.Prefix") + Name[8..] + Translator.GetString("CTA.TeamEnabled.Suffix"));
         return disableColor ? Translator.GetString(Name, ReplacementDictionary, console) : Utils.ColorString(NameColor, Translator.GetString(Name, ReplacementDictionary));
     }

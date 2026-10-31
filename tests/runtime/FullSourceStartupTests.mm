@@ -125,6 +125,53 @@ NSDictionary *status() {
     }
     if([NSBundle.mainBundle.infoDictionary[@"EHREOSLoginDiagnosticsEnabled"] boolValue])
         XCTAssertEqualObjects(last[@"eosLoginObserverStatus"],@0);
+    if([NSBundle.mainBundle.infoDictionary[@"EHRItchAuthCompiled"] boolValue]){
+        XCTAssertEqualObjects(NSBundle.mainBundle.infoDictionary[@"EHRAuthProvider"],@"itchio");
+        XCTAssertEqualObjects(NSBundle.mainBundle.infoDictionary[@"EHRItchOwnershipRequired"],@YES);
+        NSDictionary *provider=last[@"itchAuthentication"],*runtime=provider[@"runtime"];
+        XCTAssertEqualObjects(provider[@"selected"],@YES);
+        XCTAssertEqualObjects(provider[@"preparedStatus"],@0);
+        XCTAssertEqualObjects(provider[@"clearedForRestart"],@NO);
+        XCTAssertEqualObjects(provider[@"credentialEpoch"],@0);
+        XCTAssertEqualObjects(provider[@"credentialClears"],@0);
+        for(NSString *key in @[@"ownershipVerified",@"ownershipPending",@"directoryAllowed",@"awaitingNativeLogin"])
+            XCTAssertEqualObjects(provider[key],@NO);
+        XCTAssertEqualObjects(provider[@"ownershipResponse"],@{});
+        for(NSString *key in @[@"ownershipHTTPStatus",@"ownershipChecks",@"nativeLoginWaitSeconds"])
+            XCTAssertEqualObjects(provider[key],@0);
+        XCTAssertGreaterThanOrEqual([provider[@"ownershipStatus"] intValue],0);
+        XCTAssertLessThanOrEqual([provider[@"ownershipStatus"] intValue],11);
+        XCTAssertEqualObjects(runtime[@"preparedStatus"],@0);
+        XCTAssertEqualObjects(runtime[@"enabled"],@YES);
+        for(NSString *key in @[@"sdkLoginCalls",@"completionCount",@"originalSuccessCalls",@"originalFailureCalls",@"newUserMigrationChecks",@"newUserMigrationRejections"])
+            XCTAssertEqualObjects(runtime[key],@0);
+        XCTAssertEqualObjects(runtime[@"newUserMigrationStatus"],@1);
+        for(NSString *key in @[@"awaitingNewUserConfirmation",@"continuityAvailable",@"originalCallbackDelivered",@"continuedNewUser",@"newUserMigrationValidated"])
+            XCTAssertEqualObjects(runtime[key],@NO);
+        XCTAssertEqualObjects(runtime[@"resultKnown"],@NO);
+        XCTAssertEqualObjects(runtime[@"pending"],@NO);
+        XCTAssertEqualObjects(runtime[@"fullGameCompleted"],@NO);
+        auto selfTest=reinterpret_cast<NSDictionary *(*)(void)>(helperExport("EHRItchAuthSelfTest"));
+        XCTAssertNotEqual(selfTest,nullptr);
+        NSDictionary *itchProof=selfTest?selfTest():@{};
+        XCTAssertEqualObjects(itchProof[@"schema"],@"ehr.itch-auth-marshal-proof.v1");
+        XCTAssertEqualObjects(itchProof[@"success"],@YES);
+        XCTAssertEqualObjects(itchProof[@"status"],@0);
+        XCTAssertEqualObjects(itchProof[@"ownResultPreserved"],@YES);
+        XCTAssertEqualObjects(itchProof[@"rootsBefore"],itchProof[@"rootsAfter"]);
+        for(NSString *key in @[@"realLoginInvoked",@"gameCallbackInvoked",@"credentialRead",@"accountCreation",@"accountLinking"])
+            XCTAssertEqualObjects(itchProof[key],@NO);
+        NSData *itchData=[NSJSONSerialization dataWithJSONObject:itchProof options:NSJSONWritingPrettyPrinted error:nil];
+        XCTAttachment *itchAttachment=[XCTAttachment attachmentWithData:itchData uniformTypeIdentifier:@"public.json"];
+        itchAttachment.name=@"EHRItchAuthProof.json";itchAttachment.lifetime=XCTAttachmentLifetimeKeepAlways;[self addAttachment:itchAttachment];
+    }
+    if([NSBundle.mainBundle.infoDictionary[@"EHRDirectoryCompiled"] boolValue]){
+        XCTAssertEqualObjects(last[@"websiteDirectory"][@"compiled"],@YES);
+        XCTAssertEqualObjects(last[@"websiteDirectory"][@"bound"],@YES);
+        XCTAssertEqualObjects(last[@"websiteDirectory"][@"allowed"],@NO);
+        XCTAssertEqualObjects(last[@"websiteDirectory"][@"ticks"],@0);
+        XCTAssertEqualObjects(last[@"websiteDirectory"][@"tickStatus"],@0);
+    }
     if([NSBundle.mainBundle.infoDictionary[@"EHRAuthHandoffDiagnosticsCompiled"] boolValue]){
         NSDictionary *handoff=last[@"authHandoff"];
         XCTAssertEqualObjects(handoff[@"preparedStatus"],@0);

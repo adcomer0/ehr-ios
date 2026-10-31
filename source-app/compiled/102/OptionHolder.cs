@@ -1808,13 +1808,12 @@ public static class Options
 
         ShowAntiBlackoutWarning = new BooleanOptionItem(19421, "ShowAntiBlackoutWarning", true, TabGroup.SystemSettings);
 
-        PostLobbyCodeToEHRWebsite = new EHRProtectedLobbyDirectoryOption(19422, "PostLobbyCodeToEHRDiscordServer", TabGroup.SystemSettings)
+        PostLobbyCodeToEHRWebsite = new EHRLobbyDirectoryOption(19422, "PostLobbyCodeToEHRDiscordServer", TabGroup.SystemSettings)
             .SetHeader(true);
         
         LobbyUpdateInterval = new IntegerOptionItem(19502, "LobbyUpdateInterval", new(10, 30, 5), 30, TabGroup.SystemSettings)
             .SetParent(PostLobbyCodeToEHRWebsite)
-            .SetValueFormat(OptionFormat.Seconds)
-            .SetHidden(true);
+            .SetValueFormat(OptionFormat.Seconds);
 
         StoreCompletedAchievementsOnEHRDatabase = new BooleanOptionItem(19423, "StoreCompletedAchievementsOnEHRDatabase", true, TabGroup.SystemSettings);
 

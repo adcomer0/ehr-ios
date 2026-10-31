@@ -10,6 +10,8 @@ from pathlib import Path
 import xml.etree.ElementTree as ET
 
 COMMIT='ce23f0d050f617a59507e5bb0fbfff751d4b5134'
+RELEASE_POLICY=Path(__file__).resolve().with_name('upstream_release_identity.json')
+RELEASE_POLICY_SHA256='dc9e82021a94eb64456f9bb6696ce3f29a931d4b2592910311e3c230be890b3f'
 PACKAGES={'BepInEx.Core':'6.0.0-be.785','HarmonyX':'2.10.2','JetBrains.Annotations':'2026.2.0','GitInfo':'3.3.4'}
 REQUIRED_EXPORTS=('ehr_action_bind_families','ehr_action_bind_gateway','ehr_complex_delegate_bind_gateway','ehr_generated_bind_engine_colors','ehr_generated_bind_extensions','ehr_generated_bind_gateway','ehr_generated_bind_lifetime','ehr_generated_bind_methods','ehr_generated_bind_reflection','ehr_generated_bind_source_components','ehr_generated_bind_type_names','ehr_generated_source_component_profile_v1','ehr_original_bind_gateway','ehr_source_application_bind_v1','ehr_source_application_load_v1','ehr_source_application_prepare_v1','ehr_source_application_status_v1','ehr_source_bind_coroutines_v1','ehr_source_bind_patch_host','ehr_source_bind_patch_targets_v1','ehr_source_host_bind_v1','ehr_touch_ui_bind_v1','ehr_typed_action_bind_gateway','ehr_source_application_copy_error_v1','ehr_source_patch_dispatch_v2','ehr_source_patch_signature_v1','ehr_source_patch_failure_v1','ehr_source_json_self_test_v1','ehr_source_coroutines_self_test','ehr_source_unity_action_self_test')
 def required_exports(native_binder=None):
@@ -25,6 +27,36 @@ def sha(path):return hashlib.sha256(path.read_bytes()).hexdigest()
 def resolved(value,base):
     p=Path(value)
     return (base/p).resolve() if not p.is_absolute() else p.resolve()
+def release_identity_policy():
+    # This reviewed artifact policy is not a caller-selectable compatibility
+    # tag. A different release needs a deliberate policy/code pin update.
+    if sha(RELEASE_POLICY)!=RELEASE_POLICY_SHA256:raise ValueError('Upstream release identity policy pin mismatch')
+    policy=json.loads(RELEASE_POLICY.read_text())
+    if policy.get('schema')!='ehr.upstream-release-identity.v1' or policy.get('upstreamCommit')!=COMMIT or policy.get('gitCommit')!=COMMIT[:7] or policy.get('gitInfoVersion')!=PACKAGES['GitInfo']:raise ValueError('Upstream release identity policy mismatch')
+    return policy
+def verify_upstream_release(manifest):
+    policy=release_identity_policy()
+    if manifest.get('upstreamCommit')!=policy['upstreamCommit']:raise ValueError('Release identity requires the exact reviewed upstream commit')
+    prefix=['git','-C',manifest['upstreamRoot']]
+    if subprocess.check_output(prefix+['rev-parse','HEAD'],text=True).strip()!=policy['upstreamCommit']:raise ValueError('GitInfo upstream root no longer matches the source pin')
+    if subprocess.check_output(prefix+['status','--porcelain=v1','--untracked-files=normal'],text=True).strip():raise ValueError('Release identity requires a clean upstream checkout')
+    return policy
+def read_compiled_identity(dotnet,assembly,output):
+    reader=Path(__file__).resolve().parent/'assembly_identity_reader/AssemblyIdentityReader.csproj'
+    command=[str(dotnet),'run','--project',str(reader),'-c','Release','--artifacts-path',str(output/'identity-reader-artifacts'),'--',str(assembly)]
+    result=subprocess.run(command,text=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,env=dict(os.environ,DOTNET_CLI_TELEMETRY_OPTOUT='1',DOTNET_GENERATE_ASPNET_CERTIFICATE='false'),timeout=120,check=True)
+    rows=[json.loads(line) for line in result.stdout.splitlines() if line.startswith('{"schema":"ehr.assembly-identity.v1"')]
+    if len(rows)!=1:raise ValueError('Compiled release identity reader did not return one proof')
+    return rows[0]
+def verify_compiled_identity(identity,policy):
+    expected={key:policy[key] for key in ('pluginVersion','forkId','gitBranch','gitCommit')}
+    expected['gitSha']=policy['upstreamCommit']
+    if identity.get('schema')!='ehr.assembly-identity.v1' or identity.get('assemblyName')!='EHR' or identity.get('assemblyExecuted')is not False or not re.fullmatch('[0-9a-f]{64}',identity.get('assemblySha256','')):raise ValueError('Invalid compiled release identity proof')
+    for key,value in expected.items():
+        if identity.get('constants',{}).get(key)!=value:raise ValueError('Compiled release identity mismatch: '+key)
+    return {'schema':'ehr.release-wire-identity-proof.v1','passed':True,'policySha256':RELEASE_POLICY_SHA256,
+            'releaseAssetUrl':policy['releaseAssetUrl'],'releaseAssetSha256':policy['releaseAssetSha256'],
+            'sourceUrl':policy['sourceUrl'],'expected':expected,'compiled':identity}
 def capture(project,upstream):
     project=project.resolve();upstream=upstream.resolve()
     observed=subprocess.check_output(['git','-C',str(upstream),'rev-parse','HEAD'],text=True).strip()
@@ -88,11 +120,15 @@ def verify(manifest):
     names=[r.get('logicalName') for r in manifest['resources']]
     if any(not isinstance(n,str) or not n.startswith('EHR.Resources.') or any(c in n for c in '%$/\\') for n in names) or len(set(names))!=len(names):raise ValueError('Invalid/duplicate exact resource names')
 def emit(manifest,output):
-    verify(manifest);root=ET.Element('Project',Sdk='Microsoft.NET.Sdk');p=ET.SubElement(root,'PropertyGroup')
+    verify(manifest);policy=release_identity_policy();root=ET.Element('Project',Sdk='Microsoft.NET.Sdk');p=ET.SubElement(root,'PropertyGroup')
     properties={'TargetFramework':'net10.0','AssemblyName':'EHR','RootNamespace':'EHR','LangVersion':'preview','AllowUnsafeBlocks':'true','Nullable':'enable','EnableDefaultCompileItems':'false','EnableDefaultEmbeddedResourceItems':'false','DefineConstants':';'.join(manifest['defines']),'GenerateAssemblyFileVersionAttribute':'false','GenerateAssemblyInformationalVersionAttribute':'false','GenerateAssemblyVersionAttribute':'false','Configurations':'IL2CPP;Release','Version':'8.0.3','PackageVersion':'8.0.3','PublishAot':'true','PublishAotUsingRuntimePack':'true','IsAotCompatible':'true','InvariantGlobalization':'true','DisableRuntimeMarshalling':'true','NativeLib':'Shared','StripSymbols':'true'}
     for k,v in properties.items():ET.SubElement(p,k).text=v
     # GitInfo must inspect the pinned source checkout, never the staging folder.
     ET.SubElement(p,'GitRoot').text=manifest['upstreamRoot']
+    # The official artifact for this exact commit was built on main. GitInfo
+    # otherwise advertises HEAD from a detached reproducible source checkout,
+    # which the unchanged EHR wire-identity comparator correctly rejects.
+    ET.SubElement(p,'GitBranch').text=policy['gitBranch']
     g=ET.SubElement(root,'ItemGroup')
     for s in manifest['sources']:ET.SubElement(g,'Compile',Include=s['path'])
     for r in manifest['resources']:ET.SubElement(g,'EmbeddedResource',Include=r['path'],LogicalName=r['logicalName'])
@@ -112,22 +148,25 @@ def main():
             manifest=capture(a.project.resolve(),a.upstream_root.resolve());a.output.parent.mkdir(parents=True,exist_ok=True);a.output.write_text(json.dumps(manifest,indent=2)+'\n')
         else:
             manifest=json.loads(a.manifest.read_text());project=a.output/'project/EHR.csproj'
-            observed=subprocess.check_output(['git','-C',manifest['upstreamRoot'],'rev-parse','HEAD'],text=True).strip()
-            if observed!=COMMIT:raise ValueError('GitInfo upstream root no longer matches the source pin')
+            policy=verify_upstream_release(manifest)
             emit(manifest,project)
             if a.emit_only:return 0
             publish=a.output/'publish'
             if publish.exists() and any(publish.iterdir()):raise ValueError('Fresh publish output required; stale artifacts are not accepted')
             env=dict(os.environ,DOTNET_CLI_TELEMETRY_OPTOUT='1',DOTNET_GENERATE_ASPNET_CERTIFICATE='false')
-            command=[str(a.dotnet),'publish',str(project),'-c','IL2CPP','-r',a.runtime,'-p:NativeLib=Shared','-o',str(a.output/'publish')]
+            command=[str(a.dotnet),'publish',str(project),'-c','IL2CPP','-r',a.runtime,'-p:NativeLib=Shared','-p:GitBranch='+policy['gitBranch'],'-o',str(a.output/'publish')]
             if a.omit_debug_symbols:command.append('-p:DebugType=none')
             with (a.output/'publish.log').open('w') as log:result=subprocess.run(command,env=env,stdout=log,stderr=subprocess.STDOUT)
             # A concurrent edit to a source checkout invalidates this build's
             # identity; do not report a successful pinned artifact in that case.
             verify(manifest)
+            verify_upstream_release(manifest)
             report={'success':result.returncode==0,'runtime':a.runtime,'manifestSha256':sha(a.manifest),'sourceCount':len(manifest['sources']),'resourceCount':len(manifest['resources']),'baseGameDllReferences':False,'MainLoadExecuted':False,'debugSymbolsOmitted':a.omit_debug_symbols}
             library=a.output/'publish/EHR.dylib'
             if result.returncode==0 and not library.is_file():raise ValueError('NativeAOT reported success without required EHR.dylib')
+            if result.returncode==0:
+                assembly=project.parent/'bin/IL2CPP/net10.0'/a.runtime/'EHR.dll'
+                report['releaseIdentity']=verify_compiled_identity(read_compiled_identity(a.dotnet,assembly,a.output),policy)
             if library.exists():
                 symbols=set(subprocess.check_output(['xcrun','nm','-gjU',str(library)],text=True).splitlines())
                 required=required_exports(a.native_binder)
