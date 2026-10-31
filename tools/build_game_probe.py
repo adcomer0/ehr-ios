@@ -433,8 +433,10 @@ def build(args):
             Path(name).name not in ("EHRManagedRuntime.mm","EHRNativeOverlay.mm")]
         native_sources += [str(ROOT/"native/EHRNativePatchThunks.mm"),str(output/"EHRNativeTypedThunks.generated.mm"),
             str(ROOT/"native/EHRFullSourceRuntime.mm"),str(ROOT/"native/EHRFullSourceOverlay.mm"),
+            str(ROOT/"native/EHRLobbyBrowser.mm"),
             str(ROOT/"native/EHRExportSharing.mm"),str(ROOT/"native/EHRRuntimeDiagnostics.mm"),
             str(ROOT/"native/EHRAppleAuthDiagnostics.mm")]
+        frameworks_flags += ["-framework","SafariServices"]
         if args.eos_login_map:native_sources.append(str(ROOT/"native/EHREOSLoginDiagnostics.mm"))
         if guard_map:native_sources.append(str(ROOT/"native/EHRAuthRetryGuard.mm"))
         if game_start_map:native_sources.append(str(ROOT/"native/EHRGameStartIteratorAdapter.mm"))

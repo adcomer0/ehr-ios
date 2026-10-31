@@ -1,6 +1,6 @@
 # EHR Among Us — native iOS port
 
-An all-local native iOS port of [Endless Host Roles](https://github.com/Gurge44/EndlessHostRoles), intended to let an iPhone host EHR games for vanilla Among Us players. Native itch.io account creation and remembered-key login have been observed on one test phone, alongside an earlier user-reported match with a vanilla peer. The exact ownership helper returned a correct live negative result on Mac before purchase; build 61 then verified ownership and completed game sign-in on iPhone after purchase. This development candidate remains under wider gameplay testing; see the [maintainer handoff](docs/MAINTAINER_HANDOFF.md) and [current validation](docs/BUILD62_VALIDATION.md) for packaging and distribution boundaries.
+An all-local native iOS port of [Endless Host Roles](https://github.com/Gurge44/EndlessHostRoles), intended to let an iPhone host EHR games for vanilla Among Us players. Native itch.io account creation and remembered-key login have been observed on one test phone, alongside an earlier user-reported match with a vanilla peer. The exact ownership helper returned a correct live negative result on Mac before purchase; build 61 then verified ownership and completed game sign-in on iPhone after purchase. This development candidate remains under wider gameplay testing; see the [maintainer handoff](docs/MAINTAINER_HANDOFF.md) and [current validation](docs/BUILD63_VALIDATION.md) for packaging and distribution boundaries.
 
 ## How it works
 
@@ -23,6 +23,7 @@ There is no BepInEx Unity/IL2CPP plugin loader running on the phone and no embed
 - The startup status control is a compact `EHR` badge at the top center, leaving the game's upper-right settings area clear. Tap it for status and exports, or drag it to another position. Its position stays within the safe area when the screen rotates.
 - The exact helper correctly handled a real non-owning account on Mac, and build 61 later verified the same account on iPhone after purchase; the actual SDK returned success and the game reached full account completion. Empty owned-key objects are accepted only as a negative result, never as ownership proof.
 - Among Us ownership is required in the itch.io account behind each key. The client checks the owned-games API before login and renewal; an opaque input screen blocks game access until proof succeeds, including guest paths. Network and scope failures are distinct from a missing claimed entitlement.
+- The EHR badge menu now has **EHR lobbies**, opening the official lobby website inside the app. The website controls its own sign-in; copy a listed code, return with **Done** and use the game’s matching region and original join entry. This does not replace stock matchmaking. See [the browser flow](docs/IOS_LOBBY_BROWSER.md).
 - The optional EHR website directory and `/confirmauth` now use the existing EHR service contracts behind the native ownership/full-account gate. Listing defaults off, sends the original EOS bearer only to EHR, and resumes after renewal. Live service acceptance still needs player testing. See [the directory flow](docs/IOS_LOBBY_DIRECTORY.md).
 - Build 62 passed 359 regression tests and signed Mac startup, then upgraded the existing iPhone app in place. Its post-launch numeric cache showed a fresh ownership check, actual EOS success and full account completion with zero prompts/manual submissions.
 - The branded app uses a secure key-entry screen, explicit first-account creation and automatic device-only key storage after verified completion. Open **EHR → Account** to remove the saved login and close/reopen before another sign-in. This does not delete game accounts or progress. See [the user flow](docs/ITCH_SIGN_IN.md) and [artwork](docs/ARTWORK.md).
@@ -35,7 +36,7 @@ EOS 3). Build 57 introduced a separate **EHR Sign-in Test** identity for fresh
 storage. Build 58 upgrades that working identity to **EHR Among Us**; after the
 upgrade was confirmed, the user-authorized cleanup removed the legacy preview
 from the test phone. See [the test history](docs/ISOLATED_SIGNIN_TEST.md) and
-[current delivery](docs/BUILD62_VALIDATION.md).
+[current delivery](docs/BUILD63_VALIDATION.md).
 
 Build 49 passed signed iOS-on-Mac startup, its owned native game-start adapter probe and the real-runtime 1,024-retained-carrier check, plus touch/audio/cleanup probes. The separate phone observation confirms one real-owner host-start path. See [the validation scope](docs/BUILD49_VALIDATION.md); complete rounds, peers and all roles still need testing.
 

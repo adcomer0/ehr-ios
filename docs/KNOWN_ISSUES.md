@@ -1,6 +1,6 @@
 # Known issues and current native work
 
-This snapshot is incomplete. Physical build 48 reached Online lobby hosting and mod settings, then a black screen after starting the game. Physical build 49 reached a solo game and an early win, consistent with EHR's low-player end conditions. Its trace reached custom intro, ship initialization, game start and game end without new source failures. Physical build 50 then disconnected the host when a vanilla peer joined. Following build-52 delivery, the user reports playing a match with a vanilla peer. Authentication, multiplayer stability and full role behavior remain unresolved or unverified.
+This snapshot is incomplete. Physical build 48 reached Online lobby hosting and mod settings, then a black screen after starting the game. Physical build 49 reached a solo game and an early win, consistent with EHR's low-player end conditions. Its trace reached custom intro, ship initialization, game start and game end without new source failures. Physical build 50 then disconnected the host when a vanilla peer joined. Following build-52 delivery, the user reports playing a match with a vanilla peer. Apple authentication, wider account safety, multiplayer stability and full role behavior remain unresolved or unverified.
 
 ## Ownership and EHR website integration
 

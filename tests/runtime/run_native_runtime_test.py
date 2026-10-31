@@ -71,7 +71,7 @@ def load_physical_device_file(path):
     else:
         udid, identifier = text, None
     if not isinstance(udid, str) or not re.fullmatch(r"[A-Fa-f0-9]{8}-[A-Fa-f0-9]{16}", udid):
-        raise ValueError("An exact physical iPhone UDID is required in the private input")
+        raise ValueError("An exact physical iOS device UDID is required in the private input")
     if identifier is not None and (not isinstance(identifier, str) or not re.fullmatch(r"[A-Fa-f0-9-]{36}", identifier)):
         raise ValueError("Invalid CoreDevice identifier in private device input")
     return {"udid": udid, "identifier": identifier}
@@ -94,8 +94,8 @@ def validate_candidate_pins(candidate, path):
 
 
 def select_physical_device(inventory, requested, *, expected_product_type="iPhone18,2"):
-    if not isinstance(expected_product_type, str) or not re.fullmatch(r"iPhone[1-9][0-9]*,[1-9][0-9]*", expected_product_type):
-        raise ValueError("Expected product type must be an exact physical iPhone model")
+    if not isinstance(expected_product_type, str) or not re.fullmatch(r"(?:iPhone|iPad)[1-9][0-9]*,[1-9][0-9]*", expected_product_type):
+        raise ValueError("Expected product type must be an exact physical iPhone or iPad model")
     devices = inventory.get("result", {}).get("devices", [])
     matches = [d for d in devices if d.get("hardwareProperties", {}).get("udid") == requested["udid"]]
     if len(matches) != 1:
@@ -116,13 +116,14 @@ def select_physical_device(inventory, requested, *, expected_product_type="iPhon
     return device
 
 
-def physical_preflight(candidate, private_file, hash_file_path, output):
+def physical_preflight(candidate, private_file, hash_file_path, output, *, expected_product_type="iPhone18,2"):
     requested = load_physical_device_file(private_file)
     pins = validate_candidate_pins(candidate, hash_file_path)
     inventory_path = output / "device-inventory.local.json"
     run(["xcrun", "devicectl", "list", "devices", "--json-output", inventory_path], output / "device-inventory.local.log")
     inventory_path.chmod(0o600)
-    device = select_physical_device(json.loads(inventory_path.read_text()), requested)
+    device = select_physical_device(json.loads(inventory_path.read_text()), requested,
+                                    expected_product_type=expected_product_type)
     details_path = output / "device-details.local.json"
     run(["xcrun", "devicectl", "device", "info", "details", "--device", device["identifier"], "--json-output", details_path], output / "device-details.local.log")
     details_path.chmod(0o600)
@@ -132,14 +133,14 @@ def physical_preflight(candidate, private_file, hash_file_path, output):
     xcode = json.loads(run(["xcrun", "xcdevice", "list"]))
     private_write(output / "xcode-devices.local.json", json.dumps(xcode, indent=2) + "\n")
     matches = [d for d in xcode if d.get("identifier") == requested["udid"] and d.get("simulator") is False]
-    if len(matches) != 1 or matches[0].get("available") is not True or matches[0].get("modelCode") != "iPhone18,2" or matches[0].get("platform") != "com.apple.platform.iphoneos":
+    if len(matches) != 1 or matches[0].get("available") is not True or matches[0].get("modelCode") != expected_product_type or matches[0].get("platform") != "com.apple.platform.iphoneos":
         raise ValueError("Exact physical iPhone is not available to Xcode")
     entitlements = plistlib.loads(run(["codesign", "-d", "--entitlements", ":-", candidate]).encode())
     if entitlements.get("get-task-allow") is not True:
         raise ValueError("Physical diagnostic XCTest requires the existing development debug entitlement")
     destination = output / "physical-destination.local.txt"
     private_write(destination, requested["udid"] + "\n")
-    summary = {"physical_model": "iPhone 17 Pro Max", "product_type": "iPhone18,2",
+    summary = {"physical_model": device.get("hardwareProperties", {}).get("marketingName", expected_product_type), "product_type": expected_product_type,
                "os_version": properties.get("osVersionNumber"), "xcode_available": True,
                "developer_mode_already_enabled": True, "transport": device["connectionProperties"]["transportType"],
                "candidate_hashes_match_preflight": True, "security_or_pairing_changes_performed": False}
@@ -212,6 +213,8 @@ def main():
                         help="Physical iOS only: private outside-Git JSON {udid,deviceIdentifier} or exact UDID text")
     parser.add_argument("--candidate-hashes-file", type=Path,
                         help="Required for physical iOS: exact candidate pins or previous Mac runtime-test-summary.json")
+    parser.add_argument("--expected-product-type", default="iPhone18,2",
+                        help="Exact physical iPhone or iPad model for iOS preflight (default: iPhone18,2)")
     parser.add_argument("--allow-provisioning-updates", action="store_true")
     parser.add_argument("--preflight-only", action="store_true",
                         help="Check exact destination, candidate pins and paid signing only; no build/install/launch")
@@ -255,7 +258,8 @@ def main():
     destination_summary = {"platform": "macOS", "physical_device": False}
     if physical:
         destination_file, destination, pins_before, destination_summary = physical_preflight(
-            candidate, args.device_id_file, args.candidate_hashes_file, output)
+            candidate, args.device_id_file, args.candidate_hashes_file, output,
+            expected_product_type=args.expected_product_type)
         destination_summary.update({"platform": "iOS", "physical_device": True})
     else:
         hardware = json.loads(run(["system_profiler", "SPHardwareDataType", "-json"]))

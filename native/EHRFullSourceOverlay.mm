@@ -1,6 +1,7 @@
 #import <UIKit/UIKit.h>
 #import "EHRFullSourceRuntime.h"
 #import "EHRExportSharing.h"
+#import "EHRLobbyBrowser.h"
 #if EHR_HAS_ITCH_AUTH
 #import "EHRItchAuthProvider.h"
 #import "EHROwnershipCover.h"
@@ -32,6 +33,7 @@
 @property(nonatomic,strong) UIScrollView *statusScroll;
 @property(nonatomic,strong) UIButton *exportsButton;
 @property(nonatomic,strong) UIButton *signInButton;
+@property(nonatomic,strong) UIButton *lobbiesButton;
 #if EHR_HAS_ITCH_AUTH
 @property(nonatomic,strong) EHROwnershipCover *ownershipCover;
 #endif
@@ -69,6 +71,10 @@
     if(self.window.rootViewController.presentedViewController)return;
     [self.window.rootViewController presentViewController:EHRExportSharingController() animated:YES completion:nil];
 }
+- (void)browseLobbies {
+    self.panel.hidden=YES;
+    EHRPresentLobbyBrowser(self.window.rootViewController);
+}
 - (void)install {
     UIWindowScene *scene=nil;
     for(UIScene *candidate in UIApplication.sharedApplication.connectedScenes)
@@ -97,6 +103,12 @@
     [self.exportsButton setTitle:@"Share exports" forState:UIControlStateNormal];self.exportsButton.accessibilityLabel=@"Share EHR log and translation exports";
     [self.exportsButton addTarget:self action:@selector(shareExports) forControlEvents:UIControlEventTouchUpInside];
     [self.panel addSubview:self.exportsButton];
+    self.lobbiesButton=[UIButton buttonWithType:UIButtonTypeSystem];self.lobbiesButton.tintColor=UIColor.cyanColor;
+    [self.lobbiesButton setTitle:@"EHR lobbies" forState:UIControlStateNormal];
+    self.lobbiesButton.accessibilityLabel=@"Browse the official EHR lobby directory";
+    self.lobbiesButton.accessibilityHint=@"Opens the EHR website inside the app. Website sign-in may be required.";
+    [self.lobbiesButton addTarget:self action:@selector(browseLobbies) forControlEvents:UIControlEventTouchUpInside];
+    [self.panel addSubview:self.lobbiesButton];
 #if EHR_HAS_ITCH_AUTH
     self.signInButton=[UIButton buttonWithType:UIButtonTypeSystem];self.signInButton.tintColor=UIColor.cyanColor;
     self.signInButton.titleLabel.font=[UIFont systemFontOfSize:13];self.signInButton.titleLabel.numberOfLines=2;
@@ -130,7 +142,8 @@
     CGFloat panelHeight=MIN(360,placeBelow?below:above);
     CGFloat panelX=MAX(CGRectGetMinX(safe),MIN(CGRectGetMaxX(safe)-panelWidth,CGRectGetMidX(self.button.frame)-panelWidth/2));
     self.panel.frame=CGRectMake(panelX,placeBelow?CGRectGetMaxY(self.button.frame)+8:CGRectGetMinY(self.button.frame)-8-panelHeight,panelWidth,panelHeight);
-    self.statusScroll.frame=CGRectMake(14,12,MAX(0,self.panel.bounds.size.width-28),MAX(0,self.panel.bounds.size.height-80));
+    self.statusScroll.frame=CGRectMake(14,12,MAX(0,self.panel.bounds.size.width-28),MAX(0,self.panel.bounds.size.height-132));
+    self.lobbiesButton.frame=CGRectMake(14,MAX(0,self.panel.bounds.size.height-108),MAX(0,self.panel.bounds.size.width-28),MIN(44,self.panel.bounds.size.height));
     self.exportsButton.frame=CGRectMake(14,MAX(0,self.panel.bounds.size.height-56),MAX(0,self.panel.bounds.size.width-28),MIN(44,self.panel.bounds.size.height));
     if(self.signInButton){
         const CGFloat half=MAX(0,(self.panel.bounds.size.width-36)/2);
@@ -158,7 +171,7 @@
 #endif
     NSString *message=active?(loaded?@"EHR options are initialized. Open the game settings and EHR controls to playtest.":@"Waiting for the game's role and option initialization."):
         [NSString stringWithFormat:@"Startup: %@\nStatus: %@",status[@"stage"]?:@"waiting for game startup",status[@"status"]?:@1];
-    self.label.text=[NSString stringWithFormat:@"EHR %@ · iPhone %@ (%@)\nGame %@\n\n%@\n%@\n\nUse a separate test account. Account linking, progress preservation and online play have not been verified.\n\nIndependent port; not endorsed by Innersloth.",
+    self.label.text=[NSString stringWithFormat:@"EHR %@ · App %@ (%@)\nGame %@\n\n%@\n%@\n\nUse a separate test account. Account linking and progress preservation remain unverified. Gameplay coverage is limited.\n\nIndependent port; not endorsed by Innersloth.",
         info[@"EHRSourceVersion"]?:@"?",info[@"CFBundleShortVersionString"]?:@"?",info[@"CFBundleVersion"]?:@"?",info[@"EHRReferenceGameVersion"]?:@"?",title,message];
     CGSize textSize=[self.label sizeThatFits:CGSizeMake(self.statusScroll.bounds.size.width,CGFLOAT_MAX)];
     self.label.frame=CGRectMake(0,0,self.statusScroll.bounds.size.width,textSize.height);self.statusScroll.contentSize=self.label.bounds.size;
