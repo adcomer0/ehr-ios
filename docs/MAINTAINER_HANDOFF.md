@@ -77,7 +77,8 @@ a real negative ownership lookup on Mac. After purchase, build 61 on iPhone
 established positive entitlement verification, actual EOS success and full
 game-account completion. Build 62 then completed a fresh ownership check and
 remembered-key login after upgrade, with EOS success/full completion and no
-prompt or manual submission. Earlier guest play had
+prompt or manual submission. The player then joined another official EHR 8.0.3
+host and stayed connected past the former version countdown. Earlier guest play had
 one user-reported match with a vanilla peer. These are not coverage of every
 role, map, network condition or device. See [known issues](KNOWN_ISSUES.md),
 [authentication evidence](ISOLATED_SIGNIN_TEST.md) and the [current validation](BUILD62_VALIDATION.md).

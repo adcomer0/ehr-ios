@@ -61,8 +61,9 @@ actual SDK/full-account requirements remain unchanged.
   allowed. There were zero prompts or manual key submissions; no form was
   visible. This establishes a remembered-key login on build 62 after upgrade.
 
-Live joining of another official host and EHR website acceptance still require
-player tests.
+The player then confirmed joining another official EHR 8.0.3 host and staying
+connected past the former five-second version disconnect. EHR website listing
+and verification acceptance still require a live player test.
 Existing first-profile, guest-migration and wider role/map limits are described
 in [known issues](KNOWN_ISSUES.md) and [the sign-in flow](ITCH_SIGN_IN.md).
 

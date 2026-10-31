@@ -10,7 +10,7 @@ There is no BepInEx Unity/IL2CPP plugin loader running on the phone and no embed
 
 ## Current state: native hosting and ownership-gated itch.io sign-in
 
-- Build 62 uses the verified official `ce23f0d(main)` release identity, correcting the detached-checkout tag that caused same-version host rejection. The unchanged EHR comparator remains in charge; live peer joining still needs retesting. See [release identity](docs/UPSTREAM_RELEASE_IDENTITY.md).
+- Build 62 uses the verified official `ce23f0d(main)` release identity, correcting the detached-checkout tag that caused same-version host rejection. The unchanged EHR comparator remains in charge; the player confirmed joining another official 8.0.3 host and staying connected past the previous countdown. See [release identity](docs/UPSTREAM_RELEASE_IDENTITY.md).
 - The full selected EHR source compiles for `ios-arm64`: 796 C# inputs; the 224 resource names/hashes are catalogued separately.
 - Signed startup on an Apple Silicon Mac loads EHR once, initializes 5,049 options and activates 292 permitted bindings from 298 metadata targets. Six account/consent-related patches are deliberately excluded.
 - A physical iPhone can open an Online lobby, configure settings and reach a game in build 49. The user confirmed that test was solo; its early win is consistent with EHR's low-player end conditions. The trace reached intro, ship initialization, game start and game end.

@@ -23,8 +23,10 @@ version. The source revision, plugin version and fork match, but a detached
 upstream checkout generated `ce23f0d(HEAD)` instead of the official release's
 `ce23f0d(main)`. EHR compares the complete tag, so this is a real metadata
 mismatch. The build correction uses verified release provenance and preserves
-the existing version comparator. Joining an actual host after that correction
-still needs a player test; matching labels alone do not establish compatibility.
+the existing version comparator. After installing build 62, the player confirmed
+joining another official 8.0.3 host and staying connected past the previous
+five-second disconnect. This does not establish every role or complete-round
+compatibility.
 
 ## Remembered-key startup timing
 
