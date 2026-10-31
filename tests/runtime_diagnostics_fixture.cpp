@@ -36,6 +36,15 @@ int main(){size_t checks=0;using namespace ehr_diagnostics;State state;
  for(size_t field: {size_t(0),size_t(1),size_t(6),size_t(7),size_t(8),size_t(9),size_t(11)}){auto saved=words[field];words[field]=UINT32_MAX;CHECK(!EHRDiagnosticSourceFailure(42,6,words,12));words[field]=saved;}
  words[9]=0;CHECK(!EHRDiagnosticSourceFailure(42,6,words,12));words[9]=1;words[2]=0;CHECK(!EHRDiagnosticSourceFailure(42,6,words,12));words[2]=1;
  CHECK(ehr_diagnostics::state().snapshot().detail_total==1);
+ uint64_t coroutine[12]={1,12,77,12345,3,3,6,6,9,0,0,0};
+ CHECK(EHRDiagnosticCoroutineFailure(77,6,coroutine,12));
+ detail=ehr_diagnostics::state().snapshot();CHECK(detail.detail_total==2&&detail.details[1].kind==3&&detail.details[1].source_id==77&&detail.details[1].iterator_type_hash==12345&&detail.details[1].primary_status==6);
+ CHECK(!EHRDiagnosticCoroutineFailure(78,6,coroutine,12));CHECK(!EHRDiagnosticCoroutineFailure(77,7,coroutine,12));
+ CHECK(!EHRDiagnosticCoroutineFailure(77,6,nullptr,12));CHECK(!EHRDiagnosticCoroutineFailure(77,6,coroutine,11));
+ for(size_t field:{size_t(0),size_t(1),size_t(2),size_t(4),size_t(5),size_t(6),size_t(7),size_t(9),size_t(10),size_t(11)}){auto saved=coroutine[field];coroutine[field]=UINT64_MAX;CHECK(!EHRDiagnosticCoroutineFailure(77,6,coroutine,12));coroutine[field]=saved;}
+ coroutine[8]=0;CHECK(!EHRDiagnosticCoroutineFailure(77,6,coroutine,12));coroutine[8]=9;
+ coroutine[9]=3;CHECK(!EHRDiagnosticCoroutineFailure(77,6,coroutine,12));coroutine[10]=6;CHECK(EHRDiagnosticCoroutineFailure(77,6,coroutine,12));
+ detail=ehr_diagnostics::state().snapshot();CHECK(detail.detail_total==3&&detail.details[2].cleanup_exception_kind==3&&detail.details[2].cleanup_status==6);
  // Reentrant scopes restore the caller's route/iterator context exactly.
  context={99,100,77,6,1};
  {EHRDiagnosticRouteScope outer(42,4096);outer.at(13,2);CHECK(context.target==42&&context.iterator==77&&context.phase==13);

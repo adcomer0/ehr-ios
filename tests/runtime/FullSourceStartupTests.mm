@@ -69,6 +69,7 @@ NSDictionary *status() {
 #if EHR_EXERCISE_ITERATOR_RETIREMENT
 #include "IteratorRetirementProof.inc"
 #endif
+#include "IteratorExceptionFactoryProof.inc"
 @interface NativeRuntimeTests:XCTestCase
 @end
 @implementation NativeRuntimeTests
@@ -215,6 +216,36 @@ NSDictionary *status() {
     XCTAssertTrue([app[@"optionsLoaded"] boolValue],@"%@",last);
     XCTAssertGreaterThan([app[@"optionCount"] unsignedIntValue],0u);
     XCTAssertTrue([app[@"postLoadTasksComplete"] boolValue],@"%@",last);
+    if([NSBundle.mainBundle.infoDictionary[@"EHRIteratorExceptionFactoryCompiled"] boolValue]){
+        XCTAssertEqualObjects(last[@"sourceCoroutineFailureDiagnosticsBound"],@YES);
+        NSDictionary *factory=EHRRuntimeIteratorExceptionFactoryProof();
+        NSData *factoryData=[NSJSONSerialization dataWithJSONObject:factory options:NSJSONWritingPrettyPrinted error:nil];
+        XCTAttachment *factoryAttachment=[XCTAttachment attachmentWithData:factoryData uniformTypeIdentifier:@"public.json"];
+        factoryAttachment.name=@"EHRIteratorExceptionFactoryProof.json";factoryAttachment.lifetime=XCTAttachmentLifetimeKeepAlways;[self addAttachment:factoryAttachment];
+        XCTAssertTrue([factory[@"success"] boolValue],@"%@",factory);
+        XCTAssertEqualObjects(factory[@"status"],@0);
+        for(NSString *key in @[@"constructedMask",@"exactTypeMask",@"caughtMask"])XCTAssertEqualObjects(factory[key],@3);
+        XCTAssertEqualObjects(factory[@"returnedMask"],@0);
+        XCTAssertEqualObjects(factory[@"nativeHandlesCreated"],@2);XCTAssertEqualObjects(factory[@"nativeHandlesReleased"],@2);
+        XCTAssertEqualObjects(factory[@"rootsBefore"],factory[@"rootsAfter"]);
+        XCTAssertEqualObjects(factory[@"rootAccountingBalanced"],@YES);
+        for(NSString *key in @[@"reflectionActivatorUsed",@"nativeAotCallbackEntered",@"gameOwnerInvoked",@"accountOrNetworkActions",@"directPublicApiExploratoryProbe"])XCTAssertEqualObjects(factory[key],@NO);
+    }
+    if([NSBundle.mainBundle.infoDictionary[@"EHRLobbySearchCompiled"] boolValue]){
+        NSDictionary *search=last[@"lobbySearch"];
+        XCTAssertEqualObjects(search[@"schemaVersion"],@1);XCTAssertEqual([search[@"compiled"] intValue],1);
+        XCTAssertEqualObjects(search[@"selected"],@YES);XCTAssertEqualObjects(search[@"bound"],@YES);
+        for(NSString *key in @[@"preparedStatus",@"lastStatus",@"phase",@"calls",@"originalReturned",@"applied",@"alreadyPresent",@"inactive",@"foreignCallsite",@"failures",@"workerForwards"])XCTAssertEqualObjects(search[key],@0);
+        auto searchProbe=reinterpret_cast<NSDictionary *(*)(void)>(helperExport("EHRLobbySearchSelfTest"));
+        NSDictionary *searchProof=searchProbe?searchProbe():@{@"success":@NO};
+        NSData *searchData=[NSJSONSerialization dataWithJSONObject:searchProof options:NSJSONWritingPrettyPrinted error:nil];
+        XCTAttachment *searchAttachment=[XCTAttachment attachmentWithData:searchData uniformTypeIdentifier:@"public.json"];
+        searchAttachment.name=@"EHRLobbySearchProof.json";searchAttachment.lifetime=XCTAttachmentLifetimeKeepAlways;[self addAttachment:searchAttachment];
+        XCTAssertTrue([searchProof[@"success"] boolValue],@"%@",searchProof);XCTAssertEqualObjects(searchProof[@"status"],@0);
+        XCTAssertGreaterThanOrEqual([searchProof[@"checks"] unsignedIntValue],5u);
+        XCTAssertEqualObjects(searchProof[@"rootsBefore"],searchProof[@"rootsAfter"]);
+        for(NSString *key in @[@"realSearchRequests",@"accountActions",@"globalRegistrationWrites",@"hostPacketChanges"])XCTAssertEqualObjects(searchProof[key],@0);
+    }
 #if EHR_EXERCISE_ITERATOR_RETIREMENT
     // Own native ArrayList carriers only; warm the fixed marker before later
     // ownership baselines. No Unity scheduling, account or network action.

@@ -4,6 +4,9 @@
 #if EHR_HAS_ITCH_AUTH
 #include "EHRItchAuthProvider.h"
 #endif
+#if EHR_HAS_LOBBY_SEARCH
+#include "EHRLobbySearch.h"
+#endif
 #if EHR_HAS_AUTH_HANDOFF
 #include "EHRAuthHandoffDiagnostics.h"
 #endif
@@ -39,6 +42,7 @@
 #include "EHRManagedPatchTargetsV1.h"
 #include "EHRSourceApplication.h"
 #include "EHRManagedIteratorProductionV1.h"
+#include "EHRManagedIteratorProduction.h"
 #include "EHRFullSourceStartup.generated.h"
 EHRRuntimeStatus EHRNativeGeneratedRegisterCompiled();
 namespace {
@@ -61,6 +65,9 @@ void check(int32_t status) {state().status=status;if(status)throw std::runtime_e
 int32_t mainThread(){return NSThread.isMainThread?1:0;}
 #if EHR_HAS_EHR_DIRECTORY
 int32_t directoryAllowed(){return EHRItchAuthProviderDirectoryAllowed()?1:0;}
+#endif
+#if EHR_HAS_LOBBY_SEARCH
+int32_t lobbySearchAllowed(){return EHRItchAuthProviderDirectoryAllowed()?1:0;}
 #endif
 void sourceLog(int32_t level,const uint8_t *bytes,size_t count) {
     if(!bytes||count>1024*1024)return;
@@ -102,9 +109,12 @@ NSDictionary *EHRFullSourceCopyRuntimeStatus(void) {
     if(!NSThread.isMainThread)return @{@"bindingsReady":@NO,@"status":@(EHR_RUNTIME_WRONG_THREAD)};
     EHRRuntimeGatewayPublishDiagnosticSnapshot();
     const auto &s=state();NSMutableDictionary *result=[@{@"bindingsReady":@(s.ready),@"attempted":@(s.attempted),@"readyFlags":@(s.flags),@"status":@(s.status),@"stage":s.stage,
-        @"productionCoroutinesReady":@((s.flags&16)!=0),@"fullMainLoadRequested":@(s.loadAttempted)} mutableCopy];
+        @"productionCoroutinesReady":@((s.flags&16)!=0),@"sourceCoroutineFailureDiagnosticsBound":@(EHRManagedIteratorProductionFailureDiagnosticsBound()),@"fullMainLoadRequested":@(s.loadAttempted)} mutableCopy];
     if(s.failure)result[@"bindingFailure"]=s.failure;
     if(s.failureCleanup)result[@"failureCleanup"]=s.failureCleanup;
+#if EHR_HAS_LOBBY_SEARCH
+    result[@"lobbySearch"]=EHRLobbySearchCopyStatus();
+#endif
     using Status=int32_t(*)(EHRSourceApplicationStatusV1 *,size_t);
     auto status=reinterpret_cast<Status>(fullExport("ehr_source_application_status_v1"));
     if(status){EHRSourceApplicationStatusV1 app{};if(status(&app,sizeof(app))==0){
@@ -206,7 +216,11 @@ NSDictionary *EHRFullSourceBindRuntime(void) {
         EHRManagedOriginalV1 original{};EHRManagedOriginalMakeTable(&original);check(bindTable("ehr_original_bind_gateway",original));
         EHRManagedPatchHostV1 patches{};EHRManagedPatchMakeTable(&patches);check(bindTable("ehr_source_bind_patch_host",patches));s.flags|=2;
         s.stage=@"production_coroutines";diagnosticStage(5);EHRManagedIteratorProductionV1 coroutines{};EHRManagedIteratorProductionMakeTable(&coroutines);
-        check(bindTable("ehr_source_bind_coroutines_v1",coroutines));s.flags|=16;
+        check(bindTable("ehr_source_bind_coroutines_v1",coroutines));
+        check(EHRManagedIteratorProductionSetFailureDiagnostics(required<EHRSourceCoroutineFailureReader>("ehr_source_coroutine_failure_v1"),EHRRuntimeDiagnosticsFlushIteratorFailure));s.flags|=16;
+#if EHR_HAS_LOBBY_SEARCH
+        check(EHRLobbySearchPrepare(lobbySearchAllowed));
+#endif
         s.stage=@"source_components";diagnosticStage(6);NSDictionary *registered=EHRStaticComponentsRegister(publicRuntimeSymbol);
         if(![registered[@"success"] boolValue]){s.failure=registered;s.status=EHR_RUNTIME_UNSUPPORTED;throw std::runtime_error("source native type registration failed");}
         NSDictionary *components=EHRSourceComponentsBind(fullExport("ehr_generated_bind_source_components"));

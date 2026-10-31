@@ -19,9 +19,11 @@ enum GuardCategory:uint32_t {RootCapacity=1,WeakRootCapacity=2,PinRootCapacity=3
 struct Context {uint64_t target=0,rva=0,iterator=0;uint32_t phase=0,argument=0;};
 inline thread_local Context context{};
 // kind1: owned source enums/ordinals; kind2: native exception's fixed class
-// enum and immutable public metadata identity. No messages or exception roots.
+// enum and immutable public metadata identity; kind3: owned coroutine failure
+// phase/type hash and fixed exception/status enums. No messages or roots.
 struct FailureDetail {uint64_t sequence=0,tick=0,target=0,rva=0,iterator=0,source_sequence=0,owner_hash=0,method_hash=0;
- uint32_t kind=0,stage=0,callback=0,argument=0,exception_kind=0,method_token=0,original_entered=0;int32_t status=0;};
+ uint32_t kind=0,stage=0,callback=0,argument=0,exception_kind=0,method_token=0,original_entered=0;int32_t status=0;
+ uint64_t source_id=0,iterator_type_hash=0;uint32_t cleanup_exception_kind=0;int32_t primary_status=0,cleanup_status=0;};
 struct Event {uint64_t sequence=0,tick=0,id=0,rva=0;uint32_t kind=0,detail=0,flags=0;int32_t status=0;};
 struct Route {uint64_t id=0,rva=0,started=0,completed=0,failed=0,unentered=0,last_begin_sequence=0,last_end_sequence=0,last_begin_tick=0,last_end_tick=0,checks=0,active_checks=0,wrong_thread_checks=0;int32_t last_status=0;uint32_t last_flags=0,last_phase=0,last_argument=0;};
 struct Guard {uint64_t sequence=0,tick=0,target=0,rva=0,iterator=0,count=0,limit=0;uint32_t category=0,phase=0,argument=0;uint64_t gateway_tick=0,roots=0,weak_roots=0,deferred=0,enqueued=0,dequeued=0,released=0,iterator_tick=0,iterator_entries=0,iterator_active=0,iterator_terminal=0;};

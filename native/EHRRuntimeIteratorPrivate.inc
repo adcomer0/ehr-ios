@@ -120,20 +120,128 @@ EHRRuntimeStatus EHRRuntimeIteratorMarkTerminal(EHRRuntimeToken carrier) {
 bool EHRRuntimeIteratorIsTerminal(const void *identity) noexcept {
     return ehr_iterator_terminal::terminalState().cache.contains(identity);
 }
+namespace ehr_iterator_exception {
+struct FactoryAPI {
+    const Image *(*corlib)() = nullptr;
+    Exception *(*create)(const Image *, const char *, const char *, const char *) = nullptr;
+    void (*raise)(Exception *) = nullptr;
+    const Image *core = nullptr;
+};
+struct Counts { uint64_t created = 0, released = 0; };
+// This root deliberately does not enter the gateway token map. An iterator
+// failure must remain raisable when that map has reached its capacity. Only
+// the real runtime's UInt32 GC-handle API owns the pinned object lifetime.
+struct NativeException {
+    uint32_t handle = 0;
+    Object *identity = nullptr;
+    RuntimeClass *expected = nullptr;
+    FactoryAPI factory{};
+    void (*release)(uint32_t) = nullptr;
+    Counts *counts = nullptr;
+    NativeException() = default;
+    NativeException(const NativeException &) = delete;
+    NativeException &operator=(const NativeException &) = delete;
+    ~NativeException() {
+        if (handle) { release(handle); if (counts) ++counts->released; }
+    }
+    void take(NativeException &other) {
+        handle = other.handle; identity = other.identity; expected = other.expected;
+        factory = other.factory; release = other.release; counts = other.counts;
+        other.handle = 0; other.identity = nullptr;
+    }
+};
+EHRRuntimeStatus prepare(EHRRuntimeStatus failure, FactoryAPI &factory, RuntimeClass **expected) {
+    *expected = nullptr;
+    if (failure <= EHR_RUNTIME_OK || failure > EHR_RUNTIME_AMBIGUOUS) return EHR_RUNTIME_BAD_ARGUMENT;
+    const auto readiness = ready(); if (readiness != EHR_RUNTIME_OK) return readiness;
+    factory.corlib = reinterpret_cast<decltype(factory.corlib)>(symbol("il2cpp_get_corlib"));
+    factory.create = reinterpret_cast<decltype(factory.create)>(symbol("il2cpp_exception_from_name_msg"));
+    factory.raise = reinterpret_cast<decltype(factory.raise)>(symbol("il2cpp_raise_exception"));
+    auto &api = state().api;
+    const void *entries[] = {
+        reinterpret_cast<const void *>(factory.corlib), reinterpret_cast<const void *>(factory.create),
+        reinterpret_cast<const void *>(factory.raise), reinterpret_cast<const void *>(api.image_get_name),
+        reinterpret_cast<const void *>(api.class_from_name), reinterpret_cast<const void *>(api.class_get_name),
+        reinterpret_cast<const void *>(api.class_get_namespace), reinterpret_cast<const void *>(api.class_is_assignable_from),
+        reinterpret_cast<const void *>(api.object_get_class), reinterpret_cast<const void *>(api.gchandle_new),
+        reinterpret_cast<const void *>(api.gchandle_get_target), reinterpret_cast<const void *>(api.gchandle_free)
+    };
+    for (const void *entry : entries) {
+        if (!entry) return EHR_RUNTIME_NOT_FOUND;
+        const auto status = ehr_pinned::validate_engine_entry(entry);
+        if (status != EHR_RUNTIME_OK) return status;
+    }
+    factory.core = factory.corlib();
+    if (!factory.core) return EHR_RUNTIME_NOT_READY;
+    const char *imageName = api.image_get_name(factory.core);
+    if (!imageName || strcmp(imageName, "mscorlib.dll")) return EHR_RUNTIME_TYPE_MISMATCH;
+    const char *name = failure == EHR_RUNTIME_UNSUPPORTED ? "NotSupportedException" : "InvalidOperationException";
+    RuntimeClass *base = api.class_from_name(factory.core, "System", "Exception");
+    *expected = api.class_from_name(factory.core, "System", name);
+    if (!base || !*expected) return EHR_RUNTIME_NOT_FOUND;
+    const char *actualName = api.class_get_name(*expected), *space = api.class_get_namespace(*expected);
+    if (!actualName || !space || strcmp(actualName, name) || strcmp(space, "System") ||
+        !api.class_is_assignable_from(base, *expected)) return EHR_RUNTIME_TYPE_MISMATCH;
+    return EHR_RUNTIME_OK;
+}
+EHRRuntimeStatus make(EHRRuntimeStatus failure, NativeException &output, Counts *counts = nullptr) {
+    if (output.handle) return EHR_RUNTIME_BAD_ARGUMENT;
+    @try { try {
+        NativeException value; auto status = prepare(failure, value.factory, &value.expected);
+        if (status != EHR_RUNTIME_OK) return status;
+        const char *name = failure == EHR_RUNTIME_UNSUPPORTED ? "NotSupportedException" : "InvalidOperationException";
+        Object *created = reinterpret_cast<Object *>(value.factory.create(value.factory.core, "System", name, "EHR source iterator failed."));
+        if (!created) return EHR_RUNTIME_NOT_READY;
+        auto &api = state().api;
+        value.handle = api.gchandle_new(created, true);
+        if (!value.handle) return EHR_RUNTIME_NOT_READY;
+        value.release = api.gchandle_free; value.counts = counts;
+        if (counts) ++counts->created;
+        value.identity = api.gchandle_get_target(value.handle);
+        if (!value.identity || api.object_get_class(value.identity) != value.expected) return EHR_RUNTIME_TYPE_MISMATCH;
+        output.take(value); return EHR_RUNTIME_OK;
+    } catch (...) { return EHR_RUNTIME_MANAGED_EXCEPTION; } }
+    @catch (__unused NSException *error) { return EHR_RUNTIME_MANAGED_EXCEPTION; }
+}
+}
 void EHRRuntimeIteratorRaise(EHRRuntimeStatus status) {
     // No native pointer enters NativeAOT, and no native exception crosses it.
-    const auto raise = reinterpret_cast<void (*)(Exception *)>(symbol("il2cpp_raise_exception"));
-    if (!raise || ready() != EHR_RUNTIME_OK) abort();
-    const char *name = status == EHR_RUNTIME_UNSUPPORTED ? "NotSupportedException" : "InvalidOperationException";
-    EHRRuntimeToken exceptionClass = 0;
-    OwnedObjectToken exception, constructionException;
-    auto result = ehr_runtime_find_class("mscorlib.dll", "System", name, &exceptionClass);
-    if (result == EHR_RUNTIME_OK)
-        result = ehr_runtime_construct(exceptionClass, nullptr, 0, &exception.value, &constructionException.value);
-    void *value = nullptr;
-    const auto token = constructionException.value ? constructionException.value : exception.value;
-    if (result != EHR_RUNTIME_OK && !constructionException.value) abort();
-    if (EHRRuntimeIteratorBorrow(token, &value) != EHR_RUNTIME_OK || !value) abort();
-    raise(static_cast<Exception *>(value));
+    ehr_iterator_exception::NativeException exception;
+    if (ehr_iterator_exception::make(status, exception) != EHR_RUNTIME_OK) abort();
+    exception.factory.raise(reinterpret_cast<Exception *>(exception.identity));
     abort(); // Export is noreturn in this runtime; returning would hide failure.
+}
+extern "C" __attribute__((visibility("default")))
+NSDictionary *EHRRuntimeIteratorExceptionSelfTest(void) {
+    using namespace ehr_iterator_exception;
+    if (!NSThread.isMainThread) return @{@"schema":@"ehr.iterator-exception-factory-proof.v1",@"success":@NO,@"status":@(EHR_RUNTIME_WRONG_THREAD)};
+    const size_t before = state().roots.size(); Counts counts;
+    uint32_t constructed = 0, exactTypes = 0, caught = 0, returned = 0;
+    EHRRuntimeStatus status = EHR_RUNTIME_OK;
+    const EHRRuntimeStatus failures[] = {EHR_RUNTIME_BAD_ARGUMENT, EHR_RUNTIME_UNSUPPORTED};
+    @try { try {
+        for (size_t i = 0; i < 2; ++i) {
+            NativeException exception;
+            status = make(failures[i], exception, &counts);
+            if (status != EHR_RUNTIME_OK) break;
+            constructed |= uint32_t(1) << i;
+            if (state().api.object_get_class(exception.identity) == exception.expected) exactTypes |= uint32_t(1) << i;
+            // The real public runtime raise and its C++ catch are both native.
+            // No .NET callback or raw exception-wrapper layout is inspected.
+            try { exception.factory.raise(reinterpret_cast<Exception *>(exception.identity)); returned |= uint32_t(1) << i; }
+            catch (...) { caught |= uint32_t(1) << i; }
+            if (state().api.gchandle_get_target(exception.handle) != exception.identity ||
+                state().api.object_get_class(exception.identity) != exception.expected) { status = EHR_RUNTIME_TYPE_MISMATCH; break; }
+        }
+    } catch (...) { status = EHR_RUNTIME_MANAGED_EXCEPTION; } }
+    @catch (__unused NSException *error) { status = EHR_RUNTIME_MANAGED_EXCEPTION; }
+    const size_t after = state().roots.size();
+    const bool success = status == EHR_RUNTIME_OK && constructed == 3 && exactTypes == 3 && caught == 3 &&
+        !returned && counts.created == 2 && counts.released == 2 && before == after;
+    return @{@"schema":@"ehr.iterator-exception-factory-proof.v1",@"success":@(success),@"status":@(status),
+        @"constructedMask":@(constructed),@"exactTypeMask":@(exactTypes),@"caughtMask":@(caught),@"returnedMask":@(returned),
+        @"nativeHandlesCreated":@(counts.created),@"nativeHandlesReleased":@(counts.released),
+        @"rootsBefore":@(before),@"rootsAfter":@(after),@"rootAccountingBalanced":@(before == after && counts.created == counts.released),
+        @"reflectionActivatorUsed":@NO,@"nativeAotCallbackEntered":@NO,@"gameOwnerInvoked":@NO,@"accountOrNetworkActions":@NO,
+        @"directPublicApiExploratoryProbe":@NO};
 }

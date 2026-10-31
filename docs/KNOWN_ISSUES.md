@@ -39,6 +39,24 @@ expiry, cancellation, clearing and new input fence it. Timers do not retry login
 A genuine missing-profile result without a visible form remains unconfirmed;
 there is no automatic account creation.
 
+## Impostor-role scrolling and native search
+
+An owned build-63 OS crash reached an explicit abort in native iterator error
+construction, before borrowing/raising the exception. The report does not
+identify the initiating source fault or which shared abort prerequisite failed.
+Build 64 uses the validated native exception factory with independent pinned
+handles and persists bounded coroutine failure facts before raising. Caching
+all menu rows remains a separate performance limitation. Phone scrolling
+acceptance is pending; see [build 64 evidence](BUILD64_VALIDATION.md).
+
+The native Find Game request previously lacked the modern per-request EHR mod
+filter. Build 64 supplies it only at the verified search callsite, after the
+original helper, while retaining the host-only registration needed by the
+current vanilla-peer path. The official website directory is separate; its
+sign-in and room-code flow remain available inside the app. Actual matchmaking
+results depend on compatible advertised rooms, regions and game filters and
+still need a player test.
+
 ## Later gameplay observation
 
 The subsequent host numeric cache contains player join, host-start/ship and

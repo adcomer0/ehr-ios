@@ -72,6 +72,7 @@ def build(args):
     game_start_map=getattr(args,"game_start_iterator_map",None)
     auth_handoff_map=getattr(args,"auth_handoff_map",None)
     itch_map=getattr(args,"itch_auth_map",None)
+    lobby_search_map=getattr(args,"lobby_search_map",None)
     ehr_directory=bool(getattr(args,"ehr_directory",False))
     itch_client=getattr(args,"itch_oauth_client_id",None)
     itch_redirect=getattr(args,"itch_oauth_redirect_uri",None)
@@ -80,6 +81,8 @@ def build(args):
         raise ValueError("The itch.io provider requires the full source profile")
     if ehr_directory and not itch_map:
         raise ValueError("The EHR website directory requires the ownership-checked itch.io provider")
+    if lobby_search_map and (not full or not itch_map):
+        raise ValueError("EHR lobby search requires the full source ownership-checked itch.io provider")
     if itch_map and guard_requested:
         raise ValueError("The itch.io provider replaces platform acquisition; do not enable the Apple retry guard")
     if itch_map and auth_handoff_map:
@@ -197,6 +200,8 @@ def build(args):
     info["EHRItchAuthCompiled"]=bool(itch_map)
     info["EHRItchOwnershipRequired"]=bool(itch_map)
     info["EHRDirectoryCompiled"]=ehr_directory
+    info["EHRIteratorExceptionFactoryCompiled"]=full
+    info["EHRLobbySearchCompiled"]=bool(lobby_search_map)
     info["EHRItchAuthDiagnosticsCacheEnabled"]=bool(itch_map)
     info["EHRAuthProvider"]="itchio" if itch_map else "apple"
     # Initial native state; only the explicit request may enable after Prepare.
@@ -297,6 +302,13 @@ def build(args):
         map_path.write_text(json.dumps(hook_map,indent=2)+"\n")
         contracts_path.write_text(json.dumps(contracts,indent=2)+"\n")
         selected_hooks.extend(itch_hooks)
+    if lobby_search_map:
+        from lobby_search_hook_inputs import merge_lobby_search_inputs, read_json as read_search_json
+        hook_map,contracts,search_hooks=merge_lobby_search_inputs(hook_map,read_search_json(lobby_search_map),json.loads(contracts_path.read_text()))
+        map_path,contracts_path=output/"lobby-search-hook-map.local.json",output/"lobby-search-hook-contracts.local.json"
+        map_path.write_text(json.dumps(hook_map,indent=2)+"\n")
+        contracts_path.write_text(json.dumps(contracts,indent=2)+"\n")
+        selected_hooks.extend(search_hooks)
     metadata_file = source / "Data/Managed/Metadata/global-metadata.dat"
     metadata_pin = hook_map["input_pins"]["metadata"]
     if metadata_file.stat().st_size != metadata_pin["size"] or hashlib.sha256(metadata_file.read_bytes()).hexdigest() != metadata_pin["sha256"]:
@@ -331,6 +343,9 @@ def build(args):
     if itch_map:
         from itch_auth_hook_inputs import binding_header as itch_binding_header
         (output/"EHRItchAuthBinding.generated.h").write_text(itch_binding_header(hook_manifest,json.loads(itch_map.read_text())))
+    if lobby_search_map:
+        from lobby_search_hook_inputs import binding_header as search_binding_header
+        (output/"EHRLobbySearchBinding.generated.h").write_text(search_binding_header(hook_manifest,read_search_json(lobby_search_map)))
     hooks = {h["method"]: h for h in hook_manifest["hooks"]}
     # Existing native original-call adapters retain their exact version/murder
     # trampoline names while the full profile replaces those three entry sites.
@@ -401,6 +416,7 @@ def build(args):
     managed_flags += ["-DEHR_HAS_AUTH_HANDOFF="+("1" if auth_handoff_map else "0")]
     managed_flags += ["-DEHR_HAS_ITCH_AUTH="+("1" if itch_map else "0")]
     managed_flags += ["-DEHR_HAS_EHR_DIRECTORY="+("1" if ehr_directory else "0")]
+    managed_flags += ["-DEHR_HAS_LOBBY_SEARCH="+("1" if lobby_search_map else "0")]
     iterator_sources = ([str(ROOT / "native/EHRManagedIteratorAdapter.mm"), str(ROOT / "native/EHRManagedIteratorProduction.mm"), str(ROOT / "native/EHRManagedIteratorProbe.mm"),
                          str(ROOT / "native/EHRManagedIteratorSchedulingProbe.mm")]
                         if args.iterator_hook_map else [])
@@ -441,6 +457,7 @@ def build(args):
         if guard_map:native_sources.append(str(ROOT/"native/EHRAuthRetryGuard.mm"))
         if game_start_map:native_sources.append(str(ROOT/"native/EHRGameStartIteratorAdapter.mm"))
         if auth_handoff_map:native_sources.append(str(ROOT/"native/EHRAuthHandoffDiagnostics.mm"))
+        if lobby_search_map:native_sources.append(str(ROOT/"native/EHRLobbySearch.mm"))
         if itch_map:
             native_sources.extend(str(ROOT/"native"/name) for name in (
                 "EHRItchAuthRuntime.mm","EHRItchAuthProvider.mm","EHRItchSignInUI.mm","EHRItchOwnership.mm","EHROwnershipCover.mm"))
@@ -489,7 +506,8 @@ def build(args):
          *([output/"EHRAuthRetryBinding.generated.h"] if guard_map else []),
          *([output/"EHRGameStartBinding.generated.h"] if game_start_map else []),
          *([output/"EHRAuthHandoffBinding.generated.h"] if auth_handoff_map else []),
-         *([output/"EHRItchAuthBinding.generated.h"] if itch_map else []))}
+         *([output/"EHRItchAuthBinding.generated.h"] if itch_map else []),
+         *([output/"EHRLobbySearchBinding.generated.h"] if lobby_search_map else []))}
     manifest["managed_source_reuse"] = bool(managed_framework)
     if icon_manifest is not None:
         manifest["custom_app_icon"] = icon_manifest
@@ -511,6 +529,8 @@ def build(args):
     manifest["itch_auth_compiled"]=bool(itch_map)
     manifest["itch_ownership_required"]=bool(itch_map)
     manifest["ehr_directory_compiled"]=ehr_directory
+    manifest["lobby_search_compiled"]=bool(lobby_search_map)
+    if lobby_search_map:manifest["lobby_search_map_sha256"]=hashlib.sha256(lobby_search_map.read_bytes()).hexdigest()
     manifest["itch_browser_oauth_configured"]=bool(itch_client)
     if itch_map:manifest["itch_auth_map_sha256"]=hashlib.sha256(itch_map.read_bytes()).hexdigest()
     manifest["full_source_profile"] = full
@@ -562,6 +582,7 @@ if __name__ == "__main__":
     p.add_argument("--auth-handoff-map",type=Path,help="Optional passive original-preserving auth handoff diagnostics; requires full source, --eos-login-map and --platform-sign-in")
     p.add_argument("--itch-auth-map",type=Path,help="Select the exact native itch.io provider instead of Apple acquisition; full source only")
     p.add_argument("--ehr-directory",action="store_true",help="Enable the opt-in EHR website directory for ownership-verified full itch.io accounts")
+    p.add_argument("--lobby-search-map",type=Path,help="Exact pinned search-only EHR mod filter; requires ownership-checked full itch.io accounts")
     p.add_argument("--itch-oauth-client-id",help="Optional registered public itch.io OAuth application ID; never a player token or client secret")
     p.add_argument("--itch-oauth-redirect-uri",help="Exact registered callback using this app's own custom scheme; defaults to BUNDLE.itch://oauth/callback")
     p.add_argument("--game-start-iterator-map",type=Path,help="Optional exact pinned CoStartGame.MoveNext host-factory inlining adapter; full source only, explicit runtime activation")

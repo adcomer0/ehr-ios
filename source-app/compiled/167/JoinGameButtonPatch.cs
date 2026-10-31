@@ -13,7 +13,6 @@ internal class JoinGameButtonPatch
 
         if (__instance.GameIdText.text == "" && Regex.IsMatch(GUIUtility.systemCopyBuffer.Trim('\r', '\n'), "^[A-Z]{6}$"))
         {
-            Logger.Info($"{GUIUtility.systemCopyBuffer}", "ClipBoard");
             __instance.GameIdText.SetText(GUIUtility.systemCopyBuffer.Trim('\r', '\n'));
         }
     }

@@ -1,7 +1,7 @@
 # EHR Among Us: maintainer handoff
 
 This is a source and tooling handoff for the ownership-gated native iOS
-build-63 development candidate. It is not an App Store/TestFlight release artifact or evidence of
+build-64 development candidate. It is not an App Store/TestFlight release artifact or evidence of
 publisher/distribution approval. The current local profile is development
 signing for registered devices. The EHR team handles its release signing and
 authorized game-content distribution path.
@@ -52,8 +52,14 @@ native maps, NativeAOT library, app identifier, certificate and profile. Add:
 --display-name "EHR Among Us" \
 --app-icon app/Assets.xcassets/AppIcon.appiconset/AppIcon.png \
 --itch-auth-map PRIVATE_ITCH_MAP \
---ehr-directory
+--ehr-directory \
+--lobby-search-map PRIVATE_SEARCH_MAP
 ```
+
+The optional search map adds a verified per-request EHR filter without changing
+global host registration. It requires the same ownership/full-sign-in gate.
+The current iterator-error factory and filter construction proofs are required
+by the installer when their build flags are selected.
 
 The source builder also verifies the [official release identity](UPSTREAM_RELEASE_IDENTITY.md)
 from the compiled assembly; do not remove the exact source/policy checks or
@@ -85,7 +91,7 @@ prompt or manual submission. The player then joined another official EHR 8.0.3
 host and stayed connected past the former version countdown. Earlier guest play had
 one user-reported match with a vanilla peer. These are not coverage of every
 role, map, network condition or device. See [known issues](KNOWN_ISSUES.md),
-[authentication evidence](ISOLATED_SIGNIN_TEST.md) and the [current validation](BUILD63_VALIDATION.md).
+[authentication evidence](ISOLATED_SIGNIN_TEST.md) and the [current validation](BUILD64_VALIDATION.md).
 
 Existing guest-to-platform migration remains intentionally unsupported by the
 first-profile route: nonempty or unknown guest identity stops it. Do not remove

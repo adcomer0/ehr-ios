@@ -37,8 +37,19 @@ struct State {
     bool failureSealed=false,failureCleaning=false;
     int32_t failureStatus=EHR_RUNTIME_OK;
     uint64_t failureStopAttempts=0,failureStopFailures=0,failureCancelFailures=0;
+    EHRSourceCoroutineFailureReader failureReader=nullptr;
+    EHRSourceCoroutineFailureFlush failureFlush=nullptr;
 };
 State &state(){static State *s=new State;return *s;}
+void recordSourceFailure(uint64_t source,int32_t status) noexcept {
+    auto reader=state().failureReader;if(!reader)return;uint64_t words[12]{};
+    @try{try{if(reader(source,words,12)==0)(void)EHRDiagnosticCoroutineFailure(source,status,words,12);}catch(...){}}
+    @catch(__unused NSException *error){}
+}
+void flushSourceFailure() noexcept {
+    auto flush=state().failureFlush;if(!flush)return;
+    @try{try{(void)flush();}catch(...){}}@catch(__unused NSException *error){}
+}
 void publishDiagnostics(){
     if(!NSThread.isMainThread)return;
     auto&s=state();ehr_diagnostics::Iterators value;value.tick=EHRDiagnosticTick();
@@ -258,6 +269,12 @@ extern "C" void EHRManagedIteratorProductionMakeTable(EHRManagedIteratorProducti
     [](EHRProductionIteratorStatusV1*s,size_t b)->int32_t{return contained([&]{return copyStatus(s,b);});}};}
 extern "C" EHRRuntimeStatus EHRManagedIteratorProductionFailClosed(EHRProductionIteratorFailureV1 *output,size_t bytes){return static_cast<EHRRuntimeStatus>(ehr_production_iterators::contained([&]{return ehr_production_iterators::failureCloseAll(output,bytes);}));}
 bool EHRProductionIteratorOwnsIdentity(void *identity){return ehr_production_iterators::ownedIdentity(identity);}
+EHRRuntimeStatus EHRManagedIteratorProductionSetFailureDiagnostics(EHRSourceCoroutineFailureReader reader,EHRSourceCoroutineFailureFlush flush){
+    if(!NSThread.isMainThread)return EHR_RUNTIME_WRONG_THREAD;
+    auto&s=ehr_production_iterators::state();if(!reader||!flush||(s.failureReader&&s.failureReader!=reader)||(s.failureFlush&&s.failureFlush!=flush))return EHR_RUNTIME_BAD_ARGUMENT;
+    s.failureReader=reader;s.failureFlush=flush;return EHR_RUNTIME_OK;
+}
+bool EHRManagedIteratorProductionFailureDiagnosticsBound(void){return NSThread.isMainThread&&ehr_production_iterators::state().failureReader&&ehr_production_iterators::state().failureFlush;}
 bool EHRProductionIteratorHasActiveIdentity(void *identity){using namespace ehr_production_iterators;
     if(!NSThread.isMainThread||!identity)return false;
     auto&s=state();std::lock_guard<std::mutex>lock(s.mutex);auto found=s.identities.find(identity);
@@ -270,10 +287,10 @@ bool EHRProductionIteratorMoveNext(void *identity,bool *result){using namespace 
     if(!NSThread.isMainThread){if(!ownedIdentity(identity))return false;++state().rejectedThreads;return true;}
     Lease pin;auto e=routed(identity,pin);if(!e)return terminalIdentity(identity);if(e->executing){e->cancelRequested=true;EHRRuntimeIteratorRaise(EHR_RUNTIME_BAD_ARGUMENT);}if(e->terminal)return true;
     releaseCurrent(*e);int32_t next=0,status=EHR_RUNTIME_MANAGED_EXCEPTION;EHRRuntimeToken current=0;
-    {EHRDiagnosticIteratorScope trace(e->registration,1);Executing guard(*e);@try{try{status=e->callbacks.step(e->source,&next,&current);}catch(...){status=EHR_RUNTIME_MANAGED_EXCEPTION;}}@catch(__unused NSException*error){status=EHR_RUNTIME_MANAGED_EXCEPTION;}trace.status=status;if(status!=EHR_RUNTIME_OK)publishDiagnostics();if(status==EHR_RUNTIME_LIMIT)EHRDiagnosticLimit(ehr_diagnostics::CallbackReturnedLimit,0,0);}
+    {EHRDiagnosticIteratorScope trace(e->registration,1);Executing guard(*e);@try{try{status=e->callbacks.step(e->source,&next,&current);}catch(...){status=EHR_RUNTIME_MANAGED_EXCEPTION;}}@catch(__unused NSException*error){status=EHR_RUNTIME_MANAGED_EXCEPTION;}trace.status=status;if(status!=EHR_RUNTIME_OK){recordSourceFailure(e->source,status);publishDiagnostics();}if(status==EHR_RUNTIME_LIMIT)EHRDiagnosticLimit(ehr_diagnostics::CallbackReturnedLimit,0,0);}
     if(e->failureRetire){release(current);failureFinish(*e,false);return true;}
     if(status!=EHR_RUNTIME_OK||e->cancelRequested||(next!=0&&next!=1)||(!next&&current)){
-        release(current);terminal(*e);++state().callbackFailures;EHRRuntimeIteratorRaise(status==EHR_RUNTIME_UNSUPPORTED?EHR_RUNTIME_UNSUPPORTED:EHR_RUNTIME_BAD_ARGUMENT);}
+        release(current);terminal(*e);++state().callbackFailures;publishDiagnostics();flushSourceFailure();EHRRuntimeIteratorRaise(status==EHR_RUNTIME_UNSUPPORTED?EHR_RUNTIME_UNSUPPORTED:EHR_RUNTIME_BAD_ARGUMENT);}
     if(!next){terminal(*e);return true;}
     if(current){void *value=nullptr;status=EHRRuntimeIteratorBorrow(current,&value);if(status!=EHR_RUNTIME_OK||!value){release(current);terminal(*e);EHRRuntimeIteratorRaise(EHR_RUNTIME_INVALID_TOKEN);}
         if(createsCurrentRootCycle(*e,value)){release(current);terminal(*e);EHRRuntimeIteratorRaise(EHR_RUNTIME_UNSUPPORTED);}e->currentIdentity=value;}

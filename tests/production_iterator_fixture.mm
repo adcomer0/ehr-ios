@@ -27,6 +27,7 @@ std::unordered_map<uint64_t,unsigned>steps,cancels,resets,otherSteps,otherCancel
 Object yielded{Value};Object *selfYield=nullptr,*cycleA=nullptr,*cycleB=nullptr;EHRManagedIteratorProductionV1 host{};uint64_t closeDuringStep=0;
 EHRProductionIteratorFailureV1 duringFailure{};Object *failingStopHandle=nullptr;
 bool failureReset=false,throwStop=false;
+unsigned failureReads=0,failureFlushes=0;uint64_t failureSource=0;
 bool failMarker=false,failWeak=false;size_t markerWrites=0;
 bool exercisePublication=false;std::atomic<bool>publicationTried{false},publicationFinished{false};
 std::thread publicationWorker;bool publicationHandled=false;
@@ -53,6 +54,14 @@ int32_t reset(uint64_t source){++resets[source];if(source==404&&failureReset){re
 int32_t cancel(uint64_t source){++cancels[source];if(source==401){EHRProductionIteratorFailureV1 nested{};require(EHRManagedIteratorProductionFailClosed(&nested,sizeof(nested))==0&&nested.sealed==1);}return source==403?4:0;}
 int32_t stepOther(uint64_t source,int32_t *next,uint64_t *current){++otherSteps[source];*next=0;*current=0;return 0;}
 int32_t cancelOther(uint64_t source){++otherCancels[source];return 0;}
+int32_t readFailure(uint64_t source,uint64_t *words,size_t count){
+ ++failureReads;require(count==12&&words&&cancels[source]==0);failureSource=source;
+ if(source!=51&&source!=61)return 3;
+ const uint64_t status=source==51?7:8;const uint64_t values[12]={1,12,source,12345,3,source==51?5u:2u,status,status,source,0,0,0};
+ std::copy(std::begin(values),std::end(values),words);return 0;
+}
+int32_t otherFailureReader(uint64_t,uint64_t *,size_t){return 3;}
+int32_t flushFailure(){++failureFlushes;require(ehr_diagnostics::state().snapshot().iterators.callback_failures>0);if(failureSource)require(cancels[failureSource]==1);return 0;}
 const EHRManagedIteratorCallbacksV1 callbacks{1,sizeof(callbacks),step,reset,cancel};
 const EHRManagedIteratorCallbacksV1 callbacksOther{1,sizeof(callbacksOther),stepOther,reset,cancelOther};
 uint64_t add(Object&object,uint64_t source,uint64_t *owned=nullptr,const EHRManagedIteratorCallbacksV1 *cb=&callbacks){auto token=root(object);uint64_t id=0;require(host.register_carrier(token,source,cb,&id)==0&&id);if(owned)*owned=token;else release(token);return id;}
@@ -85,6 +94,12 @@ int main(){@autoreleasepool{using namespace fixture;EHRManagedIteratorProduction
 #if defined(EHR_TEST_PRODUCTION_NO_HOOKS)
  Object unsupported{Enumerator};auto unsupportedRoot=root(unsupported);uint64_t unsupportedId=7;require(host.register_carrier(unsupportedRoot,1,&callbacks,&unsupportedId)==7&&unsupportedId==0);release(unsupportedRoot);require(handles.empty()&&status().entries==0);printf("PASS %u no-hook production registration rejection checks; no game executed\n",checks);return 0;
 #endif
+ require(!EHRManagedIteratorProductionFailureDiagnosticsBound());
+ require(EHRManagedIteratorProductionSetFailureDiagnostics(nullptr,flushFailure)==4);
+ int wrongBind=0;std::thread bindWorker([&]{wrongBind=EHRManagedIteratorProductionSetFailureDiagnostics(readFailure,flushFailure);});bindWorker.join();require(wrongBind==2);
+ require(EHRManagedIteratorProductionSetFailureDiagnostics(readFailure,flushFailure)==0&&EHRManagedIteratorProductionFailureDiagnosticsBound());
+ require(EHRManagedIteratorProductionSetFailureDiagnostics(readFailure,flushFailure)==0);
+ require(EHRManagedIteratorProductionSetFailureDiagnostics(otherFailureReader,flushFailure)==4);
  // Synthetic registry population exercises the actual existing256 guard;
  // no managed object/native entry is manufactured by production code.
  {auto&registry=ehr_production_iterators::state();for(uint64_t i=1;i<=256;++i)registry.entries.emplace(i,std::make_shared<ehr_production_iterators::Entry>());
@@ -144,6 +159,8 @@ int main(){@autoreleasepool{using namespace fixture;EHRManagedIteratorProduction
  Object resettable{Enumerator};id=add(resettable,60,&owned);require(EHRProductionIteratorMoveNext(&resettable,&next)&&next);require(EHRProductionIteratorReset(&resettable)&&resets[60]==1);require(raised([&]{EHRProductionIteratorCurrent(&resettable,&current);})==4);require(host.close(id)==0);finish(resettable,owned);
  Object limitedStep{Enumerator};id=add(limitedStep,61,&owned);
  require(raised([&]{EHRProductionIteratorMoveNext(&limitedStep,&next);})==EHR_RUNTIME_BAD_ARGUMENT&&cancels[61]==1);
+ require(failureReads==2&&failureFlushes==3&&failureSource==61);
+ {auto proof=ehr_diagnostics::state().snapshot();const auto&detail=proof.details[(proof.detail_total-1)%ehr_diagnostics::DetailLimit];require(detail.kind==3&&detail.source_id==61&&detail.iterator_type_hash==12345&&detail.iterator==id&&detail.stage==3&&detail.exception_kind==2&&detail.status==8&&detail.primary_status==8);}
  {auto proof=ehr_diagnostics::state().snapshot();const auto&guard=proof.guards[(proof.guard_total-1)%ehr_diagnostics::GuardLimit];
   require(guard.category==ehr_diagnostics::CallbackReturnedLimit&&guard.iterator==id&&guard.count==0&&guard.limit==0&&guard.iterator_entries==1&&guard.iterator_active==1);}
  finish(limitedStep,owned);

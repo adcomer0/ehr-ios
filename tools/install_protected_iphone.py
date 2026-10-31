@@ -140,6 +140,23 @@ def validate_auth_handoff_proof(attachments):
             "auth_handoff_self_test_not_passed")
 
 
+def validate_iterator_exception_factory_proof(attachments):
+    path=attachments/"EHRIteratorExceptionFactoryProof.json"
+    require(path.is_file() and not path.is_symlink() and 0<path.stat().st_size<=65536,
+            "iterator_exception_factory_proof_missing")
+    value=json.loads(path.read_text())
+    require(type(value) is dict and value.get("schema")=="ehr.iterator-exception-factory-proof.v1"
+            and value.get("success") is True and type(value.get("status")) is int and value["status"]==0
+            and all(type(value.get(key)) is int and value[key]==3 for key in ("constructedMask","exactTypeMask","caughtMask"))
+            and type(value.get("returnedMask")) is int and value["returnedMask"]==0
+            and all(type(value.get(key)) is int and value[key]==2 for key in ("nativeHandlesCreated","nativeHandlesReleased"))
+            and all(type(value.get(key)) is int and 0<=value[key]<=65536 for key in ("rootsBefore","rootsAfter"))
+            and value["rootsBefore"]==value["rootsAfter"] and value.get("rootAccountingBalanced") is True
+            and all(value.get(key) is False for key in ("reflectionActivatorUsed","nativeAotCallbackEntered",
+                "gameOwnerInvoked","accountOrNetworkActions","directPublicApiExploratoryProbe")),
+            "iterator_exception_factory_proof_not_passed")
+
+
 def validate_mac_proof(candidate, summary_path, runtime, *, team_id, bundle_id):
     candidate, summary_path = candidate.resolve(), summary_path.resolve()
     require(outside_git(candidate) and outside_git(summary_path), "artifact_input_inside_git")
@@ -182,6 +199,28 @@ def validate_mac_proof(candidate, summary_path, runtime, *, team_id, bundle_id):
     require(profile_pin == summary.get("candidate_profile_sha256"), "profile_differs_from_mac_test")
     info = plistlib.loads((candidate / "Info.plist").read_bytes())
     version_proof = proof.get("applicationVersion", {})
+    if info.get("EHRIteratorExceptionFactoryCompiled"):
+        require(status.get("sourceCoroutineFailureDiagnosticsBound") is True,"coroutine_failure_diagnostics_not_bound")
+        validate_iterator_exception_factory_proof(attachments)
+    if info.get("EHRLobbySearchCompiled"):
+        search=status.get("lobbySearch",{})
+        require(type(search) is dict and type(search.get("schemaVersion")) is int and search["schemaVersion"]==1
+                and type(search.get("compiled")) is int and search["compiled"]==1
+                and search.get("selected") is True and search.get("bound") is True
+                and all(type(search.get(key)) is int and search[key]==0 for key in ("preparedStatus","lastStatus","phase","calls",
+                    "originalReturned","applied","alreadyPresent","inactive","foreignCallsite","failures","workerForwards")),
+                "lobby_search_startup_not_ready")
+        path=attachments/"EHRLobbySearchProof.json"
+        require(path.is_file() and not path.is_symlink() and 0<path.stat().st_size<=65536,"lobby_search_proof_missing")
+        own=json.loads(path.read_text())
+        require(type(own) is dict and own.get("schema")=="ehr.lobby-search-owned-proof.v1" and own.get("success") is True
+                and type(own.get("status")) is int and own["status"]==0
+                and type(own.get("checks")) is int and 5<=own["checks"]<=1000
+                and type(own.get("phase")) is int and 0<=own["phase"]<=15
+                and all(type(own.get(key)) is int and 0<=own[key]<=65536 for key in ("rootsBefore","rootsAfter"))
+                and own["rootsBefore"]==own["rootsAfter"]
+                and all(type(own.get(key)) is int and own[key]==0 for key in ("realSearchRequests","accountActions","globalRegistrationWrites","hostPacketChanges")),
+                "lobby_search_proof_not_passed")
     if info.get("EHRItchAuthCompiled"):
         provider=status.get("itchAuthentication", {})
         native=provider.get("runtime", {}) if isinstance(provider,dict) else {}
