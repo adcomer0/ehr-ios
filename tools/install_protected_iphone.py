@@ -182,6 +182,48 @@ def validate_mac_proof(candidate, summary_path, runtime, *, team_id, bundle_id):
     require(profile_pin == summary.get("candidate_profile_sha256"), "profile_differs_from_mac_test")
     info = plistlib.loads((candidate / "Info.plist").read_bytes())
     version_proof = proof.get("applicationVersion", {})
+    if info.get("EHRItchAuthCompiled"):
+        provider=status.get("itchAuthentication", {})
+        native=provider.get("runtime", {}) if isinstance(provider,dict) else {}
+        require(info.get("EHRAuthProvider")=="itchio" and info.get("EHRItchOwnershipRequired") is True
+                and provider.get("selected") is True
+                and type(provider.get("preparedStatus")) is int and provider["preparedStatus"]==0
+                and provider.get("clearedForRestart") is False
+                and all(type(provider.get(key)) is int and provider[key]==0 for key in ("credentialEpoch","credentialClears"))
+                and all(provider.get(key) is False for key in ("ownershipVerified","ownershipPending","directoryAllowed","awaitingNativeLogin"))
+                and type(provider.get("ownershipResponse")) is dict and provider["ownershipResponse"]=={}
+                and type(provider.get("ownershipStatus")) is int and 0<=provider["ownershipStatus"]<=11
+                and all(type(provider.get(key)) is int and provider[key]==0 for key in ("ownershipHTTPStatus","ownershipChecks","nativeLoginWaitSeconds"))
+                and type(native.get("preparedStatus")) is int and native["preparedStatus"]==0
+                and native.get("enabled") is True
+                and all(type(native.get(key)) is int and native[key]==0 for key in (
+                    "sdkLoginCalls","completionCount","originalSuccessCalls","originalFailureCalls",
+                    "newUserMigrationChecks","newUserMigrationRejections"))
+                and type(native.get("newUserMigrationStatus")) is int and native["newUserMigrationStatus"]==1
+                and all(native.get(key) is False for key in ("resultKnown","pending","fullGameCompleted",
+                    "awaitingNewUserConfirmation","continuityAvailable","originalCallbackDelivered","continuedNewUser","newUserMigrationValidated")),
+                "itch_provider_startup_not_ready")
+        itch_path=attachments/"EHRItchAuthProof.json"
+        require(itch_path.is_file() and not itch_path.is_symlink(),"itch_marshal_proof_missing")
+        itch=json.loads(itch_path.read_text())
+        require(isinstance(itch,dict) and itch.get("schema")=="ehr.itch-auth-marshal-proof.v1"
+                and itch.get("success") is True and type(itch.get("status")) is int and itch["status"]==0
+                and itch.get("ownResultPreserved") is True
+                and itch.get("existingManagerAvailable") is True
+                and type(itch.get("delegateFactoryStatus")) is int and itch["delegateFactoryStatus"]==0
+                and itch.get("originalSilentDelegateFactoryPassed") is True
+                and itch.get("gameOwnerConstructed") is False
+                and type(itch.get("rootsBefore")) is int and itch["rootsBefore"]>=0
+                and type(itch.get("rootsAfter")) is int
+                and itch["rootsBefore"]==itch.get("rootsAfter")
+                and all(itch.get(key) is False for key in ("realLoginInvoked","gameCallbackInvoked",
+                    "credentialRead","accountCreation","accountLinking")),"itch_marshal_proof_not_passed")
+    if info.get("EHRDirectoryCompiled"):
+        directory=status.get("websiteDirectory",{})
+        require(info.get("EHRItchAuthCompiled") is True and info.get("EHRItchOwnershipRequired") is True
+                and directory.get("compiled") is True and directory.get("bound") is True
+                and directory.get("allowed") is False
+                and all(type(directory.get(key)) is int and directory[key]==0 for key in ("ticks","tickStatus")),"ehr_directory_startup_not_ready")
     if info.get("EHRNetworkDiagnosticsCompiled"):
         network = status.get("numericDiagnostics", {}).get("networkDisconnect", {})
         require(isinstance(network, dict) and network.get("schemaVersion") == 1

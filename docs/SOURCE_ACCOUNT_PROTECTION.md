@@ -2,6 +2,13 @@
 
 # Protected iOS source profile
 
+The baseline transform described here still disables the optional website
+directory. The selected build-59 snapshot subsequently applies a separate
+[ownership-gated directory adapter](IOS_LOBBY_DIRECTORY.md), off by default.
+It restores legitimate listing and `/confirmauth` requests only when the
+native full-account/ownership predicate allows them. The six descriptor
+exclusions and `/level` protection below are unchanged.
+
 The profile excludes six exact source callback descriptors and removes the optional EHR website directory's EOS credential producer. Official game authentication, permission checks, ban checks, XP, purchases, and save implementations are unchanged. `/level` remains recognized and explains that this test profile does not change player levels.
 
 The reviewed upstream is `Gurge44/EndlessHostRoles` commit `ce23f0d050f617a59507e5bb0fbfff751d4b5134`, IL2CPP profile. `tools/source_port/account_protection_policy.json` records all reviewed source hashes and the exact callback/selector identities. The adapter requires that clean commit, all 17 file hashes, and matching dispatcher and selector inventories. A changed pin fails rather than broadening exclusions.

@@ -165,6 +165,85 @@ class InstallerGuards(unittest.TestCase):
                 self.run_fixture(runner)
             self.assertEqual(runner.calls,[])
 
+    def enable_itch_provider(self):
+        path=self.app/'Info.plist';info=plistlib.loads(path.read_bytes())
+        info.update(EHRItchAuthCompiled=True,EHRAuthProvider='itchio',EHRItchOwnershipRequired=True);path.write_bytes(plistlib.dumps(info))
+        proof=json.loads(self.proof.read_text())
+        native=dict(preparedStatus=0,enabled=True,sdkLoginCalls=0,completionCount=0,
+                    originalSuccessCalls=0,originalFailureCalls=0,resultKnown=False,pending=False,fullGameCompleted=False,
+                    newUserMigrationChecks=0,newUserMigrationRejections=0,newUserMigrationStatus=1,
+                    awaitingNewUserConfirmation=False,continuityAvailable=False,originalCallbackDelivered=False,continuedNewUser=False,newUserMigrationValidated=False)
+        proof['status']['itchAuthentication']=dict(selected=True,preparedStatus=0,runtime=native,clearedForRestart=False,credentialEpoch=0,credentialClears=0,
+            ownershipStatus=6,ownershipHTTPStatus=0,ownershipChecks=0,ownershipVerified=False,ownershipPending=False,directoryAllowed=False,
+            awaitingNativeLogin=False,nativeLoginWaitSeconds=0,ownershipResponse={})
+        self.proof.write_text(json.dumps(proof))
+        own=dict(schema='ehr.itch-auth-marshal-proof.v1',success=True,status=0,
+                 ownResultPreserved=True,rootsBefore=4,rootsAfter=4,realLoginInvoked=False,
+                 existingManagerAvailable=True,delegateFactoryStatus=0,
+                 originalSilentDelegateFactoryPassed=True,gameOwnerConstructed=False,
+                 gameCallbackInvoked=False,credentialRead=False,accountCreation=False,accountLinking=False)
+        self.proof.with_name('EHRItchAuthProof.json').write_text(json.dumps(own))
+
+    def test_itch_provider_requires_ready_and_untouched_startup_before_device_access(self):
+        self.enable_itch_provider();baseline=json.loads(self.proof.read_text())
+        for changes in ({'preparedStatus':1},{'enabled':False},{'sdkLoginCalls':1},
+                        {'resultKnown':True},{'pending':True},{'fullGameCompleted':True},
+                        {'originalSuccessCalls':1},{'preparedStatus':False},
+                        {'newUserMigrationChecks':1},{'newUserMigrationRejections':1},
+                        {'newUserMigrationStatus':0},{'newUserMigrationStatus':True},
+                        {'awaitingNewUserConfirmation':True},{'continuityAvailable':True},
+                        {'originalCallbackDelivered':True},{'continuedNewUser':True},{'newUserMigrationValidated':True}):
+            proof=json.loads(json.dumps(baseline));proof['status']['itchAuthentication']['runtime'].update(changes)
+            self.proof.write_text(json.dumps(proof));runner=OwnDeviceRunner()
+            with self.subTest(changes=changes),self.assertRaisesRegex(M.Rejected,'itch_provider_startup_not_ready'):
+                self.run_fixture(runner)
+            self.assertEqual(runner.calls,[])
+        self.proof.write_text(json.dumps(baseline));runner=OwnDeviceRunner(disconnected=True)
+        self.assertIn('unreachable',self.run_fixture(runner,preflight_only=True)['status'])
+        for changes in ({'clearedForRestart':True},{'credentialEpoch':1},{'credentialClears':1},{'credentialClears':False},
+                        {'ownershipVerified':True},{'ownershipPending':True},{'directoryAllowed':True},
+                        {'awaitingNativeLogin':True},{'awaitingNativeLogin':0},
+                        {'nativeLoginWaitSeconds':1},{'nativeLoginWaitSeconds':False},{'nativeLoginWaitSeconds':-1},
+                        {'ownershipChecks':1},{'ownershipChecks':False},{'ownershipHTTPStatus':200},
+                        {'ownershipStatus':True},{'ownershipStatus':-1},{'ownershipStatus':12},
+                        {'ownershipResponse':None},{'ownershipResponse':[]},{'ownershipResponse':{'parserStage':7}}):
+            proof=json.loads(json.dumps(baseline));proof['status']['itchAuthentication'].update(changes)
+            self.proof.write_text(json.dumps(proof));runner=OwnDeviceRunner()
+            with self.subTest(changes=changes),self.assertRaisesRegex(M.Rejected,'itch_provider_startup_not_ready'):
+                self.run_fixture(runner)
+            self.assertEqual(runner.calls,[])
+
+    def test_directory_requires_bound_default_deny_before_device_access(self):
+        self.enable_itch_provider()
+        path=self.app/'Info.plist';info=plistlib.loads(path.read_bytes());info['EHRDirectoryCompiled']=True;path.write_bytes(plistlib.dumps(info))
+        baseline=json.loads(self.proof.read_text())
+        for directory in ({},{'compiled':True,'bound':False,'allowed':False},{'compiled':True,'bound':True,'allowed':True},
+                          {'compiled':True,'bound':True,'allowed':False,'ticks':1,'tickStatus':0},
+                          {'compiled':True,'bound':True,'allowed':False,'ticks':0,'tickStatus':True}):
+            proof=json.loads(json.dumps(baseline));proof['status']['websiteDirectory']=directory;self.proof.write_text(json.dumps(proof));runner=OwnDeviceRunner()
+            with self.subTest(directory=directory),self.assertRaisesRegex(M.Rejected,'ehr_directory_startup_not_ready'):
+                self.run_fixture(runner)
+            self.assertEqual(runner.calls,[])
+        baseline['status']['websiteDirectory']=dict(compiled=True,bound=True,allowed=False,ticks=0,tickStatus=0);self.proof.write_text(json.dumps(baseline));runner=OwnDeviceRunner(disconnected=True)
+        self.assertIn('unreachable',self.run_fixture(runner,preflight_only=True)['status'])
+
+    def test_itch_provider_rejects_missing_or_actionful_marshal_proof_before_device_access(self):
+        self.enable_itch_provider();path=self.proof.with_name('EHRItchAuthProof.json');original=json.loads(path.read_text())
+        path.unlink();runner=OwnDeviceRunner()
+        with self.assertRaisesRegex(M.Rejected,'itch_marshal_proof_missing'):self.run_fixture(runner)
+        self.assertEqual(runner.calls,[])
+        for changes in ({'success':False},{'status':True},{'ownResultPreserved':False},
+                        {'existingManagerAvailable':False},{'delegateFactoryStatus':False},
+                        {'delegateFactoryStatus':7},{'originalSilentDelegateFactoryPassed':False},
+                        {'gameOwnerConstructed':True},
+                        {'rootsAfter':3},{'rootsAfter':True},{'realLoginInvoked':True},
+                        {'gameCallbackInvoked':True},{'credentialRead':True},
+                        {'accountCreation':True},{'accountLinking':True}):
+            path.write_text(json.dumps(dict(original,**changes)));runner=OwnDeviceRunner()
+            with self.subTest(changes=changes),self.assertRaisesRegex(M.Rejected,'itch_marshal_proof_not_passed'):
+                self.run_fixture(runner)
+            self.assertEqual(runner.calls,[])
+
     def test_network_disconnect_scalar_capture_requires_untouched_mac_startup(self):
         path=self.app/'Info.plist';info=plistlib.loads(path.read_bytes());info['EHRNetworkDiagnosticsCompiled']=True
         path.write_bytes(plistlib.dumps(info));original=json.loads(self.proof.read_text())

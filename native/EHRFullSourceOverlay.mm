@@ -1,11 +1,21 @@
 #import <UIKit/UIKit.h>
 #import "EHRFullSourceRuntime.h"
 #import "EHRExportSharing.h"
+#if EHR_HAS_ITCH_AUTH
+#import "EHRItchAuthProvider.h"
+#import "EHROwnershipCover.h"
+#endif
 
 @interface EHRFullStatusWindow:UIWindow
 @end
 @implementation EHRFullStatusWindow
 - (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
+#if EHR_HAS_ITCH_AUTH
+    // Recheck before every touch, so removing a key cannot leave a one-timer
+    // interval in which the game's controls remain reachable.
+    for(UIView *view in self.rootViewController.view.subviews)
+        if([view isKindOfClass:EHROwnershipCover.class])[(EHROwnershipCover *)view refreshOwnership];
+#endif
     UIView *hit=[super hitTest:point withEvent:event];
     return hit==self||hit==self.rootViewController.view?nil:hit;
 }
@@ -21,6 +31,10 @@
 @property(nonatomic,strong) UILabel *label;
 @property(nonatomic,strong) UIScrollView *statusScroll;
 @property(nonatomic,strong) UIButton *exportsButton;
+@property(nonatomic,strong) UIButton *signInButton;
+#if EHR_HAS_ITCH_AUTH
+@property(nonatomic,strong) EHROwnershipCover *ownershipCover;
+#endif
 @property(nonatomic) CGPoint badgePosition;
 @property(nonatomic) CGPoint dragOrigin;
 - (void)layoutOverlay;
@@ -31,6 +45,11 @@
 @end
 @implementation EHRFullStatusPanel
 - (void)toggle {self.panel.hidden=!self.panel.hidden;[self refresh];}
+- (void)signIn {
+#if EHR_HAS_ITCH_AUTH
+    self.panel.hidden=YES;EHRItchAuthProviderPresentAccount();
+#endif
+}
 - (void)dragBadge:(UIPanGestureRecognizer *)gesture {
     if(gesture.state==UIGestureRecognizerStateBegan){
         self.dragOrigin=self.button.frame.origin;
@@ -77,12 +96,29 @@
     self.exportsButton=[UIButton buttonWithType:UIButtonTypeSystem];self.exportsButton.tintColor=UIColor.cyanColor;
     [self.exportsButton setTitle:@"Share exports" forState:UIControlStateNormal];self.exportsButton.accessibilityLabel=@"Share EHR log and translation exports";
     [self.exportsButton addTarget:self action:@selector(shareExports) forControlEvents:UIControlEventTouchUpInside];
-    [self.panel addSubview:self.exportsButton];self.window.hidden=NO;[self layoutOverlay];[self refresh];
+    [self.panel addSubview:self.exportsButton];
+#if EHR_HAS_ITCH_AUTH
+    self.signInButton=[UIButton buttonWithType:UIButtonTypeSystem];self.signInButton.tintColor=UIColor.cyanColor;
+    self.signInButton.titleLabel.font=[UIFont systemFontOfSize:13];self.signInButton.titleLabel.numberOfLines=2;
+    [self.signInButton setTitle:@"Account" forState:UIControlStateNormal];
+    self.signInButton.accessibilityLabel=@"EHR account and saved login";
+    [self.signInButton addTarget:self action:@selector(signIn) forControlEvents:UIControlEventTouchUpInside];
+    [self.panel addSubview:self.signInButton];
+    self.ownershipCover=[[EHROwnershipCover alloc] initWithFrame:self.window.rootViewController.view.bounds];
+    [self.window.rootViewController.view addSubview:self.ownershipCover];
+#endif
+    self.window.hidden=NO;[self layoutOverlay];[self refresh];
+#if EHR_HAS_ITCH_AUTH
+    EHRItchAuthProviderSetPresenter(self.window.rootViewController);
+#endif
     [NSTimer scheduledTimerWithTimeInterval:1 target:self selector:@selector(refresh) userInfo:nil repeats:YES];
 }
 - (void)layoutOverlay {
     if(!self.button||!self.panel)return;
     UIView *root=self.window.rootViewController.view;
+#if EHR_HAS_ITCH_AUTH
+    self.ownershipCover.frame=root.bounds;
+#endif
     CGRect safe=CGRectInset(UIEdgeInsetsInsetRect(root.bounds,root.safeAreaInsets),12,10);
     CGFloat width=MAX(0,MIN(64,safe.size.width)),height=MAX(0,MIN(44,safe.size.height));
     self.button.frame=CGRectMake(CGRectGetMinX(safe)+MAX(0,safe.size.width-width)*self.badgePosition.x,
@@ -96,14 +132,30 @@
     self.panel.frame=CGRectMake(panelX,placeBelow?CGRectGetMaxY(self.button.frame)+8:CGRectGetMinY(self.button.frame)-8-panelHeight,panelWidth,panelHeight);
     self.statusScroll.frame=CGRectMake(14,12,MAX(0,self.panel.bounds.size.width-28),MAX(0,self.panel.bounds.size.height-80));
     self.exportsButton.frame=CGRectMake(14,MAX(0,self.panel.bounds.size.height-56),MAX(0,self.panel.bounds.size.width-28),MIN(44,self.panel.bounds.size.height));
+    if(self.signInButton){
+        const CGFloat half=MAX(0,(self.panel.bounds.size.width-36)/2);
+        self.signInButton.frame=CGRectMake(14,MAX(0,self.panel.bounds.size.height-56),half,MIN(44,self.panel.bounds.size.height));
+        self.exportsButton.frame=CGRectMake(22+half,MAX(0,self.panel.bounds.size.height-56),half,MIN(44,self.panel.bounds.size.height));
+    }
     CGSize textSize=[self.label sizeThatFits:CGSizeMake(self.statusScroll.bounds.size.width,CGFLOAT_MAX)];
     self.label.frame=CGRectMake(0,0,self.statusScroll.bounds.size.width,textSize.height);self.statusScroll.contentSize=self.label.bounds.size;
 }
 - (void)refresh {
+    EHRFullSourceRefreshDirectory();
     NSDictionary *status=EHRFullSourceCopyRuntimeStatus(),*app=status[@"application"]?:@{},*info=NSBundle.mainBundle.infoDictionary;
     BOOL active=[app[@"state"] unsignedIntValue]==3,loaded=[app[@"optionsLoaded"] boolValue];
     NSString *title=active?(loaded?@"EHR running":@"EHR loading roles"):[status[@"attempted"] boolValue]?@"EHR status":@"EHR starting";
     self.button.accessibilityValue=title;
+#if EHR_HAS_ITCH_AUTH
+    NSDictionary *auth=EHRItchAuthProviderCopyStatus(),*authRuntime=auth[@"runtime"]?:@{};
+    const BOOL signedIn=[authRuntime[@"fullGameCompleted"] boolValue];
+    [self.signInButton setTitle:@"Account" forState:UIControlStateNormal];
+    self.signInButton.accessibilityValue=signedIn?@"Signed in":@"Sign-in settings";
+    self.signInButton.enabled=YES;
+    [self.ownershipCover refreshOwnership];
+    self.button.hidden=!self.ownershipCover.hidden;
+    if(!self.ownershipCover.hidden)self.panel.hidden=YES;
+#endif
     NSString *message=active?(loaded?@"EHR options are initialized. Open the game settings and EHR controls to playtest.":@"Waiting for the game's role and option initialization."):
         [NSString stringWithFormat:@"Startup: %@\nStatus: %@",status[@"stage"]?:@"waiting for game startup",status[@"status"]?:@1];
     self.label.text=[NSString stringWithFormat:@"EHR %@ · iPhone %@ (%@)\nGame %@\n\n%@\n%@\n\nUse a separate test account. Account linking, progress preservation and online play have not been verified.\n\nIndependent port; not endorsed by Innersloth.",
@@ -112,8 +164,16 @@
     self.label.frame=CGRectMake(0,0,self.statusScroll.bounds.size.width,textSize.height);self.statusScroll.contentSize=self.label.bounds.size;
 }
 @end
+static void EHRInstallStatusWhenSceneReady(void) {
+    static EHRFullStatusPanel *panel;
+    if(!panel)panel=[EHRFullStatusPanel new];
+    if(panel.window)return;
+    [panel install];
+    if(!panel.window)dispatch_after(dispatch_time(DISPATCH_TIME_NOW,100*NSEC_PER_MSEC),dispatch_get_main_queue(),^{EHRInstallStatusWhenSceneReady();});
+}
 __attribute__((constructor)) static void EHRFullStatusLoad(void) {
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW,3*NSEC_PER_SEC),dispatch_get_main_queue(),^{
-        static EHRFullStatusPanel *panel;panel=[EHRFullStatusPanel new];[panel install];
-    });
+    // This library is also loaded by a passive runtime-validation host. Only
+    // the actual game launcher owns interactive UI and saved-key acquisition.
+    if(![NSBundle.mainBundle.infoDictionary[@"CFBundleExecutable"] isEqualToString:@"EHRNativeGame"])return;
+    dispatch_async(dispatch_get_main_queue(),^{EHRInstallStatusWhenSceneReady();});
 }

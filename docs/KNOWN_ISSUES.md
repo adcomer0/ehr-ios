@@ -2,6 +2,43 @@
 
 This snapshot is incomplete. Physical build 48 reached Online lobby hosting and mod settings, then a black screen after starting the game. Physical build 49 reached a solo game and an early win, consistent with EHR's low-player end conditions. Its trace reached custom intro, ship initialization, game start and game end without new source failures. Physical build 50 then disconnected the host when a vanilla peer joined. Following build-52 delivery, the user reports playing a match with a vanilla peer. Authentication, multiplayer stability and full role behavior remain unresolved or unverified.
 
+## Ownership and EHR website integration
+
+Build 59 requires a claimed Among Us entitlement in the itch.io account behind
+the entered key. App Store ownership does not appear in that separate library.
+The current client blocks game input until its ownership check passes and keeps
+EHR directory requests gated on actual completed game sign-in. The website
+listing option defaults off; enable it before using a fresh `/confirmauth` code.
+The exact helper verified a real non-owning account as a negative lookup on
+Mac. After purchase, build 61 confirmed that account on iPhone, followed by
+actual EOS success and full game-account completion.
+Client fixtures and signed startup do not establish live EHR website acceptance,
+backend policy or authenticated multiplayer stability. See
+[ownership](ITCH_SIGN_IN.md) and [website contracts](IOS_LOBBY_DIRECTORY.md).
+
+## Joining another EHR host
+
+Builds through 61 can reject an official 8.0.3 host despite displaying the same
+version. The source revision, plugin version and fork match, but a detached
+upstream checkout generated `ce23f0d(HEAD)` instead of the official release's
+`ce23f0d(main)`. EHR compares the complete tag, so this is a real metadata
+mismatch. The build correction uses verified release provenance and preserves
+the existing version comparator. After installing build 62, the player confirmed
+joining another official 8.0.3 host and staying connected past the previous
+five-second disconnect. This does not establish every role or complete-round
+compatibility.
+
+## Remembered-key startup timing
+
+An ownership-verified saved login can reach the outer game-login request before
+normal credential capture is ready. The earlier provider retired that attempt,
+so a later Account sign-in could ask for the key again. The corrected provider
+retains the same verified attempt for up to 120 seconds only when no form or
+SDK activity exists. Normal capture or explicit Account sign-in can consume it;
+expiry, cancellation, clearing and new input fence it. Timers do not retry login.
+A genuine missing-profile result without a visible form remains unconfirmed;
+there is no automatic account creation.
+
 ## Later gameplay observation
 
 The subsequent host numeric cache contains player join, host-start/ship and
@@ -79,6 +116,36 @@ fallback used enum 10. The original last-only field described that fallback.
 The bounded observer recorded no unknown types, overwrites or faults. See
 [handoff diagnostics](AUTH_HANDOFF_DIAGNOSTICS.md). The rejection cause remains
 unproven; publisher/provider configuration may require confirmation.
+
+## itch.io first-profile continuation
+
+The build-55 phone test submitted one key and received one actual EOS result 3
+(`InvalidUser`), with local status 0 and no provider faults. The SDK result was
+not forwarded into the game's account-creation path in that build; no completed
+sign-in was observed. This result identifies a missing product-user path rather
+than proving invalid credentials or an Apple rejection.
+
+The next implementation offers an explicit **Create new game profile** action
+only for a genuine callback with a usable continuation. Its original game flow
+can migrate device guest state, so both confirmation and the actual migration
+boundary require the original device guest identifier to be empty. Unknown or
+existing guest state stops this route without clearing or transferring data.
+The original age, storage and permission prompts remain in charge. Full
+completion is a separate observation; the original EOS result 3 is preserved.
+See [the provider flow and limits](ITCH_SIGN_IN.md).
+
+The build-56 phone attempt then returned local 7 / EOS 3 at the confirmation
+precheck, before any original callback or migration entry. A separately signed
+**EHR Sign-in Test** app was then installed to test fresh storage while retaining
+the old guest and the unchanged guard.
+
+On that test phone, build 57 reached the real full-account endpoint after the
+explicit first-profile action and passed guest guard, preserving EOS result 3.
+A later recorded run reused the remembered credential without a form or manual
+submission, returned EOS success (0), and again reached full game completion.
+This supports the isolated app's normal account and saved-key paths; it does
+not validate existing-guest migration, valuable-account safety, every renewal
+or authenticated multiplayer. See [the phone evidence](ISOLATED_SIGNIN_TEST.md).
 
 ## Other boundaries
 

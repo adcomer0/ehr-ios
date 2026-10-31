@@ -325,7 +325,7 @@ internal static class RPCHandlerPatch
                         break;
                     case RpcCalls.SendChat:
                         string text = subReader.ReadString();
-                        Logger.Info($"({__instance.FriendCode}|{__instance.GetClient()?.GetHashedPuid()}) {__instance.GetNameWithRole()}: {text}", "ReceiveChat");
+                        Logger.Info($"({__instance.FriendCode}|{__instance.GetClient()?.GetHashedPuid()}) {__instance.GetNameWithRole()}: {EHRDirectoryLog.ForLog(text)}", "ReceiveChat");
                         ChatCommands.OnReceiveChat(__instance, text, out bool canceled);
 
                         if (canceled)
@@ -663,7 +663,7 @@ internal static class RPCHandlerPatch
                     if (!command.CanUseCommand(__instance)) break;
 
                     command.Action(__instance, text, text.Split(' '));
-                    Logger.Info($"Invoke Command: {command.Action.Method.Name} ({__instance.Data?.PlayerName}, {text})", "RequestCommandProcessing");
+                    Logger.Info($"Invoke Command: {command.Action.Method.Name} ({__instance.Data?.PlayerName}, {EHRDirectoryLog.ForLog(text)})", "RequestCommandProcessing");
                     break;
                 }
                 case CustomRPC.SyncPostman:

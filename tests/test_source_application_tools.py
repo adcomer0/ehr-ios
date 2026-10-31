@@ -44,6 +44,7 @@ class SourceManifestTests(unittest.TestCase):
         root=ET.parse(self.root/'out/EHR.csproj').getroot()
         self.assertEqual({r['logicalName'] for r in manifest['resources']},{'EHR.Resources.Images.Icon.png','EHR.Resources.en.json'})
         self.assertEqual(root.findtext('PropertyGroup/GitRoot'),str(self.upstream.resolve()))
+        self.assertEqual(root.findtext('PropertyGroup/GitBranch'),'main')
         self.assertEqual(root.find('ItemGroup/PackageReference[@Include="JetBrains.Annotations"]').get('Aliases'),'global,JetBrainsAnnotationsNuget')
         self.assertEqual(root.findtext('PropertyGroup/PublishAotUsingRuntimePack'),'true')
         self.assertFalse(list(root.iter('Reference')))
@@ -90,13 +91,13 @@ class SourceManifestTests(unittest.TestCase):
     def test_success_without_native_artifact_fails_closed(self):
         manifest=self.capture();path=self.root/'manifest.json';path.write_text(json.dumps(manifest));output=self.root/'build';errors=io.StringIO()
         argv=['build_source_application.py','build','--manifest',str(path),'--output',str(output),'--dotnet',str(self.root/'own-fake-dotnet')]
-        with patch.object(sys,'argv',argv),patch.object(build.subprocess,'check_output',return_value=build.COMMIT),patch.object(build.subprocess,'run',return_value=SimpleNamespace(returncode=0)),redirect_stderr(errors):
+        with patch.object(sys,'argv',argv),patch.object(build,'verify_upstream_release',return_value=build.release_identity_policy()),patch.object(build.subprocess,'run',return_value=SimpleNamespace(returncode=0)),redirect_stderr(errors):
             with self.assertRaises(SystemExit) as exit:build.main()
         self.assertEqual(exit.exception.code,2);self.assertIn('without required EHR.dylib',errors.getvalue());self.assertFalse((output/'build-proof.json').exists())
     def test_existing_publish_artifact_is_never_reused(self):
         manifest=self.capture();path=self.root/'manifest.json';path.write_text(json.dumps(manifest));output=self.root/'build';(output/'publish').mkdir(parents=True);(output/'publish/EHR.dylib').write_bytes(b'own stale artifact');errors=io.StringIO()
         argv=['build_source_application.py','build','--manifest',str(path),'--output',str(output),'--dotnet',str(self.root/'own-fake-dotnet')]
-        with patch.object(sys,'argv',argv),patch.object(build.subprocess,'check_output',return_value=build.COMMIT),patch.object(build.subprocess,'run') as run,redirect_stderr(errors):
+        with patch.object(sys,'argv',argv),patch.object(build,'verify_upstream_release',return_value=build.release_identity_policy()),patch.object(build.subprocess,'run') as run,redirect_stderr(errors):
             with self.assertRaises(SystemExit) as exit:build.main()
         self.assertEqual(exit.exception.code,2);run.assert_not_called();self.assertIn('stale artifacts',errors.getvalue())
 

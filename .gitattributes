@@ -1,0 +1,3 @@
+# Preserve byte-pinned source line endings; recognize upstream CRLF when
+# checking whitespace without normalizing or rewriting the selected sources.
+source-app/compiled/**/*.cs whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol

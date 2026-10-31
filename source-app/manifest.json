@@ -340,7 +340,7 @@
     },
     {
       "path": "compiled/81/LobbySharingAPI.cs",
-      "sha256": "5bb57c0d8246d05ba63fe95105ef03b5d40fed27ca70c192908b06bc1d4f416e"
+      "sha256": "4b04ac7d5dd5abf7305432d9ea1b2ba4cc6a1aa6fe1749fbcb8b7f94d6c75be7"
     },
     {
       "path": "compiled/82/LocateArrow.cs",
@@ -424,7 +424,7 @@
     },
     {
       "path": "compiled/102/OptionHolder.cs",
-      "sha256": "1e6245db5b1aabe290cd9f721de33c0442472ad7d8e4bb940de87e54d1e835ac"
+      "sha256": "60d4181a1659e7166cbf2398f29ea1f859b8f1271f9c773b8f27b1c942811884"
     },
     {
       "path": "compiled/103/BooleanOptionItem.cs",
@@ -440,7 +440,7 @@
     },
     {
       "path": "compiled/106/OptionItem.cs",
-      "sha256": "b507632168bb2ca6568242f9f8a8fb7a08f574f9608e8637fc7d1e5d260d8274"
+      "sha256": "77ee3a4fe3685146d7f606a67d63e0e4a5edde7e2623d12d8235af8e5f22250a"
     },
     {
       "path": "compiled/107/PresetOptionItem.cs",
@@ -484,7 +484,7 @@
     },
     {
       "path": "compiled/117/RPC.cs",
-      "sha256": "321fe6e7daaff0b6fc9bf3879298aeb79106416a69a011f3cc60f87a8fef0f39"
+      "sha256": "ecb5a47bba4c957b9a21411a6fee61f0ecdc6418bdebfbdd2496dcff3f992eb3"
     },
     {
       "path": "compiled/118/HashRandomWrapper.cs",
@@ -568,7 +568,7 @@
     },
     {
       "path": "compiled/138/ChatCommandPatch.cs",
-      "sha256": "95eadf5ba14556a177feef5c3b6a3278c0ba3674d42eec97df86d5b3e6ba357e"
+      "sha256": "621795b1bdec235ac39d14b15e3ded045e30df1dd0e76f3f7389eca9ab37be0f"
     },
     {
       "path": "compiled/139/ChatControlPatch.cs",
@@ -3136,7 +3136,7 @@
     },
     {
       "path": "compiled/780/EHRProtectedLobbyDirectoryOption.cs",
-      "sha256": "a42ba328faf04fbb44a37d70df48191793d7a67ae584201d324c8ee9d1a61f1e"
+      "sha256": "e3bf4364b9ca3c5f618cbdaf6a5cdc4e9f0b52b0e219c653790fbb5232b201be"
     },
     {
       "path": "compiled/781/EHRPortableJsonContext.cs",

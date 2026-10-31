@@ -1,0 +1,13 @@
+{
+  "schema": "ehr.upstream-release-identity.v1",
+  "upstreamCommit": "ce23f0d050f617a59507e5bb0fbfff751d4b5134",
+  "pluginVersion": "8.0.3",
+  "forkId": "EHR",
+  "gitBranch": "main",
+  "gitCommit": "ce23f0d",
+  "gitInfoVersion": "3.3.4",
+  "sourceUrl": "https://github.com/Gurge44/EndlessHostRoles/tree/ce23f0d050f617a59507e5bb0fbfff751d4b5134",
+  "releaseUrl": "https://github.com/Gurge44/EndlessHostRoles/releases/tag/v8.0.3",
+  "releaseAssetUrl": "https://github.com/Gurge44/EndlessHostRoles/releases/download/v8.0.3/EHR.dll",
+  "releaseAssetSha256": "612cf1b4a17a985da49dbb72c0e14c5e98f16c3e5361bbdd850add20737dc103"
+}

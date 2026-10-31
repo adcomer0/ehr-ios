@@ -1,3 +1,5 @@
+// Historical standalone-lab artwork only. The branded game uses the tracked
+// AppIcon.png master and --app-icon; do not overwrite that master with this.
 import AppKit
 import Foundation
 
