@@ -31,7 +31,9 @@ NSDictionary *dictionary(const ehr_diagnostics::Snapshot &s) {
  const auto&g=s.gateway;const auto&i=s.iterators;
  NSMutableArray *details=[NSMutableArray arrayWithCapacity:s.detail_count];
  for(size_t n=0;n<s.detail_count;++n){const auto&d=s.details[(s.detail_total-s.detail_count+n)%ehr_diagnostics::DetailLimit];
-  [details addObject:@{@"sequence":@(d.sequence),@"monotonicNs":@(d.tick),@"targetId":@(d.target),@"methodRva":@(d.rva),@"registrationId":@(d.iterator),@"kind":@(d.kind),@"sourceSequence":@(d.source_sequence),@"stage":@(d.stage),@"callbackIndexPlusOne":@(d.callback),@"argumentIndexPlusOne":@(d.argument),@"exceptionKind":@(d.exception_kind),@"status":@(d.status),@"originalEntered":@(d.original_entered),@"metadataMethodToken":@(d.method_token),@"metadataOwnerHash":@(d.owner_hash),@"metadataMethodHash":@(d.method_hash)}];}
+  NSMutableDictionary *detail=[@{@"sequence":@(d.sequence),@"monotonicNs":@(d.tick),@"targetId":@(d.target),@"methodRva":@(d.rva),@"registrationId":@(d.iterator),@"kind":@(d.kind),@"sourceSequence":@(d.source_sequence),@"stage":@(d.stage),@"callbackIndexPlusOne":@(d.callback),@"argumentIndexPlusOne":@(d.argument),@"exceptionKind":@(d.exception_kind),@"status":@(d.status),@"originalEntered":@(d.original_entered),@"metadataMethodToken":@(d.method_token),@"metadataOwnerHash":@(d.owner_hash),@"metadataMethodHash":@(d.method_hash)} mutableCopy];
+  if(d.kind==3)[detail addEntriesFromDictionary:@{@"sourceId":@(d.source_id),@"iteratorTypeHash":@(d.iterator_type_hash),@"primaryStatus":@(d.primary_status),@"cleanupExceptionKind":@(d.cleanup_exception_kind),@"cleanupStatus":@(d.cleanup_status)}];
+  [details addObject:detail];}
  const auto&a=s.application;
  NSMutableDictionary *result=[@{@"schema":@"ehr.numeric-runtime-diagnostics.v1",@"sequence":@(s.sequence),@"routeLimit":@(ehr_diagnostics::RouteLimit),@"eventLimit":@(ehr_diagnostics::EventLimit),@"unknownRoutes":@(s.unknown_routes),@"routes":routes,@"events":events,@"failureTotal":@(s.failure_total),@"failures":failures,@"guardLimit":@(ehr_diagnostics::GuardLimit),@"guardTotal":@(s.guard_total),@"guards":guards,
  @"failureDetailLimit":@(ehr_diagnostics::DetailLimit),@"failureDetailTotal":@(s.detail_total),@"failureDetails":details,
@@ -56,9 +58,12 @@ NSDictionary *dictionary(const ehr_diagnostics::Snapshot &s) {
 }
 // All filesystem work is on the private diagnostics queue. The worker never
 // queries IL2CPP, game objects, source state, UIKit or account data.
-void writeSnapshot() {
+dispatch_queue_t writerQueue(){static dispatch_queue_t queue;static dispatch_once_t once;dispatch_once(&once,^{queue=dispatch_queue_create("local.ehr.numeric-diagnostics",DISPATCH_QUEUE_SERIAL);});return queue;}
+void writeSnapshot(bool iteratorFailure=false) {
  @autoreleasepool {try {@try {
   const auto snapshot=ehr_diagnostics::state().snapshot();
+  if(iteratorFailure&&!snapshot.iterators.callback_failures){writeStatus.store(4);return;}
+  const char *destination=iteratorFailure?"last-iterator-failure-v1.json":"runtime-native-v1.json";
   NSData *data=[NSJSONSerialization dataWithJSONObject:dictionary(snapshot) options:0 error:nil];
   if(!data||data.length>512*1024){writeStatus.store(8);return;}
   NSURL *caches=[[NSFileManager defaultManager] URLForDirectory:NSCachesDirectory inDomain:NSUserDomainMask appropriateForURL:nil create:YES error:nil];
@@ -76,8 +81,8 @@ void writeSnapshot() {
   const uint8_t *bytes=static_cast<const uint8_t *>(data.bytes);size_t left=data.length;bool ok=true;
   while(left){ssize_t count=write(file.value,bytes,left);if(count<0&&errno==EINTR)continue;if(count<=0){ok=false;break;}bytes+=count;left-=size_t(count);}
   struct stat existing{};
-  if(fstatat(folder.value,"runtime-native-v1.json",&existing,AT_SYMLINK_NOFOLLOW)==0){if(!S_ISREG(existing.st_mode)||existing.st_nlink!=1)ok=false;}else if(errno!=ENOENT)ok=false;
-  if(ok)ok=renameat(folder.value,name.fileSystemRepresentation,folder.value,"runtime-native-v1.json")==0;
+  if(fstatat(folder.value,destination,&existing,AT_SYMLINK_NOFOLLOW)==0){if(!S_ISREG(existing.st_mode)||existing.st_nlink!=1)ok=false;}else if(errno!=ENOENT)ok=false;
+  if(ok)ok=renameat(folder.value,name.fileSystemRepresentation,folder.value,destination)==0;
   if(!ok)unlinkat(folder.value,name.fileSystemRepresentation,0); // own partial only
   writeStatus.store(ok?0:7);if(ok)writtenSequence.store(snapshot.sequence);
  }@catch(__unused NSException *e){writeStatus.store(7);}}catch(...){writeStatus.store(8);}}
@@ -85,11 +90,15 @@ void writeSnapshot() {
 }
 void EHRRuntimeDiagnosticsStart(void) {
  static dispatch_once_t once;dispatch_once(&once,^{
-  dispatch_queue_t queue=dispatch_queue_create("local.ehr.numeric-diagnostics",DISPATCH_QUEUE_SERIAL);
+  dispatch_queue_t queue=writerQueue();
   static dispatch_source_t timer;timer=dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER,0,0,queue);
   dispatch_source_set_timer(timer,DISPATCH_TIME_NOW,2*NSEC_PER_SEC,NSEC_PER_SEC/5);
   dispatch_source_set_event_handler(timer,^{writeSnapshot();});dispatch_resume(timer);
  });
+}
+int32_t EHRRuntimeDiagnosticsFlushIteratorFailure(void){
+ if(!NSThread.isMainThread)return 2;
+ __block int32_t status=1;dispatch_sync(writerQueue(),^{writeSnapshot(true);status=writeStatus.load();});return status;
 }
 void EHRRuntimeDiagnosticsRecordAuth(uint32_t domain,int32_t code,uint64_t count) {ehr_diagnostics::state().auth(EHRDiagnosticTick(),domain,code,count);}
 void EHRRuntimeDiagnosticsRecordAuthInstall(int32_t status) {ehr_diagnostics::state().authInstall(status);}

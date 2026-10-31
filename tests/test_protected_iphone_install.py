@@ -213,6 +213,46 @@ class InstallerGuards(unittest.TestCase):
                 self.run_fixture(runner)
             self.assertEqual(runner.calls,[])
 
+    def test_iterator_exception_factory_requires_actual_balanced_implementation_before_device_access(self):
+        path=self.app/'Info.plist';info=plistlib.loads(path.read_bytes());info['EHRIteratorExceptionFactoryCompiled']=True;path.write_bytes(plistlib.dumps(info))
+        proof=json.loads(self.proof.read_text());proof['status']['sourceCoroutineFailureDiagnosticsBound']=True;self.proof.write_text(json.dumps(proof))
+        evidence=self.proof.with_name('EHRIteratorExceptionFactoryProof.json')
+        baseline=dict(schema='ehr.iterator-exception-factory-proof.v1',success=True,status=0,constructedMask=3,exactTypeMask=3,caughtMask=3,returnedMask=0,
+            nativeHandlesCreated=2,nativeHandlesReleased=2,rootsBefore=10,rootsAfter=10,rootAccountingBalanced=True,
+            reflectionActivatorUsed=False,nativeAotCallbackEntered=False,gameOwnerInvoked=False,accountOrNetworkActions=False,directPublicApiExploratoryProbe=False)
+        evidence.write_text(json.dumps(baseline));runner=OwnDeviceRunner(disconnected=True)
+        self.assertIn('unreachable',self.run_fixture(runner,preflight_only=True)['status'])
+        for changes in ({'success':False},{'status':False},{'status':1},{'constructedMask':1},{'exactTypeMask':0},{'caughtMask':0},{'returnedMask':1},
+                        {'nativeHandlesCreated':1},{'nativeHandlesReleased':1},{'rootsAfter':11},{'rootsBefore':True},{'rootAccountingBalanced':False},
+                        {'reflectionActivatorUsed':True},{'nativeAotCallbackEntered':True},{'gameOwnerInvoked':True},{'accountOrNetworkActions':True},{'directPublicApiExploratoryProbe':True}):
+            evidence.write_text(json.dumps(dict(baseline,**changes)));runner=OwnDeviceRunner()
+            with self.subTest(changes=changes),self.assertRaisesRegex(M.Rejected,'iterator_exception_factory_proof_not_passed'):
+                self.run_fixture(runner)
+            self.assertEqual(runner.calls,[])
+        evidence.unlink();runner=OwnDeviceRunner()
+        with self.assertRaisesRegex(M.Rejected,'iterator_exception_factory_proof_missing'):self.run_fixture(runner)
+        self.assertEqual(runner.calls,[])
+
+    def test_search_requires_passive_startup_and_owned_filter_proof_before_device_access(self):
+        self.enable_itch_provider();path=self.app/'Info.plist';info=plistlib.loads(path.read_bytes());info['EHRLobbySearchCompiled']=True;path.write_bytes(plistlib.dumps(info))
+        proof=json.loads(self.proof.read_text());search=dict(schemaVersion=1,compiled=1,selected=True,bound=True,
+            **dict.fromkeys(('preparedStatus','lastStatus','phase','calls','originalReturned','applied','alreadyPresent','inactive','foreignCallsite','failures','workerForwards'),0))
+        proof['status']['lobbySearch']=search;self.proof.write_text(json.dumps(proof));evidence=self.proof.with_name('EHRLobbySearchProof.json')
+        baseline=dict(schema='ehr.lobby-search-owned-proof.v1',success=True,status=0,phase=8,checks=5,rootsBefore=10,rootsAfter=10,
+            realSearchRequests=0,accountActions=0,globalRegistrationWrites=0,hostPacketChanges=0)
+        evidence.write_text(json.dumps(baseline));runner=OwnDeviceRunner(disconnected=True)
+        self.assertIn('unreachable',self.run_fixture(runner,preflight_only=True)['status'])
+        for changes in ({'success':False},{'status':False},{'status':1},{'phase':16},{'checks':4},{'rootsAfter':11},
+                        {'realSearchRequests':1},{'accountActions':1},{'globalRegistrationWrites':1},{'hostPacketChanges':1}):
+            evidence.write_text(json.dumps(dict(baseline,**changes)));runner=OwnDeviceRunner()
+            with self.subTest(changes=changes),self.assertRaisesRegex(M.Rejected,'lobby_search_proof_not_passed'):self.run_fixture(runner)
+            self.assertEqual(runner.calls,[])
+        evidence.write_text(json.dumps(baseline))
+        for changes in ({'schemaVersion':2},{'compiled':True},{'selected':False},{'bound':False},{'calls':1},{'applied':1},{'preparedStatus':1}):
+            altered=json.loads(json.dumps(proof));altered['status']['lobbySearch'].update(changes);self.proof.write_text(json.dumps(altered));runner=OwnDeviceRunner()
+            with self.subTest(changes=changes),self.assertRaisesRegex(M.Rejected,'lobby_search_startup_not_ready'):self.run_fixture(runner)
+            self.assertEqual(runner.calls,[])
+
     def test_directory_requires_bound_default_deny_before_device_access(self):
         self.enable_itch_provider()
         path=self.app/'Info.plist';info=plistlib.loads(path.read_bytes());info['EHRDirectoryCompiled']=True;path.write_bytes(plistlib.dumps(info))

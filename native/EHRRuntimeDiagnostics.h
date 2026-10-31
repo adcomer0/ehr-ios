@@ -15,6 +15,18 @@ inline bool EHRDiagnosticSourceFailure(uint64_t target,int32_t status,const uint
  value.stage=words[6];value.callback=words[7];value.argument=words[8];value.exception_kind=words[9];value.status=status;value.original_entered=words[11];
  auto origin=ehr_diagnostics::context;origin.target=target;ehr_diagnostics::state().failureDetail(EHRDiagnosticTick(),value,origin);return true;
 }
+// The independent coroutine export is sampled before its source is cancelled.
+// Only a matching registered source and bounded fixed numeric ABI are retained.
+inline bool EHRDiagnosticCoroutineFailure(uint64_t source,int32_t status,const uint64_t *words,size_t count) noexcept {
+ if(!source||!words||count!=12||words[0]!=1||words[1]!=12||words[2]!=source||
+    status<1||status>10||words[4]<1||words[4]>6||words[5]<1||words[5]>12||
+    words[6]>10||words[7]!=uint64_t(status)||!words[8]||words[9]>12||words[10]>10||words[11]||
+    ((words[9]==0)!=(words[10]==0)))return false;
+ ehr_diagnostics::FailureDetail value;value.kind=3;value.source_id=source;value.iterator_type_hash=words[3];
+ value.stage=uint32_t(words[4]);value.exception_kind=uint32_t(words[5]);value.primary_status=int32_t(words[6]);
+ value.status=status;value.source_sequence=words[8];value.cleanup_exception_kind=uint32_t(words[9]);value.cleanup_status=int32_t(words[10]);
+ ehr_diagnostics::state().failureDetail(EHRDiagnosticTick(),value,ehr_diagnostics::context);return true;
+}
 // Flags: entered1, native exception2, original attempted4, runtime entered8,
 // original permit consumed16, original hook consumed32, target found64.
 struct EHRDiagnosticRouteScope {
@@ -37,6 +49,9 @@ struct EHRDiagnosticIteratorScope {
 // collects, drains, reads objects or runs on the diagnostics writer thread.
 void EHRRuntimeGatewayPublishDiagnosticSnapshot(void) noexcept;
 void EHRRuntimeDiagnosticsStart(void);
+// Failure-only durable numeric snapshot; main-thread caller, filesystem work
+// stays on the private writer queue. No game/runtime/account calls on worker.
+int32_t EHRRuntimeDiagnosticsFlushIteratorFailure(void);
 void EHRRuntimeDiagnosticsRecordAuth(uint32_t domain,int32_t code,uint64_t observedCount);
 void EHRRuntimeDiagnosticsRecordAuthInstall(int32_t status);
 void EHRRuntimeDiagnosticsRecordAuthCounters(uint64_t requests,uint64_t successes,uint64_t errors,uint64_t overlaps);

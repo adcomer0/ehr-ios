@@ -11,6 +11,11 @@ bool EHRProductionIteratorHasActiveIdentity(void *identity);
 bool EHRProductionIteratorMoveNext(void *identity,bool *result);
 bool EHRProductionIteratorCurrent(void *identity,void **result);
 bool EHRProductionIteratorReset(void *identity);
+using EHRSourceCoroutineFailureReader=int32_t(*)(uint64_t,uint64_t *,size_t);
+using EHRSourceCoroutineFailureFlush=int32_t(*)(void);
+// Separate owned diagnostic channel; the 72-byte production host ABI is intact.
+EHRRuntimeStatus EHRManagedIteratorProductionSetFailureDiagnostics(EHRSourceCoroutineFailureReader,EHRSourceCoroutineFailureFlush);
+bool EHRManagedIteratorProductionFailureDiagnosticsBound(void);
 // Narrow integration adds this read-only helper to the old fixture registry so
 // neither mode can claim the other's exact carrier identity.
 bool EHRManagedIteratorOwnsIdentity(void *identity);

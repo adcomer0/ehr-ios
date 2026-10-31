@@ -67,6 +67,10 @@ class ItchAuthBuilderTests(unittest.TestCase):
     def test_website_directory_requires_ownership_checked_provider_before_inputs(self):
         self.reject_before_inputs({"ehr_directory": True}, "requires the ownership-checked itch.io provider")
 
+    def test_lobby_search_requires_ownership_checked_full_source_before_inputs(self):
+        self.reject_before_inputs({"lobby_search_map":Path("own-search.json")}, "requires the full source ownership-checked itch.io provider")
+        self.reject_before_inputs({"lobby_search_map":Path("own-search.json"),"full_native_catalog":None}, "requires the full source ownership-checked itch.io provider")
+
     def test_itch_and_activated_apple_retry_guard_cannot_compete(self):
         self.reject_before_inputs({"itch_auth_map": Path("own-itch.json"), "enable_auth_retry_guard": True},
                                  "do not enable the Apple retry guard")

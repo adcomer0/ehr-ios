@@ -176,6 +176,8 @@ def prepare_project(source_root, test_source, output, team, bundle_id):
     (project / "NativeRuntimeTests.mm").write_text(test_source.read_text().replace("__EHR_TEST_APP_BUNDLE_ID__", bundle_id))
     if '#include "AuthRetryMetadataProof.inc"' in test_source.read_text():
         shutil.copy2(source_root / "tests/AuthRetryMetadataProof.inc", project / "AuthRetryMetadataProof.inc")
+    if '#include "IteratorExceptionFactoryProof.inc"' in test_source.read_text():
+        shutil.copy2(source_root / "tests/runtime/IteratorExceptionFactoryProof.inc", project / "IteratorExceptionFactoryProof.inc")
     if '#include "IteratorRetirementProof.inc"' in test_source.read_text():
         shutil.copy2(source_root / "tests/runtime/IteratorRetirementProof.inc", project / "IteratorRetirementProof.inc")
         # The production callback header includes its public gateway sibling.
@@ -361,6 +363,8 @@ def main():
                     else "EHRFullSourceFailureCleanupProof.json" if value.get("schema") == "ehr.full-source-failure-cleanup-proof.v1"
                     else "EHRAuthRetryMetadataProof.json" if value.get("schema") == "ehr.auth-retry-metadata-proof.v1"
                     else "EHRIteratorRetirementProof.json" if value.get("schema") == "ehr.actual-iterator-retirement-proof.v1"
+                    else "EHRIteratorExceptionFactoryProof.json" if value.get("schema") == "ehr.iterator-exception-factory-proof.v1"
+                    else "EHRLobbySearchProof.json" if value.get("schema") == "ehr.lobby-search-owned-proof.v1"
                     else "EHRGameStartIteratorProof.json" if value.get("schema") == "ehr.game-start-iterator-proof.v1"
                     else "EHRAuthHandoffProof.json" if value.get("schema") == "ehr.auth-handoff-proof.v1"
                     else "EHRItchAuthProof.json" if value.get("schema") == "ehr.itch-auth-marshal-proof.v1"

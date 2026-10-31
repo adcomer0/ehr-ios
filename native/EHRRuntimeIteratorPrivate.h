@@ -11,5 +11,15 @@ EHRRuntimeStatus EHRRuntimeIteratorMarkTerminal(EHRRuntimeToken carrier);
 // Caller must supply a live method receiver or independently pinned object.
 bool EHRRuntimeIteratorIsTerminal(const void *identity) noexcept;
 // Raises an actual IL2CPP exception only AFTER the managed callback returned.
-// A local owning root survives until native C++ unwind; no .NET frame is live.
+// A call-local native pinned GC handle survives until C++ unwind. The public
+// IL2CPP exception factory is used, without reflection/Activator or token-map
+// allocation; no .NET frame is live. Unsupported runtime/factory states fail
+// closed rather than reporting a successful iterator result.
 void EHRRuntimeIteratorRaise(EHRRuntimeStatus status);
+#ifdef __OBJC__
+@class NSDictionary;
+// Native XCTest diagnostic only, never a managed table entry. Constructs and
+// catches two real runtime exceptions using owned objects; performs no game,
+// source callback, account, scene, network or forced-collection operation.
+extern "C" NSDictionary *EHRRuntimeIteratorExceptionSelfTest(void);
+#endif

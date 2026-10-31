@@ -684,7 +684,7 @@
     },
     {
       "path": "compiled/167/JoinGameButtonPatch.cs",
-      "sha256": "af3f50b07ee2f0e226a60f8f61e2c1a59fea8a7a3189ddd0e60055f0419876bc"
+      "sha256": "a46c8b4922b14cabafbd741aaa6de155e2c6453e7f66047a6e124c99e7ffc7fb"
     },
     {
       "path": "compiled/168/JoystickBlockPatch.cs",
@@ -3128,7 +3128,7 @@
     },
     {
       "path": "compiled/778/ProductionCoroutines.cs",
-      "sha256": "dcd6fee171764608d37bc7c8a73de433aeadee714de7351f2f58f16b91625fce"
+      "sha256": "8018b8fccbb5e885eba6d735010120e5e485009fe21916279e1385ebc5bd12f4"
     },
     {
       "path": "compiled/779/EHRSourceAccountPolicy.cs",

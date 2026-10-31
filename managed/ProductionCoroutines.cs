@@ -37,6 +37,7 @@ namespace EHR.Generated
             internal IEnumerator? Source=source;
             internal readonly ulong Id=id;
             internal ulong Registration,Parent,Child;
+            internal ulong FailureSequence;
             internal bool Executing,Terminal,Disposed;
         }
         private static ProductionIteratorHostV1 host;
@@ -46,6 +47,52 @@ namespace EHR.Generated
         private static readonly ConditionalWeakTable<IEnumerator,Entry> identities=new();
         private static readonly BindingSpec GetEnumerator=new("mscorlib.dll","System.Collections","ArrayList","GetEnumerator",false,false,"System.Collections.IEnumerator",[]);
         internal static string? LastError {get;private set;}
+        private struct FailureRecord
+        {
+            internal ulong Source,TypeHash,Phase,Kind,InitialStatus,ReturnedStatus,Sequence,CleanupKind,CleanupStatus;
+        }
+        private static FailureRecord lastFailure;
+        private static ulong failureSequence;
+        private static ulong ExceptionKind(Exception value)=>value switch
+        {
+            NativeGameException=>1,RuntimeGatewayException=>2,NullReferenceException=>3,IndexOutOfRangeException=>4,
+            NotSupportedException=>5,InvalidCastException=>6,ObjectDisposedException=>7,ArgumentException=>8,
+            InvalidOperationException=>9,OverflowException=>10,OutOfMemoryException=>11,_=>12
+        };
+        private static ulong SourceTypeHash(IEnumerator? source)
+        {
+            try
+            {
+                string? name=source?.GetType().FullName;
+                if(string.IsNullOrEmpty(name)||name.Length>1024)return 0;
+                ulong hash=14695981039346656037UL;
+                foreach(byte value in System.Text.Encoding.UTF8.GetBytes(name))hash=unchecked((hash^value)*1099511628211UL);
+                return hash;
+            }
+            catch{return 0;} // Diagnostic metadata must not replace the source fault.
+        }
+        private static void RecordFailure(Entry entry,IEnumerator? source,ulong phase,ulong kind,int initial,int returned,ulong cleanupKind,int cleanupStatus)
+        {
+            if(failureSequence==ulong.MaxValue)return;
+            ulong sequence=++failureSequence;
+            lastFailure=new(){Source=entry.Id,TypeHash=SourceTypeHash(source),Phase=phase,Kind=kind,
+                InitialStatus=unchecked((uint)initial),ReturnedStatus=unchecked((uint)returned),Sequence=sequence,
+                CleanupKind=cleanupKind,CleanupStatus=unchecked((uint)cleanupStatus)};
+            entry.FailureSequence=sequence;
+        }
+        [UnmanagedCallersOnly(EntryPoint="ehr_source_coroutine_failure_v1",CallConvs=new[]{typeof(CallConvCdecl)})]
+        internal static int CopyFailure(ulong source,ulong* words,nuint count)
+        {
+            if(words==null||count!=12||source==0)return 4;
+            if(!bound)return 1;
+            if(host.IsMain()!=1)return 2;
+            if(!entries.TryGetValue(source,out Entry? entry)||lastFailure.Source!=source||entry.FailureSequence==0||entry.FailureSequence!=lastFailure.Sequence)return 3;
+            var value=lastFailure;
+            words[0]=1;words[1]=12;words[2]=value.Source;words[3]=value.TypeHash;words[4]=value.Phase;words[5]=value.Kind;
+            words[6]=value.InitialStatus;words[7]=value.ReturnedStatus;words[8]=value.Sequence;
+            words[9]=value.CleanupKind;words[10]=value.CleanupStatus;words[11]=0;
+            return 0;
+        }
         internal static int ActiveSources=>entries.Count;
         internal static void Ready()
         {
@@ -153,14 +200,17 @@ namespace EHR.Generated
             if(moved==null||current==null)return 4;*moved=0;*current=0;
             if(!entries.TryGetValue(id,out Entry? entry))return 9;
             if(entry.Executing)return 4;if(entry.Terminal)return 0;
-            int status=0;entry.Executing=true;
+            int status=0,initialStatus=0,cleanupStatus=0;ulong phase=1,kind=0,cleanupKind=0;
+            IEnumerator? source=entry.Source;entry.Executing=true;
             try
             {
-                Ready();CloseChild(entry);
-                if(!entry.Source!.MoveNext())Finish(entry);
+                Ready();phase=2;CloseChild(entry);phase=3;
+                if(!entry.Source!.MoveNext()){phase=6;Finish(entry);}
                 else
                 {
+                    phase=4;
                     object? value=entry.Source.Current;
+                    phase=5;
                     if(value is RuntimeObject reference)*current=FacadeRuntime.Retain(reference).Detach();
                     else if(value is INativeValue boxed)*current=FacadeRuntime.Retain(boxed.NativeBox).Detach();
                     else if(value is IEnumerator child)
@@ -174,12 +224,13 @@ namespace EHR.Generated
                     *moved=1;
                 }
             }
-            catch(Exception exception){status=Contain(exception);}
+            catch(Exception exception){kind=ExceptionKind(exception);status=initialStatus=Contain(exception);}
             finally{entry.Executing=false;}
             if(status!=0)
             {
                 if(*current!=0){FacadeRuntime.Release(*current);*current=0;}*moved=0;
-                try{Finish(entry);}catch(Exception exception){status=Contain(exception);}
+                try{Finish(entry);}catch(Exception exception){cleanupKind=ExceptionKind(exception);status=cleanupStatus=Contain(exception);}
+                RecordFailure(entry,source,phase,kind,initialStatus,status,cleanupKind,cleanupStatus);
             }
             return status;
         }
