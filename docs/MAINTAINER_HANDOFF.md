@@ -72,7 +72,8 @@ weaken the host comparator.
 The exact framework remains pinned to the documented game baseline; a newer
 game needs fresh mapping/ABI validation. The UI/icon changes do not replace the
 796 selected managed sources or alter their 224-resource catalog. The signed
-Mac runtime and protected install checks remain required after rebuilding.
+Mac runtime and protected install checks remain required after rebuilding. See
+[device connection checks](IOS_DEVICE_CONNECTION.md) for wireless delivery.
 
 Manual key entry is the configured path. Browser OAuth code remains available
 but hidden when no public OAuth client and matching redirect are configured.
