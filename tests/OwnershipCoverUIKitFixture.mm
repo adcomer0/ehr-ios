@@ -5,6 +5,7 @@
 #import "../native/EHROwnershipCover.h"
 #import "../native/EHRFullSourceRuntime.h"
 #import "../native/EHRExportSharing.h"
+#import "../native/EHRLobbyBrowser.h"
 @interface EHROwnershipCover (OwnedInspection)
 @property(nonatomic,readonly) UIButton *signIn;
 @property(nonatomic,readonly) UIButton *account;
@@ -24,7 +25,9 @@ void EHRItchAuthProviderPresent(void){++signIns;}
 void EHRItchAuthProviderPresentAccount(void){++accounts;}
 NSDictionary *EHRItchAuthProviderCopyStatus(void){return @{@"ownershipPending":@(pending),@"ownershipChecks":@1,@"ownershipStatus":@(ownershipStatus),@"clearedForRestart":@(cleared),@"runtime":@{}};}
 NSDictionary *EHRFullSourceCopyRuntimeStatus(void){return @{@"application":@{},@"attempted":@NO};}
+NSDictionary *EHRFullSourceCopySettingsLoadingStatus(void){return @{@"schemaVersion":@1,@"status":@0,@"bound":@YES,@"busy":@NO,@"activeBuilds":@0,@"processed":@0,@"total":@0,@"tabIndexPlusOne":@0};}
 void EHRFullSourceRefreshDirectory(void){}
+void EHRPresentLobbyBrowser(__unused UIViewController *presenter){}
 UIViewController *EHRExportSharingController(void){return [UIViewController new];}
 #include "../native/EHRFullSourceOverlay.mm"
 

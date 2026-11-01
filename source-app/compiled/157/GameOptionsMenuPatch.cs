@@ -57,19 +57,81 @@ public static class GameOptionsMenuPatch
     private static readonly Dictionary<GameOptionsMenu, Coroutine> BuildCoroutines = new();
     private static readonly Dictionary<GameOptionsMenu, int> BuildGenerations = new();
 
+    // Own CLR state: the exported reader never inspects a Unity object.
+    private sealed class SettingsBuildState(int generation, TabGroup tab, int total)
+    {
+        internal readonly int Generation = generation, Total = total;
+        internal readonly TabGroup Tab = tab;
+        internal int Processed;
+        internal bool Busy = true, Complete;
+    }
+    private static readonly System.Collections.Generic.Dictionary<GameOptionsMenu, SettingsBuildState> SettingsBuilds = new();
+    private static bool NeedsSettingsBuild(GameOptionsMenu menu) =>
+        SettingsBuilds.TryGetValue(menu, out var state) && !state.Complete;
+
+    internal static void CancelSettingsBuild(GameOptionsMenu menu)
+    {
+        if (SettingsBuilds.TryGetValue(menu, out var state)) state.Busy = false;
+        if (BuildGenerations.TryGetValue(menu, out int generation)) BuildGenerations[menu] = unchecked(generation + 1);
+        if (!BuildCoroutines.TryGetValue(menu, out Coroutine running)) return;
+        // Remove the retired handle before Stop can synchronously dispose/reenter.
+        BuildCoroutines.Remove(menu);
+        try { if (menu && running != null) menu.StopCoroutine(running); }
+        catch (Exception error) { Utils.ThrowException(error); }
+    }
+
+    internal static void CancelAllSettingsBuilds()
+    {
+        foreach (GameOptionsMenu menu in GameSettingMenuPatch.ModSettingsTabs.Values)
+            CancelSettingsBuild(menu);
+    }
+
+    private static bool IsCurrentSettingsBuild(GameOptionsMenu menu, SettingsBuildState state) =>
+        BuildGenerations.TryGetValue(menu, out int generation) && generation == state.Generation &&
+        SettingsBuilds.TryGetValue(menu, out var current) && ReferenceEquals(current, state) &&
+        menu && menu.gameObject.activeInHierarchy;
+
+    // v1, words8, selectedBusy, activeCount, processed, total, tabIndexPlus1, reserved0.
+    // A diagnostic read cannot invoke game facades, finish a build or clear state.
+    [System.Runtime.InteropServices.UnmanagedCallersOnly(EntryPoint = "ehr_source_settings_loading_v1",
+        CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
+    internal static unsafe int CopySettingsLoading(uint* words, nuint count)
+    {
+        if (words == null || count != 8) return 4;
+        if (!SourceHost.NativeSourceHost.IsMainThread) return 2;
+        try
+        {
+            uint active = 0, busy = 0, processed = 0, total = 0, tab = 0;
+            foreach (var state in SettingsBuilds.Values)
+            {
+                if (!state.Busy) continue;
+                if (++active > 32 || state.Processed < 0 || state.Total < state.Processed || state.Total > 20000) return 8;
+                if ((int)state.Tab + 3 != ModGameOptionsMenu.TabIndex) continue;
+                if (busy != 0 || ModGameOptionsMenu.TabIndex < 0 || ModGameOptionsMenu.TabIndex >= 64) return 4;
+                busy = 1; processed = (uint)state.Processed; total = (uint)state.Total;
+                tab = (uint)ModGameOptionsMenu.TabIndex + 1;
+            }
+            words[0] = 1; words[1] = 8; words[2] = busy; words[3] = active;
+            words[4] = processed; words[5] = total; words[6] = tab; words[7] = 0;
+            return 0;
+        }
+        catch (Exception) { return 6; }
+    }
+
     [HarmonyPatch("Initialize")]
     [HarmonyPrefix]
     private static bool InitializePrefix(GameOptionsMenu __instance)
     {
         if (ModGameOptionsMenu.TabIndex < 3) return true;
 
-        if (__instance.Children == null || __instance.Children.Count == 0)
+        if (__instance.Children == null || __instance.Children.Count == 0 || NeedsSettingsBuild(__instance))
         {
             __instance.MapPicker.gameObject.SetActive(false);
             __instance.Children = new();
             __instance.CreateSettings();
             __instance.cachedData = GameOptionsManager.Instance.CurrentGameOptions;
-            __instance.InitializeControllerNavigation();
+            if (!SettingsBuilds.TryGetValue(__instance, out var initializingBuild) || !initializingBuild.Busy)
+                __instance.InitializeControllerNavigation();
         }
 
         return false;
@@ -137,18 +199,14 @@ public static class GameOptionsMenuPatch
             return false;
         }
 
-        __instance.scrollBar.SetYBoundsMax(CalculateScrollBarYBoundsMax());
-
-        // Cancel any in-progress build coroutine on this instance before starting a new one
-        if (BuildCoroutines.TryGetValue(__instance, out Coroutine existing) && existing != null)
-        {
-            __instance.StopCoroutine(existing);
-            BuildCoroutines.Remove(__instance);
-        }
+        CancelSettingsBuild(__instance);
+        __instance.Children = new();
 
         BuildGenerations.TryGetValue(__instance, out int currentGen);
         currentGen++;
         BuildGenerations[__instance] = currentGen;
+        var buildState = new SettingsBuildState(currentGen, modTab, OptionItem.AllOptions.Count(option => option.Tab == modTab));
+        SettingsBuilds[__instance] = buildState;
 
 #if IL2CPP
         BuildCoroutines[__instance] = __instance.StartCoroutine(CoRoutine(currentGen).WrapToIl2Cpp());
@@ -161,6 +219,11 @@ public static class GameOptionsMenuPatch
         {
             try
             {
+                // Let the real loading indicator render before any settings work.
+                yield return null;
+                if (!IsCurrentSettingsBuild(__instance, buildState)) yield break;
+                __instance.scrollBar.SetYBoundsMax(CalculateScrollBarYBoundsMax());
+                int batch = 0;
                 var num = 2.0f;
                 const float posX = 0.952f;
                 const float posZ = -2.0f;
@@ -169,17 +232,26 @@ public static class GameOptionsMenuPatch
             
                 for (var index = 0; index < OptionItem.AllOptions.Count; index++)
                 {
+                    // Count actual tab rows, including header/hidden/error paths.
+                    if (batch >= 8)
+                    {
+                        batch = 0;
+                        yield return null;
+                        if (!IsCurrentSettingsBuild(__instance, buildState)) yield break;
+                    }
                     try
                     {
                         OptionItem option = OptionItem.AllOptions[index];
                         if (option.Tab != modTab) continue;
+                        batch++;
+                        buildState.Processed++;
 
                         bool enabledOrNotCollapsed = !option.IsCurrentlyHidden() && AllParentsEnabledAndVisible(option.Parent);
                         bool enabled = !option.IsCurrentlyHidden(checkCollapsedSection: false) && AllParentsEnabledAndVisible(option.Parent, checkCollapsedSection: false);
 
                         if (option is TextOptionItem toi)
                         {
-                            CategoryHeaderMasked categoryHeaderMasked = ModGameOptionsMenu.CategoryHeaderList.TryGetValue(index, out CategoryHeaderMasked cache) ? cache : ModGameOptionsMenu.Track(Object.Instantiate(__instance.categoryHeaderOrigin, Vector3.zero, Quaternion.identity, __instance.settingsContainer));
+                            CategoryHeaderMasked categoryHeaderMasked = ModGameOptionsMenu.CategoryHeaderList.TryGetValue(index, out CategoryHeaderMasked cache) && cache ? cache : ModGameOptionsMenu.Track(Object.Instantiate(__instance.categoryHeaderOrigin, Vector3.zero, Quaternion.identity, __instance.settingsContainer));
                             categoryHeaderMasked.SetHeader(StringNames.RolesCategory, 20);
                             categoryHeaderMasked.Title.SetText(option.GetName(disableColor: true).Trim('★', ' '));
                             categoryHeaderMasked.Background.color = categoryHeaderMasked.Divider.color = option.NameColor;
@@ -189,13 +261,16 @@ public static class GameOptionsMenuPatch
                             chmText.fontStyle = FontStyles.Bold | FontStyles.SmallCaps;
                             chmText.fontWeight = FontWeight.Black;
                             chmText.outlineWidth = 0.17f;
-                            var chmCollider = categoryHeaderMasked.gameObject.AddComponent<BoxCollider2D>();
+                            var chmCollider = categoryHeaderMasked.gameObject.GetComponent<BoxCollider2D>();
+                            if (!chmCollider) chmCollider = categoryHeaderMasked.gameObject.AddComponent<BoxCollider2D>();
                             chmCollider.size = new Vector2(7, 0.7f);
                             chmCollider.offset = new Vector2(1.5f, -0.3f);
-                            var chmButton = categoryHeaderMasked.gameObject.AddComponent<PassiveButton>();
+                            var chmButton = categoryHeaderMasked.gameObject.GetComponent<PassiveButton>();
+                            if (!chmButton) chmButton = categoryHeaderMasked.gameObject.AddComponent<PassiveButton>();
                             chmButton.ClickSound = __instance.BackButton.GetComponent<PassiveButton>().ClickSound;
                             chmButton.OnMouseOver = new();
                             chmButton.OnMouseOut = new();
+                            chmButton.OnClick.RemoveAllListeners();
                             chmButton.OnClick.AddListener(() =>
                             {
                                 toi.CollapsesSection = !toi.CollapsesSection;
@@ -218,7 +293,7 @@ public static class GameOptionsMenuPatch
                         BaseGameSetting baseGameSetting = GetSetting(option);
                         if (!baseGameSetting) continue;
 
-                        if (!ModGameOptionsMenu.BehaviourList.TryGetValue(index, out OptionBehaviour optionBehaviour))
+                        if (!ModGameOptionsMenu.BehaviourList.TryGetValue(index, out OptionBehaviour optionBehaviour) || !optionBehaviour)
                         {
                             try
                             {
@@ -260,14 +335,11 @@ public static class GameOptionsMenuPatch
                     }
                     catch (Exception e) { Utils.ThrowException(e); }
                 
-                    if (index % 100 == 0)
-                    {
-                        yield return null;
-                    }
+                    // The next loop iteration yields after at most eight tab rows.
                 }
 
                 // Bail if a newer build coroutine was started on this instance while we were running
-                if (!BuildGenerations.TryGetValue(__instance, out int latestGen) || latestGen != gen)
+                if (!IsCurrentSettingsBuild(__instance, buildState))
                 {
                     yield break;
                 }
@@ -277,10 +349,13 @@ public static class GameOptionsMenuPatch
                 foreach (UiElement x in __instance.scrollBar.GetComponentsInChildren<UiElement>())
                     __instance.ControllerSelectable.Add(x);
             
+                __instance.InitializeControllerNavigation();
                 Canvas.ForceUpdateCanvases();
+                if (IsCurrentSettingsBuild(__instance, buildState)) buildState.Complete = true;
             }
             finally
             {
+                buildState.Busy = false;
                 // A retired iterator must not remove a replacement generation.
                 if (BuildGenerations.TryGetValue(__instance, out int completedGen) && completedGen == gen)
                     BuildCoroutines.Remove(__instance);
@@ -1586,13 +1661,15 @@ public static class GameSettingMenuPatch
         const int totalCols = 2;
         int itemsPerCol = Mathf.CeilToInt(gms.Count / (float)totalCols);
 
-        GMButtons.Clear();
+        // Retain/reuse owned cached buttons rather than abandoning a set on every open.
+        foreach (GameObject previous in GMButtons.Values)
+            if (previous) previous.SetActive(false);
 
         for (var index = 0; index < gms.Count; index++)
         {
             CustomGameMode gm = gms[index];
 
-            cached = GMButtons.TryGetValue(gm, out cache);
+            cached = GMButtons.TryGetValue(gm, out cache) && cache;
             var gmButton = cached ? cache : ModGameOptionsMenu.Track(Object.Instantiate(gMinus, gameSettingsLabel.transform, true));
             if (cached)
             {
@@ -1797,7 +1874,10 @@ public static class GameSettingMenuPatch
             foreach (TabGroup tab in tabGroups)
             {
                 if (ModSettingsTabs.TryGetValue(tab, out settingsTab) && settingsTab)
+                {
+                    GameOptionsMenuPatch.CancelSettingsBuild(settingsTab);
                     settingsTab.gameObject.SetActive(false);
+                }
             }
 
             foreach (TabGroup tab in tabGroups)
@@ -1896,6 +1976,7 @@ public static class GameSettingMenuPatch
     [HarmonyPrefix]
     public static void Close_Prefix()
     {
+        GameOptionsMenuPatch.CancelAllSettingsBuilds();
         if (TempParent == null)
         {
             var go = new GameObject("EHR Settings UI Cache Root");
@@ -1915,20 +1996,22 @@ public static class GameSettingMenuPatch
         // Clear GMButton listeners before hiding them so they can't fire stale callbacks
         foreach (var x in GMButtons.Values)
         {
+            if (!x) continue;
             var pb = x.GetComponent<PassiveButton>();
             if (pb) pb.OnClick.RemoveAllListeners();
             SetTempParent(x);
         }
 
-        foreach (var x in ModSettingsTabs.Values) SetTempParent(x.gameObject);
-        foreach (var x in ModSettingsButtons.Values) SetTempParent(x.gameObject);
+        foreach (var x in ModSettingsTabs.Values) if (x) SetTempParent(x.gameObject);
+        foreach (var x in ModSettingsButtons.Values) if (x) SetTempParent(x.gameObject);
         foreach (var x in ExtraObjectsCache.Values) SetTempParent(x);
         foreach (var x in GMButtons.Values) SetTempParent(x);
-        SetTempParent(InputField.gameObject);
+        if (InputField) SetTempParent(InputField.gameObject);
         return;
 
         void SetTempParent(GameObject go)
         {
+            if (!go) return;
             go.gameObject.transform.SetParent(TempParent, false);
             go.gameObject.SetActive(false);
         }

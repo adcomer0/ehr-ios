@@ -45,17 +45,22 @@ An owned build-63 OS crash reached an explicit abort in native iterator error
 construction, before borrowing/raising the exception. The report does not
 identify the initiating source fault or which shared abort prerequisite failed.
 Build 64 uses the validated native exception factory with independent pinned
-handles and persists bounded coroutine failure facts before raising. Caching
-all menu rows remains a separate performance limitation. Phone scrolling
-acceptance is pending; see [build 64 evidence](BUILD64_VALIDATION.md).
+handles and persists bounded coroutine failure facts before raising. The player
+then scrolled the impostor roles without exiting to Home Screen, after a short
+blocked interval. Returning to the main menu froze until restart. Build 65 adds
+a loading indicator, smaller batches, cancellation on tab/menu close and cache
+reuse repairs. The initiating fault and menu-freeze cause are not proven; a new
+phone test remains necessary. See [build 65 evidence](BUILD65_VALIDATION.md).
 
 The native Find Game request previously lacked the modern per-request EHR mod
 filter. Build 64 supplies it only at the verified search callsite, after the
 original helper, while retaining the host-only registration needed by the
-current vanilla-peer path. The official website directory is separate; its
-sign-in and room-code flow remain available inside the app. Actual matchmaking
-results depend on compatible advertised rooms, regions and game filters and
-still need a player test.
+current vanilla-peer path. Build 64 still displayed an empty list in the phone
+test. Build 65 defaults to the original **All lobbies** request and makes the
+**EHR lobbies** filter optional in the EHR panel. The pools differ; website-listed
+rooms are not necessarily advertised in either one. The official website
+directory remains available inside the app. Actual results and joining need a
+new player test; do not infer a fix from owned filter construction alone.
 
 ## Later gameplay observation
 

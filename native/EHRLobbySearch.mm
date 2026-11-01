@@ -1,4 +1,5 @@
 #import "EHRLobbySearch.h"
+#import <CoreFoundation/CoreFoundation.h>
 #include "EHRNativeHooks.h"
 #include "EHRRuntimeGateway.h"
 #include "EHRRuntimeMetadataPrivate.h"
@@ -46,9 +47,17 @@ std::atomic<int32_t> prepared{EHR_RUNTIME_NOT_READY},lastStatus{EHR_RUNTIME_NOT_
 std::atomic<uint32_t> lastPhase{0};
 std::atomic<uint64_t> calls{0},originalReturned{0},applied{0},alreadyPresent{0},inactive{0},foreignCallsite{0},failures{0},workerForwards{0};
 std::atomic<EHRLobbySearchAllowed> allowed{nullptr};
+std::atomic<int32_t> selection{0};std::atomic<bool> selectionLoaded{false};
+std::atomic<uint64_t> selectionChanges{0},allForwards{0};
+NSString *const selectionKey=@"EHRLobbySearchSelection";
 thread_local bool applying=false;
 bool permission(){auto callback=allowed.load();if(!NSThread.isMainThread||!callback)return false;@try{try{return callback()==1;}catch(...){return false;}}@catch(__unused NSException *error){return false;}}
 bool selected(){id value=NSBundle.mainBundle.infoDictionary[@"EHRLobbySearchCompiled"];return [value isKindOfClass:NSNumber.class]&&[value boolValue];}
+void loadSelection(){if(!NSThread.isMainThread||selectionLoaded.load())return;int32_t mode=0;
+    @try{id value=[NSUserDefaults.standardUserDefaults objectForKey:selectionKey];if([value isKindOfClass:NSNumber.class]&&CFGetTypeID((__bridge CFTypeRef)value)==CFNumberGetTypeID()&&!CFNumberIsFloatType((__bridge CFNumberRef)value)){
+        auto stored=[value longLongValue];if(stored==0||stored==1)mode=(int32_t)stored;}}
+    @catch(__unused NSException *error){}selection.store(mode);selectionLoaded.store(true);
+}
 template<class T> bool load(T &target,const char *name){void *p=dlsym(RTLD_DEFAULT,name);if(!p||ehr_pinned::validate_engine_entry(p)!=0)return false;target=reinterpret_cast<T>(p);return true;}
 bool named(const void *type,const char *expected){if(!type)return false;char *name=api.type_get_name(type);bool okay=name&&!strcmp(name,expected);if(name)api.free(name);return okay;}
 bool noInitializer(const void *klass){void *cursor=nullptr;for(size_t i=0;i<4096;++i){const void *method=api.class_get_methods(klass,&cursor);if(!method)return true;const char *name=api.method_get_name(method);if(!name||!strcmp(name,".cctor"))return false;}return false;}
@@ -141,7 +150,7 @@ Result append(EHRRuntimeToken set,bool accountGate=false){
     TRY(11,string("mod",key));EHRRuntimeArgument ctorArgs[]={{EHR_RUNTIME_REFERENCE,0,key.token,nullptr,0},{EHR_RUNTIME_REFERENCE,0,mod.token,nullptr,0}};
     TRY(12,construct(meta.filterClass,meta.filterCtor,ctorArgs,2,filter));
     // Recheck every mutable premise before the single public List.Add commit.
-    if(accountGate&&!permission()){result.status=EHR_RUNTIME_NOT_READY;result.phase=13;return result;}
+    if(accountGate&&(!permission()||selection.load()!=1)){result.status=EHR_RUNTIME_NOT_READY;result.phase=13;return result;}
     TRY(13,emptyRegistration());int32_t now=0;TRY(13,count(list.token,now));if(now!=length){result.status=EHR_RUNTIME_NOT_READY;return result;}
     Root current;TRY(13,ehr_runtime_read_field(meta.filters,set,&current.token));int32_t same=0;TRY(13,ehr_runtime_object_same(current.token,list.token,&same));if(!same){result.status=EHR_RUNTIME_NOT_READY;return result;}
     EHRRuntimeArgument addArg{EHR_RUNTIME_REFERENCE,0,filter.token,nullptr,0};TRY(14,invoke(meta.add,list.token,&addArg,1,ignored));result.appended=true;
@@ -150,15 +159,18 @@ Result append(EHRRuntimeToken set,bool accountGate=false){
 }
 }
 
-int32_t EHRLobbySearchPrepare(EHRLobbySearchAllowed callback){if(!NSThread.isMainThread)return EHR_RUNTIME_WRONG_THREAD;if(!callback||(allowed.load()&&allowed.load()!=callback))return EHR_RUNTIME_BAD_ARGUMENT;allowed.store(callback);int32_t status=EHR_RUNTIME_UNSUPPORTED;@try{try{status=prepare();}catch(...){status=EHR_RUNTIME_LIMIT;}}@catch(__unused NSException *error){status=EHR_RUNTIME_NOT_READY;}prepared.store(status);lastStatus.store(status);return status;}
-NSDictionary *EHRLobbySearchCopyStatus(void){return @{@"schemaVersion":@1,@"compiled":@(EHR_LOBBY_SEARCH_BINDING),@"selected":@(selected()),@"bound":@(allowed.load()!=nullptr),@"preparedStatus":@(prepared.load()),@"lastStatus":@(lastStatus.load()),@"phase":@(lastPhase.load()),@"calls":@(calls.load()),@"originalReturned":@(originalReturned.load()),@"applied":@(applied.load()),@"alreadyPresent":@(alreadyPresent.load()),@"inactive":@(inactive.load()),@"foreignCallsite":@(foreignCallsite.load()),@"failures":@(failures.load()),@"workerForwards":@(workerForwards.load())};}
+int32_t EHRLobbySearchPrepare(EHRLobbySearchAllowed callback){if(!NSThread.isMainThread)return EHR_RUNTIME_WRONG_THREAD;if(!callback||(allowed.load()&&allowed.load()!=callback))return EHR_RUNTIME_BAD_ARGUMENT;allowed.store(callback);if(selected())loadSelection();int32_t status=EHR_RUNTIME_UNSUPPORTED;@try{try{status=prepare();}catch(...){status=EHR_RUNTIME_LIMIT;}}@catch(__unused NSException *error){status=EHR_RUNTIME_NOT_READY;}prepared.store(status);lastStatus.store(status);return status;}
+int32_t EHRLobbySearchGetSelection(void){if(!NSThread.isMainThread||!selected())return 0;loadSelection();return selection.load();}
+int32_t EHRLobbySearchSetSelection(int32_t mode){if(!NSThread.isMainThread)return EHR_RUNTIME_WRONG_THREAD;if(mode!=0&&mode!=1)return EHR_RUNTIME_BAD_ARGUMENT;if(!EHR_LOBBY_SEARCH_BINDING||!selected())return EHR_RUNTIME_UNSUPPORTED;loadSelection();if(selection.load()==mode)return 0;@try{[NSUserDefaults.standardUserDefaults setInteger:mode forKey:selectionKey];}@catch(__unused NSException *error){return EHR_RUNTIME_NOT_READY;}selection.store(mode);++selectionChanges;return 0;}
+NSDictionary *EHRLobbySearchCopyStatus(void){return @{@"schemaVersion":@2,@"compiled":@(EHR_LOBBY_SEARCH_BINDING),@"selected":@(selected()),@"bound":@(allowed.load()!=nullptr),@"preparedStatus":@(prepared.load()),@"lastStatus":@(lastStatus.load()),@"phase":@(lastPhase.load()),@"calls":@(calls.load()),@"originalReturned":@(originalReturned.load()),@"applied":@(applied.load()),@"alreadyPresent":@(alreadyPresent.load()),@"inactive":@(inactive.load()),@"foreignCallsite":@(foreignCallsite.load()),@"failures":@(failures.load()),@"workerForwards":@(workerForwards.load()),@"selection":@(selection.load()),@"selectionLoaded":@(selectionLoaded.load()),@"selectionChanges":@(selectionChanges.load()),@"allForwards":@(allForwards.load())};}
 extern "C" __attribute__((visibility("default"))) void ehr_native_ehr_lobby_search_filters(void *filterSet,const void *methodInfo){
 #if EHR_LOBBY_SEARCH_BINDING
     using Original=void(*)(void *,const void *);const auto base=EHRNativeHooksImageBaseForDiagnostics();const auto caller=(uintptr_t)__builtin_extract_return_addr(__builtin_return_address(0));
     ++calls;reinterpret_cast<Original>(base+EHRLobbySearchTrampolineRVA)(filterSet,methodInfo);++originalReturned;
     if(!NSThread.isMainThread){++workerForwards;return;}
     if(caller!=base+EHRLobbySearchCallerReturnRVA){++foreignCallsite;return;}
-    if(!selected()||!permission()||applying){++inactive;return;}
+    if(!selected()){++inactive;return;}if(EHRLobbySearchGetSelection()==0){++allForwards;return;}
+    if(!permission()||applying){++inactive;return;}
     if(prepared.load()&&EHRLobbySearchPrepare(allowed.load())!=0){++failures;return;}
     if(!filterSet||api.object_get_class(filterSet)!=meta.setClass||(methodInfo&&methodInfo!=meta.helperMethod)){lastStatus.store(EHR_RUNTIME_TYPE_MISMATCH);++failures;return;}
     applying=true;

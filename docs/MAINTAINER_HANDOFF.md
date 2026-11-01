@@ -1,7 +1,7 @@
 # EHR Among Us: maintainer handoff
 
 This is a source and tooling handoff for the ownership-gated native iOS
-build-64 development candidate. It is not an App Store/TestFlight release artifact or evidence of
+build-65 development candidate. It is not an App Store/TestFlight release artifact or evidence of
 publisher/distribution approval. The current local profile is development
 signing for registered devices. The EHR team handles its release signing and
 authorized game-content distribution path.
@@ -56,9 +56,13 @@ native maps, NativeAOT library, app identifier, certificate and profile. Add:
 --lobby-search-map PRIVATE_SEARCH_MAP
 ```
 
-The optional search map adds a verified per-request EHR filter without changing
-global host registration. It requires the same ownership/full-sign-in gate.
-The current iterator-error factory and filter construction proofs are required
+The optional search map exposes **All lobbies** (default) and **EHR lobbies**
+in the EHR panel. Refresh Find Game after changing the saved choice. All keeps
+the original request; EHR adds the verified per-request filter only after the
+same ownership/full-sign-in gate. Global host registration is unchanged.
+See [search pools and limits](IOS_LOBBY_SEARCH.md).
+The current settings-loading reader must be bound and idle in the passive startup
+proof. The iterator-error factory and filter construction proofs are required
 by the installer when their build flags are selected.
 
 The source builder also verifies the [official release identity](UPSTREAM_RELEASE_IDENTITY.md)
@@ -91,7 +95,7 @@ prompt or manual submission. The player then joined another official EHR 8.0.3
 host and stayed connected past the former version countdown. Earlier guest play had
 one user-reported match with a vanilla peer. These are not coverage of every
 role, map, network condition or device. See [known issues](KNOWN_ISSUES.md),
-[authentication evidence](ISOLATED_SIGNIN_TEST.md) and the [current validation](BUILD64_VALIDATION.md).
+[authentication evidence](ISOLATED_SIGNIN_TEST.md) and the [current validation](BUILD65_VALIDATION.md).
 
 Existing guest-to-platform migration remains intentionally unsupported by the
 first-profile route: nonempty or unknown guest identity stops it. Do not remove

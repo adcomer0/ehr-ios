@@ -202,6 +202,7 @@ def build(args):
     info["EHRDirectoryCompiled"]=ehr_directory
     info["EHRIteratorExceptionFactoryCompiled"]=full
     info["EHRLobbySearchCompiled"]=bool(lobby_search_map)
+    info["EHRSettingsLoadingCompiled"]=full
     info["EHRItchAuthDiagnosticsCacheEnabled"]=bool(itch_map)
     info["EHRAuthProvider"]="itchio" if itch_map else "apple"
     # Initial native state; only the explicit request may enable after Prepare.

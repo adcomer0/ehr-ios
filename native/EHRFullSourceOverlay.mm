@@ -2,6 +2,11 @@
 #import "EHRFullSourceRuntime.h"
 #import "EHRExportSharing.h"
 #import "EHRLobbyBrowser.h"
+#include "EHRRuntimeDiagnostics.h"
+#include "EHRRuntimeGateway.h"
+#if EHR_HAS_LOBBY_SEARCH
+#import "EHRLobbySearch.h"
+#endif
 #if EHR_HAS_ITCH_AUTH
 #import "EHRItchAuthProvider.h"
 #import "EHROwnershipCover.h"
@@ -34,19 +39,27 @@
 @property(nonatomic,strong) UIButton *exportsButton;
 @property(nonatomic,strong) UIButton *signInButton;
 @property(nonatomic,strong) UIButton *lobbiesButton;
+@property(nonatomic,strong) UIView *loadingPill;
+@property(nonatomic,strong) UILabel *loadingLabel;
+@property(nonatomic,strong) UIActivityIndicatorView *loadingSpinner;
+#if EHR_HAS_LOBBY_SEARCH
+@property(nonatomic,strong) UISegmentedControl *searchSelector;
+@property(nonatomic,strong) UILabel *searchHint;
+#endif
 #if EHR_HAS_ITCH_AUTH
 @property(nonatomic,strong) EHROwnershipCover *ownershipCover;
 #endif
 @property(nonatomic) CGPoint badgePosition;
 @property(nonatomic) CGPoint dragOrigin;
 - (void)layoutOverlay;
+- (void)refreshLoading;
 @end
 @implementation EHRFullStatusController
 - (void)viewDidLayoutSubviews {[super viewDidLayoutSubviews];[self.statusPanel layoutOverlay];}
 - (void)viewSafeAreaInsetsDidChange {[super viewSafeAreaInsetsDidChange];[self.statusPanel layoutOverlay];}
 @end
 @implementation EHRFullStatusPanel
-- (void)toggle {self.panel.hidden=!self.panel.hidden;[self refresh];}
+- (void)toggle {self.panel.hidden=!self.panel.hidden;[self layoutOverlay];[self refresh];}
 - (void)signIn {
 #if EHR_HAS_ITCH_AUTH
     self.panel.hidden=YES;EHRItchAuthProviderPresentAccount();
@@ -74,6 +87,28 @@
 - (void)browseLobbies {
     self.panel.hidden=YES;
     EHRPresentLobbyBrowser(self.window.rootViewController);
+}
+#if EHR_HAS_LOBBY_SEARCH
+- (void)searchSelectionChanged {
+    const NSInteger choice=self.searchSelector.selectedSegmentIndex;
+    const int32_t code=choice>=0&&choice<=1?EHRLobbySearchSetSelection((int32_t)choice):EHR_RUNTIME_BAD_ARGUMENT;
+    self.searchHint.text=code?@"Couldn't change lobby filter. Try again.":@"Refresh Find Game after changing the filter.";
+    self.searchSelector.selectedSegmentIndex=EHRLobbySearchGetSelection();
+}
+#endif
+- (void)refreshLoading {
+    const bool foreground=UIApplication.sharedApplication.applicationState==UIApplicationStateActive;
+    ehr_diagnostics::state().uiHeartbeat(EHRDiagnosticTick(),true,foreground);
+    NSDictionary *loading=EHRFullSourceCopySettingsLoadingStatus();
+    BOOL visible=foreground&&[loading[@"status"] intValue]==0&&[loading[@"busy"] boolValue]&&self.panel.hidden&&!self.window.rootViewController.presentedViewController;
+#if EHR_HAS_ITCH_AUTH
+    visible=visible&&self.ownershipCover.hidden;
+#endif
+    self.loadingPill.hidden=!visible;
+    const uint32_t processed=[loading[@"processed"] unsignedIntValue],total=[loading[@"total"] unsignedIntValue];
+    self.loadingLabel.text=total?[NSString stringWithFormat:@"Loading settings… %u / %u",processed,total]:@"Loading settings…";
+    if(visible)[self.loadingSpinner startAnimating];else[self.loadingSpinner stopAnimating];
+    ehr_diagnostics::state().uiHeartbeat(EHRDiagnosticTick(),false,foreground);
 }
 - (void)install {
     UIWindowScene *scene=nil;
@@ -109,6 +144,27 @@
     self.lobbiesButton.accessibilityHint=@"Opens the EHR website inside the app. Website sign-in may be required.";
     [self.lobbiesButton addTarget:self action:@selector(browseLobbies) forControlEvents:UIControlEventTouchUpInside];
     [self.panel addSubview:self.lobbiesButton];
+#if EHR_HAS_LOBBY_SEARCH
+    self.searchSelector=[[UISegmentedControl alloc] initWithItems:@[@"All lobbies",@"EHR lobbies"]];
+    self.searchSelector.selectedSegmentIndex=EHRLobbySearchGetSelection();
+    self.searchSelector.selectedSegmentTintColor=[UIColor colorWithRed:0.0 green:0.58 blue:0.68 alpha:1];
+    [self.searchSelector setTitleTextAttributes:@{NSForegroundColorAttributeName:UIColor.whiteColor} forState:UIControlStateNormal];
+    self.searchSelector.accessibilityLabel=@"Find Game lobby filter";
+    self.searchSelector.accessibilityHint=@"Refresh Find Game after changing the filter.";
+    [self.searchSelector addTarget:self action:@selector(searchSelectionChanged) forControlEvents:UIControlEventValueChanged];
+    [self.panel addSubview:self.searchSelector];
+    self.searchHint=[UILabel new];self.searchHint.text=@"Refresh Find Game after changing the filter.";
+    self.searchHint.font=[UIFont systemFontOfSize:11];self.searchHint.textColor=UIColor.lightGrayColor;self.searchHint.numberOfLines=2;
+    [self.panel addSubview:self.searchHint];
+#endif
+    self.loadingPill=[UIView new];self.loadingPill.backgroundColor=[UIColor colorWithWhite:0.04 alpha:0.92];
+    self.loadingPill.layer.cornerRadius=12;self.loadingPill.userInteractionEnabled=NO;self.loadingPill.hidden=YES;
+    self.loadingPill.accessibilityIdentifier=@"ehr.settings.loading";
+    self.loadingSpinner=[[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleMedium];
+    self.loadingSpinner.color=UIColor.cyanColor;[self.loadingPill addSubview:self.loadingSpinner];
+    self.loadingLabel=[UILabel new];self.loadingLabel.font=[UIFont systemFontOfSize:14 weight:UIFontWeightSemibold];
+    self.loadingLabel.textColor=UIColor.whiteColor;self.loadingLabel.adjustsFontSizeToFitWidth=YES;self.loadingLabel.minimumScaleFactor=0.8;
+    [self.loadingPill addSubview:self.loadingLabel];[self.window.rootViewController.view addSubview:self.loadingPill];
 #if EHR_HAS_ITCH_AUTH
     self.signInButton=[UIButton buttonWithType:UIButtonTypeSystem];self.signInButton.tintColor=UIColor.cyanColor;
     self.signInButton.titleLabel.font=[UIFont systemFontOfSize:13];self.signInButton.titleLabel.numberOfLines=2;
@@ -124,6 +180,8 @@
     EHRItchAuthProviderSetPresenter(self.window.rootViewController);
 #endif
     [NSTimer scheduledTimerWithTimeInterval:1 target:self selector:@selector(refresh) userInfo:nil repeats:YES];
+    NSTimer *loadingTimer=[NSTimer timerWithTimeInterval:0.1 target:self selector:@selector(refreshLoading) userInfo:nil repeats:YES];
+    [NSRunLoop.mainRunLoop addTimer:loadingTimer forMode:NSRunLoopCommonModes];
 }
 - (void)layoutOverlay {
     if(!self.button||!self.panel)return;
@@ -139,10 +197,34 @@
     CGFloat below=MAX(0,CGRectGetMaxY(safe)-CGRectGetMaxY(self.button.frame)-8);
     CGFloat above=MAX(0,CGRectGetMinY(self.button.frame)-CGRectGetMinY(safe)-8);
     BOOL placeBelow=below>=above;
-    CGFloat panelHeight=MIN(360,placeBelow?below:above);
+    // Reserve a usable panel even when a dragged badge sits mid-screen. While
+    // open, move only its displayed position enough to make room; closing the
+    // panel restores the user's saved drag position.
+    CGFloat panelHeight=MIN(360,MAX(0,safe.size.height-height-8));
+    if(!self.panel.hidden){
+        CGRect badge=self.button.frame;
+        badge.origin.y=placeBelow?MIN(badge.origin.y,CGRectGetMaxY(safe)-panelHeight-height-8):MAX(badge.origin.y,CGRectGetMinY(safe)+panelHeight+8);
+        self.button.frame=badge;
+    }
     CGFloat panelX=MAX(CGRectGetMinX(safe),MIN(CGRectGetMaxX(safe)-panelWidth,CGRectGetMidX(self.button.frame)-panelWidth/2));
-    self.panel.frame=CGRectMake(panelX,placeBelow?CGRectGetMaxY(self.button.frame)+8:CGRectGetMinY(self.button.frame)-8-panelHeight,panelWidth,panelHeight);
+    const CGFloat panelY=MAX(CGRectGetMinY(safe),MIN(CGRectGetMaxY(safe)-panelHeight,placeBelow?CGRectGetMaxY(self.button.frame)+8:CGRectGetMinY(self.button.frame)-8-panelHeight));
+    self.panel.frame=CGRectMake(panelX,panelY,panelWidth,panelHeight);
     self.statusScroll.frame=CGRectMake(14,12,MAX(0,self.panel.bounds.size.width-28),MAX(0,self.panel.bounds.size.height-132));
+#if EHR_HAS_LOBBY_SEARCH
+    self.statusScroll.frame=CGRectMake(14,12,MAX(0,self.panel.bounds.size.width-28),MAX(0,self.panel.bounds.size.height-198));
+    self.searchSelector.frame=CGRectMake(14,MAX(0,self.panel.bounds.size.height-180),MAX(0,self.panel.bounds.size.width-28),32);
+    self.searchHint.frame=CGRectMake(14,MAX(0,self.panel.bounds.size.height-146),MAX(0,self.panel.bounds.size.width-28),30);
+#endif
+    const CGFloat loadingWidth=MAX(0,MIN(340,safe.size.width));
+    CGFloat loadingY=MIN(CGRectGetMinY(safe)+56,MAX(CGRectGetMinY(safe),CGRectGetMaxY(safe)-44));
+    CGRect loadingFrame=CGRectMake(CGRectGetMidX(safe)-loadingWidth/2,loadingY,loadingWidth,44);
+    if(CGRectIntersectsRect(loadingFrame,CGRectInset(self.button.frame,-8,-8))){
+        const CGFloat after=CGRectGetMaxY(self.button.frame)+8,before=CGRectGetMinY(self.button.frame)-52;
+        loadingFrame.origin.y=after+44<=CGRectGetMaxY(safe)?after:MAX(CGRectGetMinY(safe),before);
+    }
+    self.loadingPill.frame=loadingFrame;
+    self.loadingSpinner.frame=CGRectMake(12,12,20,20);
+    self.loadingLabel.frame=CGRectMake(44,4,MAX(0,loadingWidth-56),36);
     self.lobbiesButton.frame=CGRectMake(14,MAX(0,self.panel.bounds.size.height-108),MAX(0,self.panel.bounds.size.width-28),MIN(44,self.panel.bounds.size.height));
     self.exportsButton.frame=CGRectMake(14,MAX(0,self.panel.bounds.size.height-56),MAX(0,self.panel.bounds.size.width-28),MIN(44,self.panel.bounds.size.height));
     if(self.signInButton){
@@ -159,6 +241,9 @@
     BOOL active=[app[@"state"] unsignedIntValue]==3,loaded=[app[@"optionsLoaded"] boolValue];
     NSString *title=active?(loaded?@"EHR running":@"EHR loading roles"):[status[@"attempted"] boolValue]?@"EHR status":@"EHR starting";
     self.button.accessibilityValue=title;
+#if EHR_HAS_LOBBY_SEARCH
+    self.searchSelector.selectedSegmentIndex=EHRLobbySearchGetSelection();
+#endif
 #if EHR_HAS_ITCH_AUTH
     NSDictionary *auth=EHRItchAuthProviderCopyStatus(),*authRuntime=auth[@"runtime"]?:@{};
     const BOOL signedIn=[authRuntime[@"fullGameCompleted"] boolValue];
@@ -175,6 +260,7 @@
         info[@"EHRSourceVersion"]?:@"?",info[@"CFBundleShortVersionString"]?:@"?",info[@"CFBundleVersion"]?:@"?",info[@"EHRReferenceGameVersion"]?:@"?",title,message];
     CGSize textSize=[self.label sizeThatFits:CGSizeMake(self.statusScroll.bounds.size.width,CGFLOAT_MAX)];
     self.label.frame=CGRectMake(0,0,self.statusScroll.bounds.size.width,textSize.height);self.statusScroll.contentSize=self.label.bounds.size;
+    [self refreshLoading];
 }
 @end
 static void EHRInstallStatusWhenSceneReady(void) {

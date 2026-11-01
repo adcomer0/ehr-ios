@@ -8,6 +8,17 @@
 static void OwnedOriginalHelper(void *,const void *);
 static void *ownedCaller();
 static NSDictionary *ownedInfo;
+static id ownedPreference;static NSUInteger preferenceReads=0,preferenceWrites=0;
+@interface OwnedDefaults:NSObject
++ (instancetype)standardUserDefaults;
+- (id)objectForKey:(NSString *)key;
+- (void)setInteger:(NSInteger)value forKey:(NSString *)key;
+@end
+@implementation OwnedDefaults
++ (instancetype)standardUserDefaults {static auto defaults=[OwnedDefaults new];return defaults;}
+- (id)objectForKey:(NSString *)key {if(![key isEqual:@"EHRLobbySearchSelection"])@throw [NSException exceptionWithName:@"owned preference boundary" reason:nil userInfo:nil];++preferenceReads;return ownedPreference;}
+- (void)setInteger:(NSInteger)value forKey:(NSString *)key {if(![key isEqual:@"EHRLobbySearchSelection"])@throw [NSException exceptionWithName:@"owned preference boundary" reason:nil userInfo:nil];++preferenceWrites;ownedPreference=@(value);}
+@end
 @interface OwnedBundle:NSObject
 + (instancetype)mainBundle;
 - (NSDictionary *)infoDictionary;
@@ -17,10 +28,12 @@ static NSDictionary *ownedInfo;
 - (NSDictionary *)infoDictionary{return ownedInfo;}
 @end
 #define NSBundle OwnedBundle
+#define NSUserDefaults OwnedDefaults
 #define __builtin_return_address(x) ownedCaller()
 #import "../native/EHRLobbySearch.mm"
 #undef __builtin_return_address
 #undef NSBundle
+#undef NSUserDefaults
 
 @interface OwnedObject:NSObject
 @property(nonatomic) const void *klass;
@@ -36,7 +49,7 @@ int setClass,filterClass,modClass,guidClass,listClass,stringClass,intClass;
 NSUInteger checks=0;NSMutableArray<NSString *> *errors;NSMutableArray<OwnedObject *> *objects;
 NSMutableDictionary<NSNumber *,OwnedObject *> *roots;uint64_t nextRoot=1000;
 bool permitted=true,foreignCaller=false;NSUInteger originalCalls=0,allocations=0;
-int failMethod=0;bool changeGateDuringCtor=false;
+int failMethod=0;bool changeGateDuringCtor=false,changeSelectionDuringCtor=false;
 OwnedObject *globalString;
 enum {Helper=1,SetCtor=2,FilterCtor=3,ModCtor=4,GuidParse=5,Count=6,Item=7,Add=8,Global=9,Filters=10,Key=11,Sub=12,Accepted=13,Int=14,Option=15};
 void Check(bool okay,NSString *label){++checks;if(!okay)[errors addObject:label];}
@@ -51,7 +64,7 @@ const void *objectClass(void *value){return [(__bridge OwnedObject *)value klass
 void *objectNew(const void *klass){++allocations;return (__bridge void *)object(klass);}
 int32_t permissionFixture(){return permitted?1:0;}
 int32_t anotherPermission(){return 0;}
-void Reset(){Check(roots.count==0,@"prior_owned_roots_released");objects=[NSMutableArray new];roots=[NSMutableDictionary new];globalString=text(@"");permitted=true;foreignCaller=false;failMethod=0;changeGateDuringCtor=false;originalCalls=allocations=0;ownedInfo=@{@"EHRLobbySearchCompiled":@YES};
+void Reset(){Check(roots.count==0,@"prior_owned_roots_released");objects=[NSMutableArray new];roots=[NSMutableDictionary new];globalString=text(@"");permitted=true;foreignCaller=false;failMethod=0;changeGateDuringCtor=false;changeSelectionDuringCtor=false;originalCalls=allocations=0;ownedInfo=@{@"EHRLobbySearchCompiled":@YES};ownedPreference=nil;preferenceReads=preferenceWrites=0;selection.store(1);selectionLoaded.store(true);
  meta={};meta.setClass=&setClass;meta.filterClass=&filterClass;meta.modClass=&modClass;meta.guidClass=&guidClass;meta.listClass=&listClass;meta.helper=Helper;meta.setCtor=SetCtor;meta.filterCtor=FilterCtor;meta.modCtor=ModCtor;meta.guidParse=GuidParse;meta.count=Count;meta.item=Item;meta.add=Add;meta.global=Global;meta.filters=Filters;meta.key=Key;meta.option=Option;meta.sub=Sub;meta.accepted=Accepted;api.object_get_class=objectClass;api.object_new=objectNew;prepared.store(0);allowed.store(permissionFixture);applying=false;
 }
 void OnWorker(void(^operation)(void)){dispatch_semaphore_t done=dispatch_semaphore_create(0);dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED,0),^{operation();dispatch_semaphore_signal(done);});Check(dispatch_semaphore_wait(done,dispatch_time(DISPATCH_TIME_NOW,2*NSEC_PER_SEC))==0,@"owned_worker_finishes");}
@@ -74,7 +87,7 @@ extern "C" EHRRuntimeStatus ehr_runtime_invoke(EHRRuntimeToken method,EHRRuntime
  switch(method){case SetCtor:target.fields[@(Filters)]=object(&listClass);break;
  case ModCtor:break;
  case GuidParse:{Check(count==1&&[resolve(args[0].token).text isEqual:@"446420cc-ce35-4c2f-8f5d-b14f84354421"],@"only_public_ehr_guid_constructed");uint8_t value[16];memset(value,42,16);*out=root(box(&guidClass,value,16));break;}
- case FilterCtor:Check(count==2,@"exact_original_filter_constructor_arguments");target.fields[@(Key)]=resolve(args[0].token);target.fields[@(Option)]=text(@"mod");target.fields[@(Sub)]=resolve(args[1].token);if(changeGateDuringCtor)permitted=false;break;
+ case FilterCtor:Check(count==2,@"exact_original_filter_constructor_arguments");target.fields[@(Key)]=resolve(args[0].token);target.fields[@(Option)]=text(@"mod");target.fields[@(Sub)]=resolve(args[1].token);if(changeGateDuringCtor)permitted=false;if(changeSelectionDuringCtor)selection.store(0);break;
  case Count:{int32_t n=(int32_t)target.items.count;*out=root(box(&intClass,&n,sizeof(n)));break;}
  case Item:{int32_t i=*(const int32_t *)args[0].bytes;if(i<0||(NSUInteger)i>=target.items.count)return EHR_RUNTIME_BAD_ARGUMENT;*out=root(target.items[(NSUInteger)i]);break;}
  case Add:Check(count==1&&args[0].kind==EHR_RUNTIME_REFERENCE,@"single_reference_list_commit");[target.items addObject:resolve(args[0].token)];break;
@@ -95,6 +108,19 @@ int main(){@autoreleasepool{
  Check(EHRLobbySearchPrepare(nullptr)==EHR_RUNTIME_BAD_ARGUMENT,@"null_gate_rejected");Check(EHRLobbySearchPrepare(anotherPermission)==EHR_RUNTIME_BAD_ARGUMENT,@"gate_rebinding_rejected");
  OnWorker(^{Check(EHRLobbySearchPrepare(permissionFixture)==EHR_RUNTIME_WRONG_THREAD,@"worker_prepare_rejected");});
  Check(allocations==0,@"preparation_never_constructs_filter_or_request_objects");
+ Reset();selectionLoaded.store(false);Check(EHRLobbySearchGetSelection()==0&&preferenceReads==1&&preferenceWrites==0,@"missing_preference_defaults_to_all_without_write");
+ for(id malformed in @[@YES,@-1,@2,@1.5,@"1",@[],@{}]){selectionLoaded.store(false);ownedPreference=malformed;Check(EHRLobbySearchGetSelection()==0,@"malformed_preference_defaults_to_all");}
+ for(id valid in @[@0,@1]){selectionLoaded.store(false);ownedPreference=valid;Check(EHRLobbySearchGetSelection()==[valid intValue],@"only_exact_integer_selection_restored");}
+ auto beforeWrites=preferenceWrites;Check(EHRLobbySearchSetSelection(2)==EHR_RUNTIME_BAD_ARGUMENT&&preferenceWrites==beforeWrites,@"invalid_selection_is_nonmutating");
+ Check(EHRLobbySearchSetSelection(0)==0&&[ownedPreference isEqual:@0],@"explicit_all_persists_only_own_integer");
+ Check(EHRLobbySearchSetSelection(1)==0&&[ownedPreference isEqual:@1],@"explicit_ehr_persists_only_own_integer");
+ beforeWrites=preferenceWrites;Check(EHRLobbySearchSetSelection(1)==0&&preferenceWrites==beforeWrites,@"unchanged_selection_never_rewrites_preferences");
+ OnWorker(^{Check(EHRLobbySearchGetSelection()==0&&EHRLobbySearchSetSelection(0)==EHR_RUNTIME_WRONG_THREAD,@"worker_selection_cannot_read_or_write_preference");});
+ Check(preferenceWrites==beforeWrites,@"worker_selection_keeps_preference_unchanged");
+ Reset();{auto value=newSet();selection.store(0);auto beforeAll=allForwards.load();auto beforeApply=applied.load();ehr_native_ehr_lobby_search_filters((__bridge void *)value,nullptr);Check(originalCalls==1&&value.fields[@(Filters)].items.count==0&&allocations==0&&applied.load()==beforeApply&&allForwards.load()==beforeAll+1,@"all_mode_forwards_original_without_filter_construction");
+  Check(EHRLobbySearchSetSelection(1)==0,@"user_switches_to_ehr");ehr_native_ehr_lobby_search_filters((__bridge void *)value,nullptr);Check(originalCalls==2&&value.fields[@(Filters)].items.count==1,@"ehr_mode_appends_filter_next_request");
+  Check(EHRLobbySearchSetSelection(0)==0,@"user_switches_back_to_all");ehr_native_ehr_lobby_search_filters((__bridge void *)value,nullptr);Check(originalCalls==3&&value.fields[@(Filters)].items.count==0,@"original_helper_removes_prior_ehr_filter_in_all_mode");}
+ Reset();
  {Root set;auto v=newSet();v.fields[@(Filters)].items=[NSMutableArray arrayWithObject:row(@"map")];set.token=root(v);auto first=append(set.token,true);Check(!first.status&&first.appended&&v.fields[@(Filters)].items.count==2,@"append_preserves_other_filters");auto second=append(set.token,true);Check(!second.status&&second.existing&&!second.appended&&v.fields[@(Filters)].items.count==2,@"same_request_application_is_idempotent");}
  for(int malformed=0;malformed<5;++malformed){Reset();{Root set;auto v=newSet();auto list=v.fields[@(Filters)];
   if(malformed==0)[list.items addObject:row(@"mod",false)];
@@ -105,6 +131,7 @@ int main(){@autoreleasepool{
   auto before=list.items.count;set.token=root(v);auto result=append(set.token,true);Check(result.status&&list.items.count==before,@"malformed_or_foreign_filter_set_unchanged");}}
  for(int failing:{GuidParse,ModCtor,FilterCtor,Add}){Reset();{Root set;auto v=newSet();set.token=root(v);failMethod=failing;auto result=append(set.token,true);Check(result.status&&v.fields[@(Filters)].items.count==0,@"caught_native_failure_never_commits_partial_filter");}}
  Reset();{Root set;auto v=newSet();set.token=root(v);changeGateDuringCtor=true;auto result=append(set.token,true);Check(result.status&&v.fields[@(Filters)].items.count==0,@"permission_rechecked_before_commit");}
+ Reset();{Root set;auto v=newSet();set.token=root(v);changeSelectionDuringCtor=true;auto result=append(set.token,true);Check(result.status&&v.fields[@(Filters)].items.count==0,@"selection_rechecked_before_commit");}
  Reset();{Root set;auto v=newSet();set.token=root(v);globalString=text(@"OWNED-FOREIGN-REGISTRATION");auto result=append(set.token,true);Check(result.status&&v.fields[@(Filters)].items.count==0,@"global_registration_is_never_changed_or_overridden");}
  for(int guard=0;guard<4;++guard){Reset();auto v=newSet();if(guard==0)foreignCaller=true;else if(guard==1)permitted=false;else if(guard==2)ownedInfo=@{@"EHRLobbySearchCompiled":@NO};
   if(guard==3)OnWorker(^{ehr_native_ehr_lobby_search_filters((__bridge void *)v,nullptr);});else ehr_native_ehr_lobby_search_filters((__bridge void *)v,nullptr);

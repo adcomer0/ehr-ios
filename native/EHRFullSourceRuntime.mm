@@ -46,7 +46,8 @@
 #include "EHRFullSourceStartup.generated.h"
 EHRRuntimeStatus EHRNativeGeneratedRegisterCompiled();
 namespace {
-struct BindState {bool attempted=false,ready=false,prepareAttempted=false,loadAttempted=false,starting=false,directoryBound=false;uint32_t flags=0;int32_t status=1,eosObserverStatus=EHR_RUNTIME_UNSUPPORTED,directoryTickStatus=0;uint64_t directoryTicks=0;int32_t(*directoryTick)(void)=nullptr;const void *image=nullptr;void *handle=nullptr;NSString *stage=@"waiting";NSString *module=nil;NSDictionary *failure=nil;NSDictionary *failureCleanup=nil;};
+using SettingsLoadingReader=int32_t(*)(uint32_t *,size_t);
+struct BindState {bool attempted=false,ready=false,prepareAttempted=false,loadAttempted=false,starting=false,directoryBound=false;uint32_t flags=0;int32_t status=1,eosObserverStatus=EHR_RUNTIME_UNSUPPORTED,directoryTickStatus=0;uint64_t directoryTicks=0;int32_t(*directoryTick)(void)=nullptr;SettingsLoadingReader settingsLoading=nullptr;const void *image=nullptr;void *handle=nullptr;NSString *stage=@"waiting";NSString *module=nil;NSDictionary *failure=nil;NSDictionary *failureCleanup=nil;};
 BindState &state(){static BindState value;return value;}
 void diagnosticStage(uint32_t stage){auto app=ehr_diagnostics::state().snapshot().application;
     app.stage=stage;app.status=state().status;app.flags=state().flags;ehr_diagnostics::state().application(EHRDiagnosticTick(),app);}
@@ -104,6 +105,23 @@ bool locateOwnImage() {
 }
 }
 #endif
+NSDictionary *EHRFullSourceCopySettingsLoadingStatus(void) {
+    if(!NSThread.isMainThread)return @{@"schemaVersion":@1,@"status":@(EHR_RUNTIME_WRONG_THREAD),@"bound":@NO,@"busy":@NO};
+    ehr_diagnostics::SettingsLoading value;value.tick=EHRDiagnosticTick();
+#if EHR_HAS_FULL_SOURCE
+    auto reader=state().settingsLoading;value.bound=reader!=nullptr;
+    if(state().ready&&reader){uint32_t words[8]{};
+        @try{try{value.status=reader(words,8);
+            if(!value.status){
+                if(words[0]!=1||words[1]!=8||words[2]>1||words[3]>32||words[4]>words[5]||words[5]>20000||words[6]>64||words[7]||(words[2]&&!words[3]))value.status=EHR_RUNTIME_TYPE_MISMATCH;
+                else{value.busy=words[2];value.active=words[3];value.processed=words[4];value.total=words[5];value.tab_plus_one=words[6];}
+            }
+        }catch(...){value.status=EHR_RUNTIME_MANAGED_EXCEPTION;}}@catch(__unused NSException *error){value.status=EHR_RUNTIME_MANAGED_EXCEPTION;}
+    }
+#endif
+    ehr_diagnostics::state().settingsLoading(value);
+    return @{@"schemaVersion":@1,@"status":@(value.status),@"bound":@(bool(value.bound)),@"busy":@(bool(value.busy)),@"activeBuilds":@(value.active),@"processed":@(value.processed),@"total":@(value.total),@"tabIndexPlusOne":@(value.tab_plus_one)};
+}
 NSDictionary *EHRFullSourceCopyRuntimeStatus(void) {
 #if EHR_HAS_FULL_SOURCE
     if(!NSThread.isMainThread)return @{@"bindingsReady":@NO,@"status":@(EHR_RUNTIME_WRONG_THREAD)};
@@ -112,6 +130,7 @@ NSDictionary *EHRFullSourceCopyRuntimeStatus(void) {
         @"productionCoroutinesReady":@((s.flags&16)!=0),@"sourceCoroutineFailureDiagnosticsBound":@(EHRManagedIteratorProductionFailureDiagnosticsBound()),@"fullMainLoadRequested":@(s.loadAttempted)} mutableCopy];
     if(s.failure)result[@"bindingFailure"]=s.failure;
     if(s.failureCleanup)result[@"failureCleanup"]=s.failureCleanup;
+    result[@"settingsLoading"]=EHRFullSourceCopySettingsLoadingStatus();
 #if EHR_HAS_LOBBY_SEARCH
     result[@"lobbySearch"]=EHRLobbySearchCopyStatus();
 #endif
@@ -218,6 +237,7 @@ NSDictionary *EHRFullSourceBindRuntime(void) {
         s.stage=@"production_coroutines";diagnosticStage(5);EHRManagedIteratorProductionV1 coroutines{};EHRManagedIteratorProductionMakeTable(&coroutines);
         check(bindTable("ehr_source_bind_coroutines_v1",coroutines));
         check(EHRManagedIteratorProductionSetFailureDiagnostics(required<EHRSourceCoroutineFailureReader>("ehr_source_coroutine_failure_v1"),EHRRuntimeDiagnosticsFlushIteratorFailure));s.flags|=16;
+        s.settingsLoading=required<SettingsLoadingReader>("ehr_source_settings_loading_v1");
 #if EHR_HAS_LOBBY_SEARCH
         check(EHRLobbySearchPrepare(lobbySearchAllowed));
 #endif

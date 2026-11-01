@@ -32,7 +32,9 @@ struct Iterators {uint64_t tick=0,entries=0,active=0,terminal=0,current=0,weak=0
 struct Application {uint32_t stage=0,flags=0,state=0,load_attempts=0,options_loaded=0,options=0,active=0,candidates=0,post_load=0;int32_t status=0;};
 struct AuthState {uint32_t domain=0;int32_t code=0,install_status=1;uint64_t count=0,requests=0,successes=0,errors=0,overlaps=0;};
 struct EOSLogin {int32_t result=0,status=1;uint64_t count=0;};
-struct Snapshot {uint64_t sequence=0,unknown_routes=0,failure_total=0,guard_total=0,detail_total=0;size_t route_count=0,event_count=0,failure_count=0,guard_count=0,detail_count=0;Application application{};AuthState auth{};Gateway gateway{};Iterators iterators{};std::array<EOSLogin,2> eos{};std::array<Route,RouteLimit> routes{};std::array<Event,EventLimit> events{};std::array<Event,FailureLimit> failures{};std::array<Guard,GuardLimit> guards{};std::array<FailureDetail,DetailLimit> details{};};
+struct SettingsLoading {uint64_t tick=0;uint32_t bound=0,busy=0,active=0,processed=0,total=0,tab_plus_one=0;int32_t status=1;};
+struct UIHeartbeat {uint64_t entered_tick=0,completed_tick=0,entered_count=0,completed_count=0;uint32_t foreground=0;};
+struct Snapshot {uint64_t sequence=0,unknown_routes=0,failure_total=0,guard_total=0,detail_total=0;size_t route_count=0,event_count=0,failure_count=0,guard_count=0,detail_count=0;Application application{};AuthState auth{};Gateway gateway{};Iterators iterators{};SettingsLoading settings_loading{};UIHeartbeat ui{};std::array<EOSLogin,2> eos{};std::array<Route,RouteLimit> routes{};std::array<Event,EventLimit> events{};std::array<Event,FailureLimit> failures{};std::array<Guard,GuardLimit> guards{};std::array<FailureDetail,DetailLimit> details{};};
 class State {
  std::mutex mutex_;Snapshot data_{};
  void event(uint32_t kind,uint64_t tick,uint64_t id,uint64_t rva,uint32_t detail,int32_t status,uint32_t flags) {
@@ -73,6 +75,8 @@ public:
  }
  void gateway(Gateway value) noexcept {std::lock_guard<std::mutex> lock(mutex_);value.samples=data_.gateway.samples+1;value.observed_root_high_water=std::max(value.roots,data_.gateway.observed_root_high_water);data_.gateway=value;}
  void iterators(Iterators value) noexcept {std::lock_guard<std::mutex> lock(mutex_);data_.iterators=value;}
+ void settingsLoading(SettingsLoading value) noexcept {std::lock_guard<std::mutex> lock(mutex_);data_.settings_loading=value;}
+ void uiHeartbeat(uint64_t tick,bool entered,bool foreground) noexcept {std::lock_guard<std::mutex> lock(mutex_);data_.ui.foreground=foreground;if(entered){data_.ui.entered_tick=tick;++data_.ui.entered_count;}else{data_.ui.completed_tick=tick;++data_.ui.completed_count;}}
  void failureDetail(uint64_t tick,FailureDetail value,Context origin) noexcept {
   std::lock_guard<std::mutex> guard(mutex_);value.tick=tick;value.target=origin.target;value.rva=origin.rva;value.iterator=origin.iterator;
   event(FailureDetailEvent,tick,value.target,value.rva,value.kind,value.status,0);value.sequence=data_.sequence;

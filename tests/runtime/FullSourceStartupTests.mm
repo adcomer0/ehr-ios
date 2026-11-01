@@ -1,7 +1,9 @@
 #import <XCTest/XCTest.h>
+#import <CoreFoundation/CoreFoundation.h>
 #include <dlfcn.h>
 #include <mach-o/dyld.h>
 #include <cstring>
+#include <thread>
 #include "native/EHRRuntimeGateway.h"
 #ifndef EHR_EXERCISE_FAILURE_CLEANUP
 #define EHR_EXERCISE_FAILURE_CLEANUP 0
@@ -231,18 +233,35 @@ NSDictionary *status() {
         XCTAssertEqualObjects(factory[@"rootAccountingBalanced"],@YES);
         for(NSString *key in @[@"reflectionActivatorUsed",@"nativeAotCallbackEntered",@"gameOwnerInvoked",@"accountOrNetworkActions",@"directPublicApiExploratoryProbe"])XCTAssertEqualObjects(factory[key],@NO);
     }
+    if([NSBundle.mainBundle.infoDictionary[@"EHRSettingsLoadingCompiled"] boolValue]){
+        NSDictionary *loading=last[@"settingsLoading"];
+        XCTAssertEqualObjects(loading[@"schemaVersion"],@1);XCTAssertEqualObjects(loading[@"status"],@0);
+        XCTAssertEqualObjects(loading[@"bound"],@YES);XCTAssertEqualObjects(loading[@"busy"],@NO);
+        for(NSString *key in @[@"activeBuilds",@"processed",@"total",@"tabIndexPlusOne"])XCTAssertEqualObjects(loading[key],@0);
+        auto loadingProbe=reinterpret_cast<NSDictionary *(*)(void)>(helperExport("EHRFullSourceCopySettingsLoadingStatus"));
+        XCTAssertNotEqual(loadingProbe,nullptr);
+        NSDictionary *repeated=loadingProbe?loadingProbe():nil;XCTAssertEqualObjects(repeated,loading);
+        NSDictionary *worker=nil;
+        std::thread loadingWorker([&]{@autoreleasepool {worker=loadingProbe?loadingProbe():nil;}});loadingWorker.join();
+        XCTAssertEqualObjects(worker[@"status"],@2);XCTAssertEqualObjects(worker[@"bound"],@NO);XCTAssertEqualObjects(worker[@"busy"],@NO);
+        NSDictionary *after=loadingProbe?loadingProbe():nil;XCTAssertEqualObjects(after,loading);
+    }
     if([NSBundle.mainBundle.infoDictionary[@"EHRLobbySearchCompiled"] boolValue]){
         NSDictionary *search=last[@"lobbySearch"];
-        XCTAssertEqualObjects(search[@"schemaVersion"],@1);XCTAssertEqual([search[@"compiled"] intValue],1);
+        XCTAssertEqualObjects(search[@"schemaVersion"],@2);XCTAssertEqual([search[@"compiled"] intValue],1);
         XCTAssertEqualObjects(search[@"selected"],@YES);XCTAssertEqualObjects(search[@"bound"],@YES);
-        for(NSString *key in @[@"preparedStatus",@"lastStatus",@"phase",@"calls",@"originalReturned",@"applied",@"alreadyPresent",@"inactive",@"foreignCallsite",@"failures",@"workerForwards"])XCTAssertEqualObjects(search[key],@0);
+        id selection=search[@"selection"];
+        BOOL integerSelection=[selection isKindOfClass:NSNumber.class]&&CFGetTypeID((__bridge CFTypeRef)selection)==CFNumberGetTypeID()&&!CFNumberIsFloatType((__bridge CFNumberRef)selection);
+        XCTAssertTrue(integerSelection&&([selection longLongValue]==0||[selection longLongValue]==1));
+        XCTAssertEqualObjects(search[@"selectionLoaded"],@YES);
+        for(NSString *key in @[@"preparedStatus",@"lastStatus",@"phase",@"calls",@"originalReturned",@"applied",@"alreadyPresent",@"inactive",@"foreignCallsite",@"failures",@"workerForwards",@"selectionChanges",@"allForwards"])XCTAssertEqualObjects(search[key],@0);
         auto searchProbe=reinterpret_cast<NSDictionary *(*)(void)>(helperExport("EHRLobbySearchSelfTest"));
         NSDictionary *searchProof=searchProbe?searchProbe():@{@"success":@NO};
         NSData *searchData=[NSJSONSerialization dataWithJSONObject:searchProof options:NSJSONWritingPrettyPrinted error:nil];
         XCTAttachment *searchAttachment=[XCTAttachment attachmentWithData:searchData uniformTypeIdentifier:@"public.json"];
         searchAttachment.name=@"EHRLobbySearchProof.json";searchAttachment.lifetime=XCTAttachmentLifetimeKeepAlways;[self addAttachment:searchAttachment];
         XCTAssertTrue([searchProof[@"success"] boolValue],@"%@",searchProof);XCTAssertEqualObjects(searchProof[@"status"],@0);
-        XCTAssertGreaterThanOrEqual([searchProof[@"checks"] unsignedIntValue],5u);
+        XCTAssertEqualObjects(searchProof[@"checks"],@5);XCTAssertEqualObjects(searchProof[@"phase"],@8);
         XCTAssertEqualObjects(searchProof[@"rootsBefore"],searchProof[@"rootsAfter"]);
         for(NSString *key in @[@"realSearchRequests",@"accountActions",@"globalRegistrationWrites",@"hostPacketChanges"])XCTAssertEqualObjects(searchProof[key],@0);
     }

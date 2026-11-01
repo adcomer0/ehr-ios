@@ -58,7 +58,7 @@ def check(project, output, dotnet, source=None):
         _, (_, source) = prepare.selected_source(project.resolve())
     else:
         source = source.resolve()
-    changed = source.read_text()
+    changed = prepare.before_loading_adaptation(source.read_text())
     original = prepare.reverse(changed)
     if hashlib.sha256(original.encode()).hexdigest() != prepare.EXPECTED_SOURCE_SHA256:
         raise ValueError("recovered baseline source pin changed")
