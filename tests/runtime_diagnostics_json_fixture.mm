@@ -1,5 +1,9 @@
 #import <Foundation/Foundation.h>
 #include "EHRRuntimeDiagnostics.h"
+#if EHR_HAS_LOBBY_SEARCH
+#import "EHRLobbySearch.h"
+extern "C" NSDictionary *EHRLobbySearchCopyStatus(void){return @{@"schemaVersion":@2,@"selection":@0,@"selectionLoaded":@YES,@"allForwards":@1};}
+#endif
 #if EHR_HAS_NETWORK_DIAGNOSTICS
 #include "EHRNativePatchThunks.h"
 extern "C" NSDictionary *EHRNativeDisconnectCopyStatus(void){return @{@"schemaVersion":@1,@"count":@1,@"reason":@5};}
@@ -25,11 +29,13 @@ int main(){@autoreleasepool {
  uint32_t sourceWords[12]={1,12,5,0,42,0,7,89,0,1,6,1};ehr_diagnostics::context={42,4096,33,15,0};if(!EHRDiagnosticSourceFailure(42,6,sourceWords,12))return 9;
  ehr_diagnostics::FailureDetail native;native.kind=2;native.method_token=0x60000ab;native.owner_hash=123;native.method_hash=456;native.exception_kind=1;native.status=6;ehr_diagnostics::state().failureDetail(8,native,ehr_diagnostics::context);
  uint64_t coroutineWords[12]={1,12,77,12345,3,3,6,6,9,3,6,0};if(!EHRDiagnosticCoroutineFailure(77,6,coroutineWords,12))return 15;
+ ehr_diagnostics::SettingsLoading loading;loading.tick=19;loading.bound=1;loading.status=0;loading.busy=1;loading.active=2;loading.processed=8;loading.total=100;loading.tab_plus_one=4;ehr_diagnostics::state().settingsLoading(loading);
+ ehr_diagnostics::state().uiHeartbeat(20,true,true);ehr_diagnostics::state().uiHeartbeat(21,false,true);ehr_diagnostics::state().uiHeartbeat(22,true,true);
  NSDictionary *value=EHRRuntimeDiagnosticsCopyStatus();NSError *error=nil;
  NSData *bytes=[NSJSONSerialization dataWithJSONObject:value options:0 error:&error];
  if(!bytes||error||bytes.length>512*1024)return 1;
  NSDictionary *copy=[NSJSONSerialization JSONObjectWithData:bytes options:0 error:&error];
- NSMutableSet *expected=[NSMutableSet setWithArray:@[@"schema",@"sequence",@"routeLimit",@"eventLimit",@"unknownRoutes",@"routes",@"events",@"failureTotal",@"failures",@"application",@"appleAuth",@"eosLogin",@"guardLimit",@"guardTotal",@"guards",@"gateway",@"productionIterators",@"failureDetailLimit",@"failureDetailTotal",@"failureDetails",@"writeStatus",@"writtenSequence"]];
+ NSMutableSet *expected=[NSMutableSet setWithArray:@[@"schema",@"sequence",@"routeLimit",@"eventLimit",@"unknownRoutes",@"routes",@"events",@"failureTotal",@"failures",@"application",@"appleAuth",@"eosLogin",@"guardLimit",@"guardTotal",@"guards",@"gateway",@"productionIterators",@"failureDetailLimit",@"failureDetailTotal",@"failureDetails",@"writeStatus",@"writtenSequence",@"settingsLoading",@"uiHeartbeat",@"snapshotMonotonicNs"]];
 #if EHR_HAS_GAME_START_ITERATOR
  [expected addObject:@"gameStartIterator"];
  if(![copy[@"gameStartIterator"] isEqualToDictionary:@{@"preparedStatus":@0,@"enabled":@YES,@"replacements":@2}])return 12;
@@ -42,6 +48,13 @@ int main(){@autoreleasepool {
  [expected addObject:@"networkDisconnect"];
  if(![copy[@"networkDisconnect"] isEqualToDictionary:@{@"schemaVersion":@1,@"count":@1,@"reason":@5}])return 14;
 #endif
+#if EHR_HAS_LOBBY_SEARCH
+ [expected addObject:@"lobbySearch"];
+ if(![copy[@"lobbySearch"] isEqualToDictionary:@{@"schemaVersion":@2,@"selection":@0,@"selectionLoaded":@YES,@"allForwards":@1}])return 19;
+#endif
+ NSDictionary *settings=copy[@"settingsLoading"],*heartbeat=copy[@"uiHeartbeat"];
+ if([settings[@"sampleMonotonicNs"] intValue]!=19||[settings[@"status"] intValue]!=0||![settings[@"bound"] boolValue]||![settings[@"busy"] boolValue]||[settings[@"activeBuilds"] intValue]!=2||[settings[@"processed"] intValue]!=8||[settings[@"total"] intValue]!=100||[settings[@"tabIndexPlusOne"] intValue]!=4)return 17;
+ if([heartbeat[@"enteredMonotonicNs"] intValue]!=22||[heartbeat[@"completedMonotonicNs"] intValue]!=21||[heartbeat[@"enteredCount"] intValue]!=2||[heartbeat[@"completedCount"] intValue]!=1||![heartbeat[@"foreground"] boolValue]||![copy[@"snapshotMonotonicNs"] unsignedLongLongValue])return 18;
  if(error||![expected isEqualToSet:[NSSet setWithArray:copy.allKeys]])return 2;
  NSDictionary *route=[copy[@"routes"] firstObject];
  if([route[@"targetId"] unsignedLongLongValue]!=42||[route[@"started"] intValue]!=1||[route[@"completed"] intValue]!=1||[route[@"failed"] intValue]!=1||[route[@"lastStatus"] intValue]!=5||[route[@"lastFlags"] intValue]!=0||[route[@"lastPhase"] intValue]!=13||[route[@"lastArgument"] intValue]!=2)return 3;

@@ -202,21 +202,29 @@ def validate_mac_proof(candidate, summary_path, runtime, *, team_id, bundle_id):
     if info.get("EHRIteratorExceptionFactoryCompiled"):
         require(status.get("sourceCoroutineFailureDiagnosticsBound") is True,"coroutine_failure_diagnostics_not_bound")
         validate_iterator_exception_factory_proof(attachments)
+    if info.get("EHRSettingsLoadingCompiled"):
+        loading=status.get("settingsLoading",{})
+        require(type(loading) is dict and type(loading.get("schemaVersion")) is int and loading["schemaVersion"]==1
+                and type(loading.get("status")) is int and loading["status"]==0
+                and loading.get("bound") is True and loading.get("busy") is False
+                and all(type(loading.get(key)) is int and loading[key]==0 for key in ("activeBuilds","processed","total","tabIndexPlusOne")),
+                "settings_loading_startup_not_ready")
     if info.get("EHRLobbySearchCompiled"):
         search=status.get("lobbySearch",{})
-        require(type(search) is dict and type(search.get("schemaVersion")) is int and search["schemaVersion"]==1
+        require(type(search) is dict and type(search.get("schemaVersion")) is int and search["schemaVersion"]==2
                 and type(search.get("compiled")) is int and search["compiled"]==1
                 and search.get("selected") is True and search.get("bound") is True
+                and type(search.get("selection")) is int and search["selection"] in (0,1) and search.get("selectionLoaded") is True
                 and all(type(search.get(key)) is int and search[key]==0 for key in ("preparedStatus","lastStatus","phase","calls",
-                    "originalReturned","applied","alreadyPresent","inactive","foreignCallsite","failures","workerForwards")),
+                    "originalReturned","applied","alreadyPresent","inactive","foreignCallsite","failures","workerForwards","selectionChanges","allForwards")),
                 "lobby_search_startup_not_ready")
         path=attachments/"EHRLobbySearchProof.json"
         require(path.is_file() and not path.is_symlink() and 0<path.stat().st_size<=65536,"lobby_search_proof_missing")
         own=json.loads(path.read_text())
         require(type(own) is dict and own.get("schema")=="ehr.lobby-search-owned-proof.v1" and own.get("success") is True
                 and type(own.get("status")) is int and own["status"]==0
-                and type(own.get("checks")) is int and 5<=own["checks"]<=1000
-                and type(own.get("phase")) is int and 0<=own["phase"]<=15
+                and type(own.get("checks")) is int and own["checks"]==5
+                and type(own.get("phase")) is int and own["phase"]==8
                 and all(type(own.get(key)) is int and 0<=own[key]<=65536 for key in ("rootsBefore","rootsAfter"))
                 and own["rootsBefore"]==own["rootsAfter"]
                 and all(type(own.get(key)) is int and own[key]==0 for key in ("realSearchRequests","accountActions","globalRegistrationWrites","hostPacketChanges")),

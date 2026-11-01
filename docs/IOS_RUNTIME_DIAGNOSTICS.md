@@ -184,3 +184,18 @@ Foundation JSON serialization. Mock GC/free APIs remain in the owned fixtures;
 no game, source callbacks, account, container or UI is used. Test output is not
 physical-device failure evidence. The next phone snapshot must establish which
 boundary/guard actually failed before any corrective behavior is selected.
+
+## Settings and UI progress
+
+Build 65 adds numeric `settingsLoading`, `uiHeartbeat` and
+`snapshotMonotonicNs` fields. The lightweight main-thread timer reads only the
+managed settings builder's own state. The writer serializes its copied sample,
+never reads Unity UI from its worker. Entered/completed monotonic timestamps and
+counts can distinguish a missing later UI tick from an unfinished sampled tick;
+background state and sample age must be considered. They do not identify a
+blocking call or establish a freeze's cause.
+
+When search is compiled, `lobbySearch` records schema-2 selection and forwarding
+counters, without room, player, response or credential content. This makes a
+future empty-list reproduction distinguish a request that never reaches the
+search helper from one forwarded in All mode or augmented in EHR mode.

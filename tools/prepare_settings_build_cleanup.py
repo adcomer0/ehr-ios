@@ -2,6 +2,7 @@
 """Pin and scope settings-build retirement to the iterator's own generation."""
 import argparse
 import hashlib
+import importlib.util
 import json
 from pathlib import Path
 import xml.etree.ElementTree as ET
@@ -88,6 +89,7 @@ def adapt(source):
 
 
 def reverse(source):
+    source = before_loading_adaptation(source)
     start, end, routine = split_routine(source)
     if not routine.startswith(START + TRY_START) or not routine.endswith(FINALLY + "        }\n"):
         raise ValueError("adapted cleanup wrapper changed")
@@ -96,6 +98,17 @@ def reverse(source):
         raise ValueError("adapted cleanup anchors changed")
     body = body.replace(STALE_NEW, STALE_OLD).replace(NORMAL_NEW, NORMAL_OLD)
     return source[:start] + START + body + "        }\n" + source[end:]
+
+
+def before_loading_adaptation(source):
+    """Recover this older cleanup profile before checking its exact anchors."""
+    if "ehr_source_settings_loading_v1" not in source:
+        return source
+    path = Path(__file__).resolve().parent / "source_port/prepare_settings_loading.py"
+    spec = importlib.util.spec_from_file_location("settings_loading_reversal", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.reverse(source)
 
 
 def normalize_paths(tree, project):

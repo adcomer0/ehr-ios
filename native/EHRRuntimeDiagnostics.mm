@@ -9,6 +9,9 @@
 #if EHR_HAS_GAME_START_ITERATOR
 #include "EHRGameStartIteratorAdapter.h"
 #endif
+#if EHR_HAS_LOBBY_SEARCH
+#include "EHRLobbySearch.h"
+#endif
 #include <atomic>
 #include <cerrno>
 #include <fcntl.h>
@@ -42,6 +45,15 @@ NSDictionary *dictionary(const ehr_diagnostics::Snapshot &s) {
  @"application":@{@"stage":@(a.stage),@"status":@(a.status),@"readyFlags":@(a.flags),@"state":@(a.state),@"loadAttempts":@(a.load_attempts),@"optionsLoaded":@(a.options_loaded),@"optionCount":@(a.options),@"activeBindings":@(a.active),@"candidates":@(a.candidates),@"postLoadTasksComplete":@(a.post_load)},
  @"appleAuth":@{@"domain":@(s.auth.domain),@"code":@(s.auth.code),@"observedCount":@(s.auth.count),@"installStatus":@(s.auth.install_status),@"requestCallbacks":@(s.auth.requests),@"successCallbacks":@(s.auth.successes),@"errorCallbacks":@(s.auth.errors),@"overlapObservations":@(s.auth.overlaps)},
  @"eosLogin":@{@"normal":@{@"resultCode":@(s.eos[0].result),@"observerStatus":@(s.eos[0].status),@"observedCount":@(s.eos[0].count)},@"silent":@{@"resultCode":@(s.eos[1].result),@"observerStatus":@(s.eos[1].status),@"observedCount":@(s.eos[1].count)}}} mutableCopy];
+ result[@"snapshotMonotonicNs"]=@(EHRDiagnosticTick());
+ const auto&loading=s.settings_loading;
+ result[@"settingsLoading"]=@{@"sampleMonotonicNs":@(loading.tick),@"status":@(loading.status),@"bound":@(loading.bound),@"busy":@(loading.busy),@"activeBuilds":@(loading.active),@"processed":@(loading.processed),@"total":@(loading.total),@"tabIndexPlusOne":@(loading.tab_plus_one)};
+ result[@"uiHeartbeat"]=@{@"enteredMonotonicNs":@(s.ui.entered_tick),@"completedMonotonicNs":@(s.ui.completed_tick),@"enteredCount":@(s.ui.entered_count),@"completedCount":@(s.ui.completed_count),@"foreground":@(s.ui.foreground)};
+#if EHR_HAS_LOBBY_SEARCH
+ // Copies owned atomics and the immutable bundle selection flag only. No
+ // preference loading, provider/account query or game/runtime work on worker.
+ result[@"lobbySearch"]=EHRLobbySearchCopyStatus();
+#endif
 #if EHR_HAS_GAME_START_ITERATOR
  // This getter copies only adapter-owned atomics; the writer performs no
  // runtime, metadata, source, scene or account operation.

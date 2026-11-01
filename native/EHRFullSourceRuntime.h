@@ -8,6 +8,9 @@ extern "C" {
 // NativeAOT image. Does not call fixture setup, game UI or account operations.
 FOUNDATION_EXPORT NSDictionary *EHRFullSourceBindRuntime(void);
 FOUNDATION_EXPORT NSDictionary *EHRFullSourceCopyRuntimeStatus(void);
+// Main-thread, bounded own source state only. Does not inspect Unity objects,
+// credentials or requests. Suitable for the lightweight loading indicator.
+FOUNDATION_EXPORT NSDictionary *EHRFullSourceCopySettingsLoadingStatus(void);
 // Interactive launcher tick only. Passive validation never calls this; the
 // optional website feature independently checks its current account gate.
 FOUNDATION_EXPORT void EHRFullSourceRefreshDirectory(void);

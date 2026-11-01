@@ -233,22 +233,39 @@ class InstallerGuards(unittest.TestCase):
         with self.assertRaisesRegex(M.Rejected,'iterator_exception_factory_proof_missing'):self.run_fixture(runner)
         self.assertEqual(runner.calls,[])
 
+    def test_loading_requires_bound_idle_reader_before_device_access(self):
+        path=self.app/'Info.plist';info=plistlib.loads(path.read_bytes());info['EHRSettingsLoadingCompiled']=True;path.write_bytes(plistlib.dumps(info))
+        proof=json.loads(self.proof.read_text());loading=dict(schemaVersion=1,status=0,bound=True,busy=False,activeBuilds=0,processed=0,total=0,tabIndexPlusOne=0)
+        proof['status']['settingsLoading']=loading;self.proof.write_text(json.dumps(proof));runner=OwnDeviceRunner(disconnected=True)
+        self.assertIn('unreachable',self.run_fixture(runner,preflight_only=True)['status'])
+        for changes in ({'schemaVersion':2},{'schemaVersion':True},{'status':False},{'status':1},{'bound':False},{'bound':1},{'busy':True},{'busy':0},
+                        {'activeBuilds':1},{'activeBuilds':False},{'processed':1},{'processed':False},{'total':1},{'total':False},{'tabIndexPlusOne':1},{'tabIndexPlusOne':False}):
+            altered=json.loads(json.dumps(proof));altered['status']['settingsLoading'].update(changes);self.proof.write_text(json.dumps(altered));runner=OwnDeviceRunner()
+            with self.subTest(changes=changes),self.assertRaisesRegex(M.Rejected,'settings_loading_startup_not_ready'):self.run_fixture(runner)
+            self.assertEqual(runner.calls,[])
+
     def test_search_requires_passive_startup_and_owned_filter_proof_before_device_access(self):
         self.enable_itch_provider();path=self.app/'Info.plist';info=plistlib.loads(path.read_bytes());info['EHRLobbySearchCompiled']=True;path.write_bytes(plistlib.dumps(info))
-        proof=json.loads(self.proof.read_text());search=dict(schemaVersion=1,compiled=1,selected=True,bound=True,
-            **dict.fromkeys(('preparedStatus','lastStatus','phase','calls','originalReturned','applied','alreadyPresent','inactive','foreignCallsite','failures','workerForwards'),0))
+        proof=json.loads(self.proof.read_text());search=dict(schemaVersion=2,compiled=1,selected=True,bound=True,selection=0,selectionLoaded=True,
+            **dict.fromkeys(('preparedStatus','lastStatus','phase','calls','originalReturned','applied','alreadyPresent','inactive','foreignCallsite','failures','workerForwards','selectionChanges','allForwards'),0))
         proof['status']['lobbySearch']=search;self.proof.write_text(json.dumps(proof));evidence=self.proof.with_name('EHRLobbySearchProof.json')
         baseline=dict(schema='ehr.lobby-search-owned-proof.v1',success=True,status=0,phase=8,checks=5,rootsBefore=10,rootsAfter=10,
             realSearchRequests=0,accountActions=0,globalRegistrationWrites=0,hostPacketChanges=0)
         evidence.write_text(json.dumps(baseline));runner=OwnDeviceRunner(disconnected=True)
         self.assertIn('unreachable',self.run_fixture(runner,preflight_only=True)['status'])
-        for changes in ({'success':False},{'status':False},{'status':1},{'phase':16},{'checks':4},{'rootsAfter':11},
+        for selection in (0,1):
+            accepted=json.loads(json.dumps(proof));accepted['status']['lobbySearch']['selection']=selection;self.proof.write_text(json.dumps(accepted));runner=OwnDeviceRunner(disconnected=True)
+            with self.subTest(acceptedSelection=selection):self.assertIn('unreachable',self.run_fixture(runner,preflight_only=True)['status'])
+        self.proof.write_text(json.dumps(proof))
+        for changes in ({'success':False},{'status':False},{'status':1},{'phase':0},{'phase':16},{'phase':8.0},{'checks':4},{'checks':6},{'checks':5.0},{'rootsAfter':11},
                         {'realSearchRequests':1},{'accountActions':1},{'globalRegistrationWrites':1},{'hostPacketChanges':1}):
             evidence.write_text(json.dumps(dict(baseline,**changes)));runner=OwnDeviceRunner()
             with self.subTest(changes=changes),self.assertRaisesRegex(M.Rejected,'lobby_search_proof_not_passed'):self.run_fixture(runner)
             self.assertEqual(runner.calls,[])
         evidence.write_text(json.dumps(baseline))
-        for changes in ({'schemaVersion':2},{'compiled':True},{'selected':False},{'bound':False},{'calls':1},{'applied':1},{'preparedStatus':1}):
+        for changes in ({'schemaVersion':1},{'compiled':True},{'selected':False},{'bound':False},{'calls':1},{'applied':1},{'preparedStatus':1},
+                        {'selection':-1},{'selection':2},{'selection':True},{'selection':False},{'selection':0.0},{'selection':1.0},{'selection':'1'},{'selection':None},
+                        {'selectionLoaded':False},{'selectionLoaded':1},{'selectionLoaded':None},{'selectionChanges':1},{'selectionChanges':False},{'allForwards':1},{'allForwards':False}):
             altered=json.loads(json.dumps(proof));altered['status']['lobbySearch'].update(changes);self.proof.write_text(json.dumps(altered));runner=OwnDeviceRunner()
             with self.subTest(changes=changes),self.assertRaisesRegex(M.Rejected,'lobby_search_startup_not_ready'):self.run_fixture(runner)
             self.assertEqual(runner.calls,[])

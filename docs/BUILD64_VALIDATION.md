@@ -60,9 +60,14 @@ them under UUID names; the runner's schema-to-name mapping was updated and the
 unchanged exported bytes were normalized to the required proof filenames. The
 protected installer rejects missing/failed proofs before any device operation.
 
-The protected build-64 delivery attempts passed local proof/signing/profile
-checks, then found the paired devices unreachable. No build-64 device
-installation is confirmed; the prior phone/iPad versions remain installed.
+Initial protected delivery attempts found the paired devices unreachable. A later
+USB connection allowed an in-place build-64 upgrade and launch on the test iPhone.
+Its numeric cache confirmed a fresh ownership check, EOS success and full account
+completion without a prompt or manual key submission. The player subsequently
+scrolled the impostor roles without the earlier Home Screen exit, after a few
+seconds of blocked scrolling. Returning to the main menu froze the game, and
+Find Game remained empty. These observations motivate [build 65](BUILD65_VALIDATION.md);
+they do not establish a complete menu or search repair.
 
 Live Find Game results/joining, renewed role scrolling and wider role/map
 coverage remain player acceptance work. This is a development source handoff;
