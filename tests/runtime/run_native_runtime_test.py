@@ -22,6 +22,7 @@ import subprocess
 import time
 
 HERE = Path(__file__).resolve().parent
+PASSIVE_EXECUTABLE = "EHRPassiveRuntimeHost"
 RELATIVE_BINARIES = ("EHRNativeGame", "Frameworks/UnityFramework.framework/UnityFramework",
                      "Frameworks/EHRNativeHooks.dylib", "Frameworks/NativeSourceReuse.framework/NativeSourceReuse")
 SOURCE_FILES = ("app/EHRPortLabApp.swift", "app/Info.plist",
@@ -158,6 +159,42 @@ def verify_test_bundle_team(bundle, team, app_bundle_id):
         raise ValueError("Generated XCTest bundle does not use the required paid team")
 
 
+def passive_project_settings(text):
+    """Give only the generated XCTest host a distinct executable identity."""
+    product = "PRODUCT_NAME = EHRNativeGame;"
+    test_host = 'TEST_HOST = "$(BUILT_PRODUCTS_DIR)/EHRNativeGame.app/EHRNativeGame";'
+    if text.count(product) != 2 or text.count(test_host) != 2 or "EXECUTABLE_NAME =" in text:
+        raise ValueError("Runtime project passive executable anchors differ")
+    return text.replace(product, product + " EXECUTABLE_NAME = " + PASSIVE_EXECUTABLE + ";").replace(
+        test_host, 'TEST_HOST = "$(BUILT_PRODUCTS_DIR)/EHRNativeGame.app/' + PASSIVE_EXECUTABLE + '";')
+
+
+def prepare_passive_test_host(candidate, host):
+    """Rename only the copied host executable and its CFBundleExecutable key."""
+    candidate, host = candidate.resolve(), host.resolve()
+    if candidate == host or candidate in host.parents or host in candidate.parents:
+        raise ValueError("Passive host must be a separate candidate copy")
+    source_info, copied_info = candidate / "Info.plist", host / "Info.plist"
+    source_binary, copied_binary = candidate / RELATIVE_BINARIES[0], host / RELATIVE_BINARIES[0]
+    passive_binary = host / PASSIVE_EXECUTABLE
+    if (passive_binary.exists() or passive_binary.is_symlink() or copied_info.is_symlink() or copied_binary.is_symlink()
+            or not copied_info.is_file() or not copied_binary.is_file()
+            or copied_info.samefile(source_info) or copied_binary.samefile(source_binary)):
+        raise ValueError("Passive host requires separate regular copied inputs")
+    original = plistlib.loads(source_info.read_bytes())
+    raw = copied_info.read_bytes()
+    info = plistlib.loads(raw)
+    if (info != original or info.get("CFBundleExecutable") != RELATIVE_BINARIES[0]
+            or hash_file(copied_binary) != hash_file(source_binary)):
+        raise ValueError("Passive host copy differs before identity change")
+    info["CFBundleExecutable"] = PASSIVE_EXECUTABLE
+    replacement = plistlib.dumps(info, fmt=plistlib.FMT_BINARY if raw.startswith(b"bplist") else plistlib.FMT_XML,
+                                sort_keys=False)
+    copied_binary.rename(passive_binary)
+    copied_info.write_bytes(replacement)
+    return True
+
+
 def prepare_project(source_root, test_source, output, team, bundle_id):
     project = output / "Project"
     project.mkdir()
@@ -167,7 +204,7 @@ def prepare_project(source_root, test_source, output, team, bundle_id):
     text = pbx.read_text()
     if "__TEAM_ID__" not in text or "__APP_BUNDLE_ID__" not in text or "CLANG_ENABLE_OBJC_ARC = YES" not in text:
         raise ValueError("Project template is missing its team placeholder or ARC setting")
-    pbx.write_text(text.replace("__TEAM_ID__", team).replace("__APP_BUNDLE_ID__", bundle_id))
+    pbx.write_text(passive_project_settings(text).replace("__TEAM_ID__", team).replace("__APP_BUNDLE_ID__", bundle_id))
     for relative in SOURCE_FILES:
         target = project / relative
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -299,6 +336,7 @@ def main():
     generated = output / "OriginalGeneratedHost.app"
     host.rename(generated)
     run(["cp", "-cR", candidate, host])
+    passive_identity = prepare_passive_test_host(candidate, host)
     (host / "PlugIns").mkdir(exist_ok=True)
     shutil.copytree(generated / "PlugIns/NativeRuntimeTests.xctest",
                     host / "PlugIns/NativeRuntimeTests.xctest")
@@ -314,14 +352,15 @@ def main():
          "--output", output / "signing-test-host.json"], output / "signing-test-host.log")
     # Resealing the copied host changes its own CodeDirectory, while nested
     # framework/helper/AOT binaries must remain exactly the preflight candidate.
-    if physical and (hash_file(candidate / "embedded.mobileprovision") != profile_pin or
-                     hash_file(host / "embedded.mobileprovision") != profile_pin):
+    if (hash_file(candidate / "embedded.mobileprovision") != profile_pin or
+            hash_file(host / "embedded.mobileprovision") != profile_pin):
         raise ValueError("Exact candidate provisioning profile changed before diagnostic launch")
-    if physical and any(hash_file(host / relative) != pins_before[relative] for relative in RELATIVE_BINARIES[1:]):
-        raise ValueError("A nested candidate binary changed before physical diagnostic launch")
+    if any(hash_file(host / relative) != pins_before[relative] for relative in RELATIVE_BINARIES[1:]):
+        raise ValueError("A nested candidate binary changed before diagnostic launch")
     if any(hash_file(candidate / relative) != pins_before[relative] for relative in RELATIVE_BINARIES):
         raise ValueError("Source candidate changed before diagnostic launch")
     test_arguments = [*common, "-resultBundlePath", result_bundle,
+                      "-collect-test-diagnostics", "never",
                       "-parallel-testing-enabled", "NO", "-test-timeouts-enabled", "YES",
                       "-default-test-execution-time-allowance", "60",
                       "-maximum-test-execution-time-allowance", "65", "test-without-building"]
@@ -382,8 +421,9 @@ def main():
                "diagnostic_install_attempted": physical, "final_playable_app_delivered": False,
                "xcodebuild_exit_code": process.returncode, "source_candidate_unchanged": unchanged,
                "candidate_binary_sha256": pins_before, "candidate_profile_sha256": profile_pin,
+               "interactive_ui_disabled_by_test_host_identity": passive_identity,
                "wrapper_preserved": copied,
-               "preserved_inner_executable": str(wrapper / "Wrapper/EHRNativeGame.app/EHRNativeGame") if copied else None,
+               "preserved_inner_executable": str(wrapper / "Wrapper/EHRNativeGame.app" / PASSIVE_EXECUTABLE) if copied else None,
                "test_source_sha256": hash_file(args.test_source), "result_bundle": str(result_bundle),
                "attachments": str(attachments), "terms_or_ui_actions_performed": False,
                "multiplayer_verified": False,

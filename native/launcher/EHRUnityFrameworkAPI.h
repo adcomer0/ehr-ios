@@ -1,6 +1,7 @@
 #pragma once
 
 #import <Foundation/Foundation.h>
+#import <UIKit/UIKit.h>
 #include <mach-o/loader.h>
 
 /*
@@ -29,7 +30,7 @@ typedef struct mach_header EHRMachHeader;
 
 @protocol EHRUnityFrameworkPublicAPI <NSObject>
 + (id<EHRUnityFrameworkPublicAPI>)getInstance;
-- (id)appController;
+- (id<UIApplicationDelegate>)appController;
 - (void)setExecuteHeader:(const EHRMachHeader *)header;
 - (void)setDataBundleId:(const char *)bundleId;
 - (void)runUIApplicationMainWithArgc:(int)argc argv:(char *[])argv;

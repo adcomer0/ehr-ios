@@ -1,4 +1,5 @@
 #import "EHRUnityFrameworkAPI.h"
+#import "EHRUnitySceneDelegate.h"
 #import <UIKit/UIKit.h>
 #include <dispatch/dispatch.h>
 #include <dlfcn.h>
@@ -123,13 +124,18 @@ int main(int argc, char *argv[]) {
         if (framework == nil) {
             return 70; // Bootstrap configuration/loading failure; no fallback.
         }
+        if (EHRUnitySceneConfigure(framework) != 0) {
+            return 71; // Scene host must be registered before UIApplicationMain.
+        }
         gBridgeObserver = [EHRLauncherBridgeObserver new];
         [[NSNotificationCenter defaultCenter] addObserver:gBridgeObserver
                                                      selector:@selector(applicationDidFinishLaunching:)
                                                          name:UIApplicationDidFinishLaunchingNotification
                                                        object:nil];
         // Unity's documented fresh-app entry owns UIApplicationMain and its
-        // delegate. This original host does not introduce a second UI loop.
+        // delegate. EHRUnitySceneDelegate attaches that controller's existing
+        // window and forwards the four public per-scene lifecycle transitions;
+        // this original host does not introduce a second UI loop.
         [framework runUIApplicationMainWithArgc:argc argv:argv];
         if (gBridgeObserver != nil) {
             [[NSNotificationCenter defaultCenter] removeObserver:gBridgeObserver];

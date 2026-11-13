@@ -129,6 +129,7 @@ class ItchAuthBuilderTests(unittest.TestCase):
             "CFBundleVersion": "3", "CFBundleShortVersionString": "1.2.3",
             "CFBundleURLTypes": [{"CFBundleURLSchemes": ["amongus"]}],
             "EHRAuthProvider": "inherited-provider", "EHRItchAuthCompiled": True,
+            "UIApplicationSceneManifest": {"UIApplicationSupportsMultipleScenes":True,"UISceneConfigurations":{"own-old-role":[{"UISceneDelegateClassName":"OldFixtureDelegate"}]}},
             "EHRItchOAuthClientID": "inherited-public-fixture",
             "EHRItchOAuthRedirectURI": "amongus://oauth/callback",
             "CFBundleIcons": {"CFBundlePrimaryIcon": {"CFBundleIconName": "OwnInheritedIcon"},
@@ -170,6 +171,17 @@ class ItchAuthBuilderTests(unittest.TestCase):
         self.assertEqual((source / "OwnMain").read_bytes(), b"own synthetic launcher")
         self.assertFalse((args.output / "EHRNativeGame.app/OwnMain").exists())
         return plistlib.loads((args.output / "EHRNativeGame.app/Info.plist").read_bytes())
+
+    def test_launcher_replaces_inherited_scenes_with_single_unity_window_host(self):
+        for selected in (False,True):
+            with self.subTest(selected=selected),tempfile.TemporaryDirectory() as temp:
+                info=self.copied_info(Path(temp),selected=selected)
+                manifest=info['UIApplicationSceneManifest']
+                self.assertIs(manifest['UIApplicationSupportsMultipleScenes'],False)
+                self.assertEqual(manifest['UISceneConfigurations'],{'UIWindowSceneSessionRoleApplication':[{
+                    'UISceneConfigurationName':'EHR Unity','UISceneClassName':'UIWindowScene',
+                    'UISceneDelegateClassName':'EHRUnitySceneDelegate'}]})
+                self.assertIs(info['EHRUnitySceneHostCompiled'],True)
 
     def test_display_name_default_and_custom_name_only_change_visible_label(self):
         for name in (None, "EHR Sign-in Test", "X", "x" * 64, "Owned \u2606 Fixture"):
