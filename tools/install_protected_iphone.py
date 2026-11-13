@@ -202,6 +202,17 @@ def validate_mac_proof(candidate, summary_path, runtime, *, team_id, bundle_id):
     if info.get("EHRIteratorExceptionFactoryCompiled"):
         require(status.get("sourceCoroutineFailureDiagnosticsBound") is True,"coroutine_failure_diagnostics_not_bound")
         validate_iterator_exception_factory_proof(attachments)
+    if info.get("EHRUnitySceneHostCompiled"):
+        require(summary.get("interactive_ui_disabled_by_test_host_identity") is True,"passive_test_host_identity_not_confirmed")
+        scene=proof.get("sceneHost",{})
+        manifest=info.get("UIApplicationSceneManifest",{})
+        require(type(manifest) is dict and manifest.get("UIApplicationSupportsMultipleScenes") is False
+                and manifest.get("UISceneConfigurations")=={"UIWindowSceneSessionRoleApplication":[{
+                    "UISceneConfigurationName":"EHR Unity","UISceneClassName":"UIWindowScene","UISceneDelegateClassName":"EHRUnitySceneDelegate"}]}
+                and type(scene) is dict and type(scene.get("schemaVersion")) is int and scene["schemaVersion"]==1
+                and type(scene.get("matchingScenes")) is int and scene["matchingScenes"]==1
+                and all(scene.get(key) is True for key in ("windowAttached","rootControllerPresent","originalWindowPreserved")),
+                "scene_host_startup_not_ready")
     if info.get("EHRSettingsLoadingCompiled"):
         loading=status.get("settingsLoading",{})
         require(type(loading) is dict and type(loading.get("schemaVersion")) is int and loading["schemaVersion"]==1

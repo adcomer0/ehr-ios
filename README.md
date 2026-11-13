@@ -1,6 +1,6 @@
 # EHR Among Us — native iOS port
 
-An all-local native iOS port of [Endless Host Roles](https://github.com/Gurge44/EndlessHostRoles), intended to let an iPhone host EHR games for vanilla Among Us players. Native itch.io account creation and remembered-key login have been observed on one test phone, alongside an earlier user-reported match with a vanilla peer. The exact ownership helper returned a correct live negative result on Mac before purchase; build 61 then verified ownership and completed game sign-in on iPhone after purchase. This development candidate remains under wider gameplay testing; see the [maintainer handoff](docs/MAINTAINER_HANDOFF.md) and [current validation](docs/BUILD65_VALIDATION.md) for packaging and distribution boundaries.
+An all-local native iOS port of [Endless Host Roles](https://github.com/Gurge44/EndlessHostRoles), intended to let an iPhone host EHR games for vanilla Among Us players. Native itch.io account creation and remembered-key login have been observed on one test phone, alongside an earlier user-reported match with a vanilla peer. The exact ownership helper returned a correct live negative result on Mac before purchase; build 61 then verified ownership and completed game sign-in on iPhone after purchase. This development candidate remains under wider gameplay testing; see the [maintainer handoff](docs/MAINTAINER_HANDOFF.md) and [current validation](docs/BUILD67_VALIDATION.md) for packaging and distribution boundaries.
 
 ## How it works
 
@@ -10,6 +10,7 @@ There is no BepInEx Unity/IL2CPP plugin loader running on the phone and no embed
 
 ## Current state: native hosting and ownership-gated itch.io sign-in
 
+- Build 67 repairs the pre-logo launch failure on iOS 27 with a single-scene Unity host and correct initialization ordering. It preserves the original window, saved-login storage and account checks. See [scene hosting](docs/IOS_SCENE_HOST.md) and [build 67 validation](docs/BUILD67_VALIDATION.md).
 - Build 62 uses the verified official `ce23f0d(main)` release identity, correcting the detached-checkout tag that caused same-version host rejection. The unchanged EHR comparator remains in charge; the player confirmed joining another official 8.0.3 host and staying connected past the previous countdown. See [release identity](docs/UPSTREAM_RELEASE_IDENTITY.md).
 - Build 65 adds a visible settings-loading indicator, smaller row batches and cancellation when settings close. The EHR panel offers **All lobbies** (default) and **EHR lobbies** for Find Game; refresh after changing it. Build 64 scrolling stayed open in one phone test, but returning to the menu froze and its EHR-only search was empty. The new menu and search behavior still need a phone retest. See [build 65 validation](docs/BUILD65_VALIDATION.md).
 - The full selected EHR source compiles for `ios-arm64`: 796 C# inputs; the 224 resource names/hashes are catalogued separately.
@@ -37,7 +38,7 @@ EOS 3). Build 57 introduced a separate **EHR Sign-in Test** identity for fresh
 storage. Build 58 upgrades that working identity to **EHR Among Us**; after the
 upgrade was confirmed, the user-authorized cleanup removed the legacy preview
 from the test phone. See [the test history](docs/ISOLATED_SIGNIN_TEST.md) and
-[current delivery](docs/BUILD65_VALIDATION.md).
+[current delivery](docs/BUILD67_VALIDATION.md).
 
 Build 49 passed signed iOS-on-Mac startup, its owned native game-start adapter probe and the real-runtime 1,024-retained-carrier check, plus touch/audio/cleanup probes. The separate phone observation confirms one real-owner host-start path. See [the validation scope](docs/BUILD49_VALIDATION.md); complete rounds, peers and all roles still need testing.
 

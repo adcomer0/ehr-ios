@@ -191,6 +191,14 @@ def build(args):
     # development launcher declares the actual iPhone/iPad family above; an
     # inherited distribution device allowlist would reject the signed iPhone.
     info.pop("UISupportedDevices", None)
+    # The original host adopts a single scene and attaches Unity's existing
+    # render window. iOS 27 rejects new-SDK legacy lifecycle launchers.
+    info["UIApplicationSceneManifest"]={"UIApplicationSupportsMultipleScenes":False,
+        "UISceneConfigurations":{"UIWindowSceneSessionRoleApplication":[{
+            "UISceneConfigurationName":"EHR Unity",
+            "UISceneClassName":"UIWindowScene",
+            "UISceneDelegateClassName":"EHRUnitySceneDelegate"}]}}
+    info["EHRUnitySceneHostCompiled"]=True
     info["EHRFullSourceAutoLoad"]=bool(full and args.full_source_autoload)
     info["EHREOSLoginDiagnosticsEnabled"]=bool(args.eos_login_map)
     info["EHRAuthRetryGuardCompiled"]=bool(guard_map)
@@ -467,7 +475,7 @@ def build(args):
         "-Wl,-install_name,@rpath/EHRNativeHooks.dylib",*frameworks_flags,*native_sources,"-o",str(helper))
     run(*compiler, "-I", str(ROOT / "native/launcher"), *frameworks_flags,
         "-Wl,-rpath,@executable_path/Frameworks", "-Wl,-rpath,/usr/lib/swift",
-        str(ROOT / "native/launcher/main.mm"), "-o", str(app / "EHRNativeGame"))
+        str(ROOT / "native/launcher/main.mm"), str(ROOT / "native/launcher/EHRUnitySceneDelegate.mm"), "-o", str(app / "EHRNativeGame"))
     run("codesign", "--force", "--sign", args.identity, "--timestamp=none", str(helper))
     run("codesign", "--force", "--sign", args.identity, "--timestamp=none", "--entitlements", str(entitlement_path), str(app))
     run("codesign", "--verify", "--deep", "--strict", str(app))

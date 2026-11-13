@@ -2,6 +2,16 @@
 
 This snapshot is incomplete. Physical build 48 reached Online lobby hosting and mod settings, then a black screen after starting the game. Physical build 49 reached a solo game and an early win, consistent with EHR's low-player end conditions. Its trace reached custom intro, ship initialization, game start and game end without new source failures. Physical build 50 then disconnected the host when a vanilla peer joined. Following build-52 delivery, the user reports playing a match with a vanilla peer. Apple authentication, wider account safety, multiplayer stability and full role behavior remain unresolved or unverified.
 
+## iOS 27 pre-logo launch failure
+
+Build 66 linked the iOS 27 SDK without a scene manifest, and the phone's iOS 27.2.1
+crash reached UIKit's scene-adoption enforcement. Build 67 supplies a single-scene
+host around Unity's existing window and initializes the engine before activation.
+Signed real-engine startup and the physical Wi-Fi upgrade/launch passed; the
+phone remained running and completed remembered-key sign-in. See
+[build 67 evidence](BUILD67_VALIDATION.md).
+This launch repair does not establish wider role or multiplayer compatibility.
+
 ## Ownership and EHR website integration
 
 Build 59 requires a claimed Among Us entitlement in the itch.io account behind

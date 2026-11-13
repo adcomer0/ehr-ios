@@ -1,5 +1,6 @@
 #import <XCTest/XCTest.h>
 #import <CoreFoundation/CoreFoundation.h>
+#import <UIKit/UIKit.h>
 #include <dlfcn.h>
 #include <mach-o/dyld.h>
 #include <cstring>
@@ -57,6 +58,19 @@ NSDictionary *applicationVersion() {
         [value isEqualToString:NSBundle.mainBundle.infoDictionary[@"CFBundleShortVersionString"]]&&![value isEqualToString:@"0.0.0"];
     return @{@"success":@(matches),@"status":@(code),@"value":value?:@"",@"expected":expected?:@""};
 }
+bool sceneReady() {
+    if(![NSBundle.mainBundle.infoDictionary[@"EHRUnitySceneHostCompiled"] boolValue])return true;
+    Class expected=NSClassFromString(@"EHRUnitySceneDelegate");if(!expected)return false;
+    id appDelegate=UIApplication.sharedApplication.delegate;
+    UIWindow *original=[appDelegate respondsToSelector:@selector(window)]?[appDelegate window]:nil;
+    NSUInteger matching=0;bool ready=false;
+    for(UIScene *scene in UIApplication.sharedApplication.connectedScenes){
+        if(![scene isKindOfClass:UIWindowScene.class]||![scene.delegate isKindOfClass:expected])continue;
+        ++matching;UIWindow *window=[(id)scene.delegate window];
+        ready=window&&window==original&&window.windowScene==(UIWindowScene *)scene&&window.rootViewController;
+    }
+    return matching==1&&ready;
+}
 NSDictionary *status() {
     for(uint32_t i=0;i<_dyld_image_count();++i){
         const char *path=_dyld_get_image_name(i);
@@ -84,14 +98,35 @@ NSDictionary *status() {
     dispatch_source_set_event_handler(timer,^{
         last=status();NSDictionary *app=last[@"application"];
         bool failed=[app[@"state"] unsignedIntValue]==4 || ([last[@"attempted"] boolValue]&&[last[@"status"] intValue]!=0);
-        bool complete=[app[@"state"] unsignedIntValue]==3&&[app[@"postLoadTasksComplete"] boolValue];
+        bool complete=[app[@"state"] unsignedIntValue]==3&&[app[@"postLoadTasksComplete"] boolValue]&&sceneReady();
         if(!fulfilled&&(failed||complete)) {fulfilled=true;dispatch_source_cancel(timer);[finished fulfill];}
     });
     dispatch_resume(timer);[self waitForExpectations:@[finished] timeout:45];dispatch_source_cancel(timer);
     last=status()?:last?:@{};NSDictionary *app=last[@"application"]?:@{};
+    NSDictionary *sceneProof=@{};
+    if([NSBundle.mainBundle.infoDictionary[@"EHRUnitySceneHostCompiled"] boolValue]){
+        NSDictionary *manifest=NSBundle.mainBundle.infoDictionary[@"UIApplicationSceneManifest"];
+        XCTAssertEqualObjects(manifest[@"UIApplicationSupportsMultipleScenes"],@NO);
+        NSArray *configurations=manifest[@"UISceneConfigurations"][@"UIWindowSceneSessionRoleApplication"];
+        XCTAssertEqual(configurations.count,1u);
+        XCTAssertEqualObjects(configurations.firstObject[@"UISceneDelegateClassName"],@"EHRUnitySceneDelegate");
+        Class delegateClass=NSClassFromString(@"EHRUnitySceneDelegate");XCTAssertNotNil(delegateClass);
+        NSUInteger matching=0;BOOL attached=NO,rootPresent=NO,preserved=NO;
+        id appDelegate=UIApplication.sharedApplication.delegate;
+        UIWindow *original=[appDelegate respondsToSelector:@selector(window)]?[appDelegate window]:nil;
+        for(UIScene *scene in UIApplication.sharedApplication.connectedScenes){
+            if(![scene isKindOfClass:UIWindowScene.class]||![scene.delegate isKindOfClass:delegateClass])continue;
+            matching++;
+            UIWindow *window=[(id)scene.delegate window];
+            attached=window&&window.windowScene==(UIWindowScene *)scene;rootPresent=window.rootViewController!=nil;preserved=window&&window==original;
+            XCTAssertTrue(attached);XCTAssertTrue(rootPresent);XCTAssertTrue(preserved);
+        }
+        XCTAssertEqual(matching,1u);
+        sceneProof=@{@"schemaVersion":@1,@"matchingScenes":@(matching),@"windowAttached":@(attached),@"rootControllerPresent":@(rootPresent),@"originalWindowPreserved":@(preserved)};
+    }
     NSDictionary *version=applicationVersion();
     NSDictionary *proof=@{@"schema":@"ehr.full-source-startup-proof.v1",@"status":last,@"startupReachedTerminalObservation":@(fulfilled),
-        @"applicationVersion":version,
+        @"applicationVersion":version,@"sceneHost":sceneProof,
         @"startupInvokedByTest":@NO,@"termsAcceptedByTest":@NO,@"accountActionsPerformed":@NO,@"multiplayerVerified":@NO};
     NSData *data=[NSJSONSerialization dataWithJSONObject:proof options:NSJSONWritingPrettyPrinted error:nil];
     NSLog(@"EHR_NATIVE_RUNTIME_TEST %@",[[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding]);

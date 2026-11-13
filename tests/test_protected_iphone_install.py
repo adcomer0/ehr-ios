@@ -233,6 +233,24 @@ class InstallerGuards(unittest.TestCase):
         with self.assertRaisesRegex(M.Rejected,'iterator_exception_factory_proof_missing'):self.run_fixture(runner)
         self.assertEqual(runner.calls,[])
 
+    def test_scene_host_requires_original_attached_window_before_device_access(self):
+        summary=json.loads(self.summary.read_text());summary['interactive_ui_disabled_by_test_host_identity']=True;self.summary.write_text(json.dumps(summary))
+        path=self.app/'Info.plist';info=plistlib.loads(path.read_bytes());info['EHRUnitySceneHostCompiled']=True
+        info['UIApplicationSceneManifest']={'UIApplicationSupportsMultipleScenes':False,'UISceneConfigurations':{'UIWindowSceneSessionRoleApplication':[{
+            'UISceneConfigurationName':'EHR Unity','UISceneClassName':'UIWindowScene','UISceneDelegateClassName':'EHRUnitySceneDelegate'}]}}
+        path.write_bytes(plistlib.dumps(info));proof=json.loads(self.proof.read_text());proof['sceneHost']=dict(schemaVersion=1,matchingScenes=1,windowAttached=True,rootControllerPresent=True,originalWindowPreserved=True);self.proof.write_text(json.dumps(proof));runner=OwnDeviceRunner(disconnected=True)
+        self.assertIn('unreachable',self.run_fixture(runner,preflight_only=True)['status'])
+        for value in (None,False,1):
+            altered=dict(summary,interactive_ui_disabled_by_test_host_identity=value);self.summary.write_text(json.dumps(altered));runner=OwnDeviceRunner()
+            with self.subTest(passiveIdentity=value),self.assertRaisesRegex(M.Rejected,'passive_test_host_identity_not_confirmed'):self.run_fixture(runner)
+            self.assertEqual(runner.calls,[])
+        self.summary.write_text(json.dumps(summary))
+        for changes in ({'schemaVersion':2},{'schemaVersion':True},{'matchingScenes':0},{'matchingScenes':2},{'matchingScenes':True},
+                        {'windowAttached':False},{'windowAttached':1},{'rootControllerPresent':False},{'originalWindowPreserved':False}):
+            altered=json.loads(json.dumps(proof));altered['sceneHost'].update(changes);self.proof.write_text(json.dumps(altered));runner=OwnDeviceRunner()
+            with self.subTest(changes=changes),self.assertRaisesRegex(M.Rejected,'scene_host_startup_not_ready'):self.run_fixture(runner)
+            self.assertEqual(runner.calls,[])
+
     def test_loading_requires_bound_idle_reader_before_device_access(self):
         path=self.app/'Info.plist';info=plistlib.loads(path.read_bytes());info['EHRSettingsLoadingCompiled']=True;path.write_bytes(plistlib.dumps(info))
         proof=json.loads(self.proof.read_text());loading=dict(schemaVersion=1,status=0,bound=True,busy=False,activeBuilds=0,processed=0,total=0,tabIndexPlusOne=0)
